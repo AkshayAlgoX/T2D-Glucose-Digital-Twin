@@ -1,4 +1,3 @@
-'use client';
 
 import React, { useRef, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -15,16 +14,8 @@ import * as THREE from 'three';
 // Contracts & Interfaces
 // -----------------------------------------------------------------------------
 
-type RiskTier = 'low' | 'elevated' | 'high';
-
-export interface ForecastResponse {
-  patientId: string;
-  generatedAt: string;
-  spike_risk: {
-    tier: RiskTier;
-  };
-  // (Other fields omitted for brevity in this specific component)
-}
+import { ForecastResponse } from '@/types/digital-twin';
+type RiskTier = "low" | "elevated" | "high";
 
 export interface BodyVisualizer3DProps {
   forecast: ForecastResponse;
@@ -149,7 +140,7 @@ export function BodyVisualizer3D({ forecast, className = '' }: BodyVisualizer3DP
           Metabolic Twin
         </h3>
         <p className="text-slate-400 text-xs">
-          Organ Stress Level: <span className="font-bold text-white capitalize">{riskTier}</span>
+          Metabolic State: <span className="font-bold text-white capitalize">{riskTier}</span>
         </p>
       </div>
 

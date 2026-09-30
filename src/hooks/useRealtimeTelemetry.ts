@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ForecastResponse, TelemetryDataPoint } from './TelemetryChartSuite';
+import type { ForecastResponse, TelemetryDataPoint } from '@/types/digital-twin';
 
 interface UseRealtimeTelemetryOptions {
   /** Maximum number of historical points to keep in memory to prevent DOM/memory bloat */
@@ -9,6 +9,7 @@ interface UseRealtimeTelemetryOptions {
 interface UseRealtimeTelemetryReturn {
   forecast: ForecastResponse | null;
   isConnected: boolean;
+  isStale: boolean;
   error: Error | null;
 }
 
@@ -27,16 +28,31 @@ export function useRealtimeTelemetry(
   
   const [forecastResponse, setForecastResponse] = useState<ForecastResponse | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isStale, setIsStale] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!patientId) return;
 
     let eventSource: EventSource;
+    let staleTimer: NodeJS.Timeout;
+
+    const resetStaleTimer = () => {
+      setIsStale(false);
+      clearTimeout(staleTimer);
+      staleTimer = setTimeout(() => {
+        setIsStale(true);
+      }, 15000); // Flag as stale after 15 seconds without data
+    };
 
     const connect = () => {
       // Initialize the native browser Server-Sent Events (SSE) connection
-      eventSource = new EventSource(`/api/patients/${patientId}/stream`);
+      // Temporarily point to mock-stream for stress-testing if env flag is set, otherwise use real backend contract
+      const endpoint = process.env.NEXT_PUBLIC_USE_MOCK === 'true' 
+        ? `/api/mock-stream`
+        : `/api/patients/${patientId}/stream`;
+        
+      eventSource = new EventSource(endpoint);
 
       eventSource.onopen = () => {
         setIsConnected(true);
@@ -45,40 +61,56 @@ export function useRealtimeTelemetry(
       };
 
       eventSource.onmessage = (event) => {
+        resetStaleTimer();
         try {
-          const chunk: ForecastResponse = JSON.parse(event.data);
+          const raw = JSON.parse(event.data);
           
-          setForecastResponse((prev) => {
-            const existingData = prev?.data || [];
-            
-            // 1. Partition the incoming chunk into Historical vs. Forecast
-            const incomingHistorical = chunk.data.filter(d => d.historicalGlucose != null);
-            const incomingForecast = chunk.data.filter(d => d.forecastGlucose != null);
+          // Determine if we are processing the mock stream or the real stream
+          // Mock stream is already mapped to the frontend shape.
+          // Real stream emits StreamEvent where the payload is nested.
+          let chunk: ForecastResponse;
+          if (raw.event === "forecast.updated" && raw.payload) {
+             import('@/lib/api-mapper').then(({ mapBackendForecast }) => {
+                const mapped = mapBackendForecast(raw.payload);
+                processChunk(mapped);
+             });
+             return;
+          } else {
+             chunk = raw as ForecastResponse;
+             processChunk(chunk);
+          }
 
-            // 2. Isolate our existing historical state
-            const existingHistorical = existingData.filter(d => d.historicalGlucose != null);
+          function processChunk(chunk: ForecastResponse) {
+            setForecastResponse((prev) => {
+              const existingData = prev?.data || [];
+              
+              const incomingHistorical = chunk.data.filter(d => d.historicalGlucose != null);
+              const incomingForecast = chunk.data.filter(d => d.forecastGlucose != null);
 
-            // 3. Merge historical data using a Map to deduplicate by timestamp 
-            // (Incoming late-arriving or corrected data overwrites existing)
-            const historicalMap = new Map<string, TelemetryDataPoint>();
-            existingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
-            incomingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
+              const existingHistorical = existingData.filter(d => d.historicalGlucose != null);
 
-            // 4. Reconstruct the array, sort chronologically, and apply the memory constraint
-            const mergedHistorical = Array.from(historicalMap.values())
-              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-              .slice(-maxHistoricalPoints);
+              const historicalMap = new Map<string, TelemetryDataPoint>();
+              existingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
+              incomingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
 
-            // 5. Combine the stable historical baseline with the *fresh* 24-step forecast array
-            const combinedData = [...mergedHistorical, ...incomingForecast]
-              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+              const mergedHistorical = Array.from(historicalMap.values())
+                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                .slice(-maxHistoricalPoints);
 
-            return {
-              patientId: chunk.patientId,
-              generatedAt: chunk.generatedAt,
-              data: combinedData
-            };
-          });
+              const combinedData = [...mergedHistorical, ...incomingForecast]
+                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+              return {
+                patientId: chunk.patientId,
+                generatedAt: chunk.generatedAt,
+                spike_risk: chunk.spike_risk,
+                spikeProbability120m: chunk.spikeProbability120m,
+                predictedEvent: chunk.predictedEvent,
+                drivers: chunk.drivers,
+                data: combinedData
+              } as ForecastResponse;
+            });
+          }
         } catch (err) {
           console.error('[Telemetry] JSON Parse Error:', err);
           setError(err instanceof Error ? err : new Error('Failed to parse telemetry chunk'));
@@ -96,6 +128,7 @@ export function useRealtimeTelemetry(
 
     // Cleanup phase: Teardown connection on unmount or when patientId changes
     return () => {
+      clearTimeout(staleTimer);
       if (eventSource) {
         eventSource.close();
         setIsConnected(false);
@@ -106,6 +139,7 @@ export function useRealtimeTelemetry(
   return {
     forecast: forecastResponse,
     isConnected,
+    isStale,
     error
   };
 }
