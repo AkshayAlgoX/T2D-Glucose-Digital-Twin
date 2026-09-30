@@ -119,10 +119,10 @@ FUTURE_FEATURES = (
 STATUS_LEVELS = ("Healthy", "Prediabetes", "Type 1", "Type 2")
 MED_CLASSES = ("metformin", "sglt2i", "glp1_ra", "dpp4i", "sulfonylurea", "basal_insulin",
                "prandial_insulin")
-STATIC_CONTINUOUS = ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg",
-                     "basal_glucose", "insulin_sensitivity_rel", "tmax0_min")
+STATIC_CONTINUOUS = ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg")
 STATIC_FEATURES = (STATIC_CONTINUOUS + ("sex_male",) + tuple(f"status_{s}" for s in STATUS_LEVELS)
                    + tuple(f"med_{m}" for m in MED_CLASSES))
+
 # z-scored past features; the rest are binary or already bounded.
 ZSCORE_PAST = ("cgm_roc", "heart_rate", "hrv", "step_count", "carbs_logged", "carbs_on_board",
                "twin_meal_effect")
@@ -143,6 +143,7 @@ class TrainConfig:
     log_corruption: bool = True
     twin_base: str = "habit"  # forecast base scenario: "habit" or "no_meal"
     twin: str = "linear"  # twin prior: "linear" (TwinPrior) or "ukf" (ukf_twin.UKFTwinPrior)
+    twin_mode: str = "s2"  # UKF initialization mode: "oracle", "s2", or "s3"
     limit_patients: int = 0  # 0 = all
     # Model (Blueprint 7.2)
     d_model: int = 96
@@ -304,7 +305,19 @@ def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfi
         if cfg.log_corruption:
             meal_min, meal_carbs = corrupt_meal_log(meal_min, meal_carbs, rng)
         row = ehr.loc[pid]
-        si_rel = float(row["insulin_sensitivity_rel"])
+
+        bmi = float(row["bmi"])
+        age = float(row["age"])
+        t2d = row["diabetes_status"] == "Type 2"
+        pre = row["diabetes_status"] == "Prediabetes"
+        meds = set(str(row.get("med_classes", "")).split(";")) - {"", "nan"}
+        ln_si = -0.035 * (bmi - 25) - 0.005 * (age - 45) - 0.40 * t2d - 0.20 * pre
+        si_rel = float(np.clip(math.exp(ln_si), 0.15, 1.2)) * (1.10 if "metformin" in meds else 1.0)
+        a1c = float(row["hba1c"])
+        mu = max(28.7 * a1c - 46.7, 75.0)
+        gb = 110.0 + 0.30 * (mu - 110.0) if mu > 110 else mu - 8.0
+        tmax0 = 38.0
+
         series[pid] = PatientSeries(
             pid=pid, group=str(row["diabetes_status"]), stamps=grid, cgm=cgm,
             cgm_ff=pd.Series(cgm).ffill(limit=3).to_numpy(),
@@ -313,9 +326,9 @@ def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfi
             steps=g["step_count"].fillna(0).to_numpy(dtype=float),
             asleep=(g["sleep_stage"].fillna("Awake") != "Awake").to_numpy(dtype=float),
             meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row),
-            gb=float(row["basal_glucose"]),
+            gb=gb,
             k_base=0.01 + 0.01 * si_rel,
-            tmax=1.3 * float(row["tmax0_min"]),  # average macronutrient slowing (Blueprint 3.3)
+            tmax=1.3 * tmax0,  # average macronutrient slowing (Blueprint 3.3)
             vg=VG_PER_KG * float(row["weight_kg"]),
         )
         series[pid].onset, series[pid].armed = detect_spike_onsets(cgm)
@@ -532,7 +545,7 @@ class Normalizer:
 
     @classmethod
     def fit(cls, series: list[PatientSeries], meal_effect: dict[str, np.ndarray],
-            extras: dict[str, dict[str, np.ndarray]] | None = None) -> "Normalizer":
+            extras: dict[str, dict[str, np.ndarray]] | None = None, realistic_ehr: bool = False) -> "Normalizer":
         cgm = np.concatenate([ps.cgm[np.isfinite(ps.cgm)] for ps in series])
         raw = {
             "cgm_roc": np.concatenate([np.diff(ps.cgm_ff, prepend=np.nan) for ps in series]),
@@ -590,7 +603,7 @@ def past_feature_names(cfg: TrainConfig) -> tuple[str, ...]:
 def make_twin(cfg: TrainConfig):
     if cfg.twin == "ukf":
         from ukf_twin import UKFTwinPrior
-        return UKFTwinPrior()
+        return UKFTwinPrior(mode=cfg.twin_mode)
     return TwinPrior()
 
 
@@ -1188,6 +1201,21 @@ def load_data(cfg: TrainConfig, rng: np.random.Generator, glucose_override: pd.D
     missing = {"meal_event", "carbs_g"} - set(telemetry.columns)
     if missing:
         raise SystemExit(f"telemetry lacks {sorted(missing)}; regenerate with generate_health_data_v2.py")
+    EHR_ALLOWLIST = {
+        "patient_id", "age", "gender", "bmi", "genetic_risk_score", "hba1c",
+        "diabetes_status", "height_cm", "weight_kg", "egfr", "diabetes_duration_years",
+        "med_classes"
+    }
+    # Clean Firewall: filter out any simulator-latent columns
+    ehr_cols = [c for c in ehr.columns if c in EHR_ALLOWLIST]
+    ehr = ehr[ehr_cols]
+
+    # --- Competition filter: exclude Type 1 patients (target use-case is Type 2) ---
+    t1_pids = set(ehr.loc[ehr["diabetes_status"] == "Type 1", "patient_id"])
+    if t1_pids:
+        LOG.info("excluding %d Type 1 patient(s): %s", len(t1_pids), sorted(t1_pids))
+        telemetry = telemetry[~telemetry["patient_id"].isin(t1_pids)]
+        ehr = ehr[~ehr["patient_id"].isin(t1_pids)]
     if cfg.limit_patients:
         keep = sorted(telemetry["patient_id"].unique())[: cfg.limit_patients]
         telemetry = telemetry[telemetry["patient_id"].isin(keep)]
