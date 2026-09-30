@@ -18,18 +18,11 @@ import {
 // Contracts & Interfaces
 // -----------------------------------------------------------------------------
 
-export type DriverDirection = 'raises' | 'lowers';
-
-export interface MLDriver {
-  feature_key: string;
-  direction: DriverDirection;
-  importance: number; // Range: 0.0 - 1.0 (Feature Importance / SHAP value)
-  raw_value?: string | number;
-}
+import { MLDriver } from '@/types/digital-twin';
 
 export interface PredictiveInsightsPanelProps {
-  predictionConfidence: number; // e.g., 0.88 for 88%
-  predictedEvent: 'hyperglycemia_spike' | 'hypoglycemia_drop';
+  spikeProbability120m: number; // e.g., 0.88 for 88%
+  predictedEvent?: string;
   drivers: MLDriver[];
   className?: string;
 }
@@ -65,7 +58,7 @@ const formatUnknownKey = (key: string) => {
 // -----------------------------------------------------------------------------
 
 export function PredictiveInsightsPanel({
-  predictionConfidence,
+  spikeProbability120m,
   predictedEvent,
   drivers,
   className = ""
@@ -77,7 +70,7 @@ export function PredictiveInsightsPanel({
   }, [drivers]);
 
   const isSpike = predictedEvent === 'hyperglycemia_spike';
-  const confidencePercent = Math.round(predictionConfidence * 100);
+  const confidencePercent = Math.round(spikeProbability120m * 100);
 
   return (
     <Card className={`border-slate-200 shadow-sm ${className}`}>
@@ -91,13 +84,11 @@ export function PredictiveInsightsPanel({
             variant={confidencePercent > 80 ? "destructive" : "secondary"}
             className="font-mono"
           >
-            {confidencePercent}% Confidence
+            Probability of spike within 120 min: {confidencePercent}%
           </Badge>
         </div>
         <CardDescription className="text-slate-600 mt-2">
-          {isSpike 
-            ? "Primary factors contributing to the forecasted glucose spike."
-            : "Primary factors contributing to the forecasted hypoglycemic drop."}
+          Primary factors contributing to the forecasted glucose trend.
         </CardDescription>
       </CardHeader>
 
@@ -110,7 +101,7 @@ export function PredictiveInsightsPanel({
               category: "Clinical"
             };
             
-            const Icon = meta.icon;
+            const Icon: any = meta.icon;
             
             // Determine styling based on whether it raises or lowers the predicted value
             // In the context of a spike, "raises" is exacerbating the risk (Red)

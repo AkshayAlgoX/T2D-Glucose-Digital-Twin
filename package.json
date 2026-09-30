@@ -1,0 +1,43 @@
+{
+  "name": "t2d-glucose-digital-twin",
+  "version": "1.0.0",
+  "description": "This document outlines the architectural foundation for a Healthcare Digital Twin dashboard designed for predictive monitoring (focusing on sudden glucose spikes). The stack utilizes **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Shadcn UI**, and **Prisma ORM**.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "next dev",
+    "build": "next build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin./issues"
+  },
+  "homepage": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.#readme",
+  "dependencies": {
+    "@radix-ui/react-slider": "^1.4.7",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.49.0",
+    "next": "^16.3.7",
+    "postcss": "^8.5.28",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "three": "^0.186.1",
+    "typescript": "^7.0.2"
+  }
+}

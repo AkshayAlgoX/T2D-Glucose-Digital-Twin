@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import {
   TooltipProps
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import type { ForecastResponse } from './TelemetryChartSuite';
+import type { ForecastResponse } from '@/types/digital-twin';
 
 // -----------------------------------------------------------------------------
 // Types & Contracts
@@ -43,15 +43,15 @@ interface ScenarioSimulationResponse {
 
 interface ScenarioEditorProps {
   patientId: string;
-  // We receive the current streaming baseline forecast to act as the control curve
   currentForecast: ForecastResponse | null; 
+  pinnedAsOf: string;
 }
 
 // -----------------------------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------------------------
 
-export function ScenarioEditor({ patientId, currentForecast }: ScenarioEditorProps) {
+export function ScenarioEditor({ patientId, currentForecast, pinnedAsOf }: ScenarioEditorProps) {
   // Form State
   const [interventionType, setInterventionType] = useState<InterventionType>('NUTRITION');
   const [amount, setAmount] = useState<string>('60');
@@ -60,6 +60,10 @@ export function ScenarioEditor({ patientId, currentForecast }: ScenarioEditorPro
   // Simulation State
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<ScenarioSimulationResponse | null>(null);
+
+  useEffect(() => {
+    setSimulationResult(null);
+  }, [pinnedAsOf, currentForecast?.generatedAt]);
 
   // ---------------------------------------------------------------------------
   // Data Fetching
@@ -168,7 +172,7 @@ export function ScenarioEditor({ patientId, currentForecast }: ScenarioEditorPro
                 "What-If" Simulator
               </h3>
               <p className="text-sm text-slate-500 mt-1">
-                Test clinical interventions against the AI baseline forecast.
+                Test hypothetical scenarios against the baseline forecast.
               </p>
             </div>
 
@@ -271,7 +275,7 @@ export function ScenarioEditor({ patientId, currentForecast }: ScenarioEditorPro
                     if (!active || !payload) return null;
                     return (
                       <div className="bg-white/95 border border-slate-200 p-3 rounded-lg shadow-xl text-sm">
-                        <p className="font-semibold text-slate-800 mb-2">{format(parseISO(label), 'HH:mm')}</p>
+                        <p className="font-semibold text-slate-800 mb-2">{format(parseISO(String(label)), 'HH:mm')}</p>
                         {payload.map((entry, i) => (
                           <div key={i} className="flex justify-between gap-4 py-1">
                             <span className="flex items-center text-slate-600">

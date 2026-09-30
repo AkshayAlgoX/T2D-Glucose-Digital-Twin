@@ -11,7 +11,8 @@ import {
   TrendingDown, 
   CheckCircle2, 
   Smartphone,
-  Info
+  Info,
+  Droplets
 } from "lucide-react";
 
 // -----------------------------------------------------------------------------
@@ -153,15 +154,15 @@ export default function MobileCompanionPage() {
                   <Info className="w-4 h-4" /> Predictive Alert
                 </div>
                 <h3 className="text-xl font-bold leading-tight mb-2">
-                  High glucose risk detected.
+                  Elevated glucose pattern detected.
                 </h3>
                 <p className="text-red-100 font-medium leading-relaxed mb-5">
-                  Your digital twin forecasts a peak of {data.projectedPeak} mg/dL soon. A 15-minute walk right now will lower your peak by <span className="text-white font-bold bg-white/20 px-1.5 rounded">{preventativeDelta} mg/dL</span>.
+                  Your digital twin forecasts a peak of {data.projectedPeak} mg/dL soon. A 15-minute walk right now may help lower your projected peak.
                 </p>
                 
                 <Button 
                   className="w-full bg-white text-red-600 hover:bg-slate-50 font-bold rounded-xl h-12 shadow-sm"
-                  onClick={() => alert("Activity logged via HealthKit integration!")}
+                  onClick={() => alert("Activity logged!")}
                 >
                   <Activity className="w-5 h-5 mr-2" /> Start 15m Walk
                 </Button>
@@ -193,7 +194,7 @@ export default function MobileCompanionPage() {
 
           <button className="flex flex-col items-center justify-center gap-3 p-6 bg-white rounded-[24px] border-none shadow-sm hover:bg-slate-50 text-slate-700 transition-colors">
             <Droplets className="w-8 h-8 text-blue-500" />
-            <span className="font-semibold text-sm">Log Insulin</span>
+            <span className="font-semibold text-sm">Log Medication</span>
           </button>
         </div>
 

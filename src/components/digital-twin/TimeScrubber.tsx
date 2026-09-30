@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { Play, Pause, FastForward, RotateCcw, Clock } from 'lucide-react';
 import { format, addSeconds, subHours, addHours } from 'date-fns';
@@ -18,12 +18,8 @@ const MAX_SEC = RANGE_FUTURE_HOURS * 3600;
 const TOTAL_SEC = MAX_SEC - MIN_SEC;
 
 export interface TimeScrubberProps {
-  /** 
-   * Fired when the timestamp changes. 
-   * In a real app, wrap the parent state in `useTransition` or a Zustand store 
-   * to avoid blocking the React render tree during fast scrubbing.
-   */
   onTimeChange: (isoTimestamp: string) => void;
+  anchorTime?: string;
   className?: string;
 }
 
@@ -31,28 +27,24 @@ export interface TimeScrubberProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function TimeScrubber({ onTimeChange, className = '' }: TimeScrubberProps) {
-  // Local state for the slider to ensure 60fps buttery smooth dragging
-  // without waiting for the parent component to re-render.
-  const [offsetSec, setOffsetSec] = useState<number>(0); // 0 = NOW
+export function TimeScrubber({ onTimeChange, anchorTime, className = '' }: TimeScrubberProps) {
+  const [offsetSec, setOffsetSec] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(10); // 1x, 10x, 60x
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(10);
 
-  // Refs for animation loop
-  const requestRef = useRef<number>();
-  const previousTimeRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
+  const previousTimeRef = useRef<number | undefined>(undefined);
   
-  // Memoize the absolute base time so "NOW" doesn't constantly drift during a session
-  const anchorDate = useRef(new Date());
+  const anchorDate = useMemo(() => anchorTime ? new Date(anchorTime) : new Date(), [anchorTime]);
 
   // ---------------------------------------------------------------------------
   // State Syncing
   // ---------------------------------------------------------------------------
   
   const broadcastTime = useCallback((currentOffset: number) => {
-    const targetDate = addSeconds(anchorDate.current, currentOffset);
+    const targetDate = addSeconds(anchorDate, currentOffset);
     onTimeChange(targetDate.toISOString());
-  }, [onTimeChange]);
+  }, [onTimeChange, anchorDate]);
 
   const handleSliderChange = (value: number[]) => {
     const newOffset = value[0];
@@ -127,7 +119,7 @@ export function TimeScrubber({ onTimeChange, className = '' }: TimeScrubberProps
   };
 
   // Formatting for the UI display
-  const currentDate = addSeconds(anchorDate.current, offsetSec);
+  const currentDate = addSeconds(anchorDate, offsetSec);
   const isFuture = offsetSec > 0;
   
   // Calculate percentage for gradient background

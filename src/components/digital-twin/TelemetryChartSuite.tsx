@@ -1,4 +1,5 @@
 'use client';
+import { ForecastResponse, TelemetryDataPoint } from "@/types/digital-twin";
 
 import React, { useMemo } from 'react';
 import {
@@ -20,20 +21,7 @@ import { format, parseISO } from 'date-fns';
 // Contracts & Interfaces
 // -----------------------------------------------------------------------------
 
-export interface TelemetryDataPoint {
-  timestamp: string; // ISO-8601 string
-  historicalGlucose: number | null; 
-  forecastGlucose: number | null;
-  quantileLower: number | null;
-  quantileUpper: number | null;
-  isSpikePredicted?: boolean;
-}
 
-export interface ForecastResponse {
-  patientId: string;
-  generatedAt: string;
-  data: TelemetryDataPoint[];
-}
 
 export interface TelemetryChartSuiteProps {
   forecast: ForecastResponse;
@@ -50,7 +38,7 @@ export interface TelemetryChartSuiteProps {
  * Custom tooltip to cleanly render historical vs. forecast data 
  * along with the confidence interval bounds.
  */
-const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
@@ -86,13 +74,13 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
           );
         }
 
-        // AI 95% Confidence Band
+        // AI Prediction Interval
         if (entry.dataKey === 'confidenceBand' && entry.value != null && Array.isArray(entry.value)) {
           return (
             <div key={index} className="flex justify-between items-center text-sm py-1">
               <span className="flex items-center text-indigo-400">
                 <div className="w-2 h-2 rounded-full bg-indigo-200 mr-2" />
-                95% CI
+                Prediction Interval
               </span>
               <span className="font-medium text-indigo-500">
                 {entry.value[0]} - {entry.value[1]} mg/dL
@@ -141,7 +129,7 @@ export function TelemetryChartSuite({
       {/* Chart Header & Legend */}
       <div className="flex items-center justify-between mb-6 px-2">
         <h3 className="text-lg font-semibold text-slate-800 tracking-tight">
-          Predictive Glucose Telemetry
+          Glucose Telemetry
         </h3>
         <div className="flex gap-5 text-sm font-medium">
           <div className="flex items-center text-slate-600">
@@ -151,7 +139,7 @@ export function TelemetryChartSuite({
             <div className="w-4 h-[2px] border-t-2 border-dashed border-indigo-500 mr-2" /> AI Forecast
           </div>
           <div className="flex items-center text-indigo-500">
-            <div className="w-3 h-3 bg-indigo-100 border border-indigo-200 rounded mr-2" /> 95% CI
+            <div className="w-3 h-3 bg-indigo-100 border border-indigo-200 rounded mr-2" /> Prediction Interval
           </div>
         </div>
       </div>
