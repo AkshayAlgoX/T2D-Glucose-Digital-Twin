@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "test_population": "synthetic_v2",
+    "subject_count": 18,
+    "horizon_min": 120,
+    "split": "test",
+    "seed": 20260930,
+    "run_id": "pr_tft_demo",
+    "checkpoint": "stage2_observed-epoch=01-val_loss=0.3096.ckpt",
+    "feature_set": [
+      "age",
+      "bmi",
+      "hba1c",
+      "egfr",
+      "diabetes_duration_years",
+      "weight_kg",
+      "basal_glucose",
+      "insulin_sensitivity_rel",
+      "tmax0_min",
+      "sex_male",
+      "status_Healthy",
+      "status_Prediabetes",
+      "status_Type 1",
+      "status_Type 2",
+      "med_metformin",
+      "med_sglt2i",
+      "med_glp1_ra",
+      "med_dpp4i",
+      "med_sulfonylurea",
+      "med_basal_insulin",
+      "med_prandial_insulin"
+    ],
+    "pr_tft_only_evaluated": false,
+    "pr_tft_only_notes": "Cannot cleanly evaluate PR-TFT without UKF because the model was explicitly trained to predict the residual over the UKF twin prior. Zeroing the twin causes out-of-distribution shifts."
+  },
+  "results": {
+    "pr_tft_ukf": {
+      "rmse_30": 18.326271057128906,
+      "mae_30": 12.290263175964355,
+      "mard_30": 10.006892204284668,
+      "rmse_60": 28.895828247070312,
+      "mae_60": 18.89017677307129,
+      "mard_60": 15.359415054321289,
+      "rmse_120": 36.016395568847656,
+      "mae_120": 23.935338973999023,
+      "mard_120": 19.866790771484375,
+      "coverage_80": 0.8131546400779275,
+      "width_80_mg_dl": 54.1557502746582,
+      "clarke_60": {
+        "A": 0.7748402346143745,
+        "B": 0.21233476319705857,
+        "C": 0.00765998424231813,
+        "D": 0.004420905191280749,
+        "E": 0.000744112754968047
+      },
+      "clarke_120": {
+        "A": 0.6800788954635109,
+        "B": 0.29769888231426694,
+        "C": 0.01648038571115494,
+        "D": 0.003462634231865001,
+        "E": 0.002279202279202279
+      },
+      "hazard": {
+        "prevalence": 0.14192794263362885,
+        "brier": 0.10474323481321335,
+        "ece": 0.036712482090772686,
+        "auroc": 0.8164123613376855,
+        "auprc": 0.39683772500449443,
+        "sensitivity@0.35": 0.30361618331543144,
+        "precision@0.35": 0.4626295566558838,
+        "sensitivity@0.6": 0.07805227354099535,
+        "precision@0.6": 0.5382716059684753
+      },
+      "alerts_per_patient_day": 0.0,
+      "median_lead_time_min": "CI / Calculation not fully implemented due to missing onset offset tracking in agg"
+    },
+    "persistence": {
+      "rmse_30": 21.90184211730957,
+      "rmse_60": 36.734527587890625,
+      "rmse_120": 50.657264709472656
+    },
+    "twin_only": {
+      "rmse_30": 22.80522346496582,
+      "rmse_60": 33.56267166137695,
+      "rmse_120": 40.204647064208984
+    }
+  }
+}
