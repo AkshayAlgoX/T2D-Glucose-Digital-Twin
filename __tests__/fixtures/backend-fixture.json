@@ -1,0 +1,22 @@
+{
+  "event": "forecast.updated",
+  "payload": {
+    "schema_version": "1.0.0",
+    "request_id": "4b2f0aa3-15ea-4da7-a2ae-33075584c0d2",
+    "generated_at": "2026-09-30T15:14:28.816472Z",
+    "as_of": "2026-09-28T11:55:00Z",
+    "subject": { "subject_id": "19dba1b5-d8b3-5634-a184-aeb831ea6d36" },
+    "data_quality": { "status": "ok" },
+    "current": { "value_mg_dl": 125.0, "measured_at": "2026-09-28T11:55:00Z" },
+    "forecast": {
+      "points": [
+        { "offset_min": 5, "t": "2026-09-28T12:00:00Z", "p05": 111.2, "p50": 126.5, "p95": 141.7 },
+        { "offset_min": 10, "t": "2026-09-28T12:05:00Z", "p05": 113.5, "p50": 129.6, "p95": 146.1 }
+      ]
+    },
+    "spike_risk": { "probability_120m": 0.443, "tier": "elevated" },
+    "drivers": [
+      { "feature_key": "return_to_personal_baseline", "direction": "raises", "impact_mg_dl": 32.5 }
+    ]
+  }
+}
