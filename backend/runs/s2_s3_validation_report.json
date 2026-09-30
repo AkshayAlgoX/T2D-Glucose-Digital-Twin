@@ -1,0 +1,137 @@
+{
+  "evaluation_scope": "validation_split_only",
+  "validation_patient_count": 44,
+  "validation_patient_ids": [
+    "P0014",
+    "P0017",
+    "P0019",
+    "P0020",
+    "P0026",
+    "P0032",
+    "P0036",
+    "P0037",
+    "P0051",
+    "P0056",
+    "P0057",
+    "P0061",
+    "P0062",
+    "P0065",
+    "P0070",
+    "P0071",
+    "P0076",
+    "P0078",
+    "P0081",
+    "P0084",
+    "P0100",
+    "P0111",
+    "P0116",
+    "P0125",
+    "P0130",
+    "P0133",
+    "P0139",
+    "P0155",
+    "P0156",
+    "P0190",
+    "P0194",
+    "P0195",
+    "P0197",
+    "P0199",
+    "P0208",
+    "P0214",
+    "P0223",
+    "P0230",
+    "P0232",
+    "P0239",
+    "P0244",
+    "P0283",
+    "P0288",
+    "P0297"
+  ],
+  "modes": {
+    "s2": {
+      "patients": 44,
+      "steps": 177408,
+      "filter_seconds": 4.56,
+      "us_per_step": 25.7,
+      "consistency": {
+        "mean_nis": 1.2976406812145045,
+        "gated_pct": 1.116938616938617,
+        "innovation_lag1_autocorr": 0.5562156680247667
+      },
+      "theta_final": {
+        "theta_si_median": -0.04847452648684271,
+        "theta_egp_median": -0.24323924950550482
+      },
+      "forecast_rmse_mg_dl": {
+        "ukf": {
+          "30min": 16.308692648388178,
+          "60min": 25.825850441857643,
+          "120min": 37.96536283430454
+        },
+        "persistence": {
+          "30min": 21.709943613352536,
+          "60min": 36.08834917803201,
+          "120min": 48.32004621104165
+        }
+      }
+    },
+    "s3": {
+      "patients": 44,
+      "steps": 177408,
+      "filter_seconds": 4.21,
+      "us_per_step": 23.7,
+      "consistency": {
+        "mean_nis": 1.2741813204798274,
+        "gated_pct": 1.104190947940948,
+        "innovation_lag1_autocorr": 0.5497032672177482
+      },
+      "theta_final": {
+        "theta_si_median": 0.05989423782267586,
+        "theta_egp_median": -0.19034432322348488
+      },
+      "forecast_rmse_mg_dl": {
+        "ukf": {
+          "30min": 16.07383035790748,
+          "60min": 25.4035054911882,
+          "120min": 37.6869788729463
+        },
+        "persistence": {
+          "30min": 21.709943613352536,
+          "60min": 36.08834917803201,
+          "120min": 48.32004621104165
+        }
+      }
+    },
+    "oracle": {
+      "patients": 44,
+      "steps": 177408,
+      "filter_seconds": 4.11,
+      "us_per_step": 23.2,
+      "consistency": {
+        "mean_nis": 1.234835147332496,
+        "gated_pct": 1.0428807303807304,
+        "innovation_lag1_autocorr": 0.5420494080318862
+      },
+      "theta_final": {
+        "theta_si_median": 0.008913283934342712,
+        "theta_egp_median": -0.21523698218534354
+      },
+      "forecast_rmse_mg_dl": {
+        "ukf": {
+          "30min": 15.85683153277991,
+          "60min": 25.193728502124614,
+          "120min": 37.46577090479887
+        },
+        "persistence": {
+          "30min": 21.709943613352536,
+          "60min": 36.08834917803201,
+          "120min": 48.32004621104165
+        }
+      }
+    }
+  },
+  "decision_rule": {
+    "selected_mode": "s3",
+    "justification": "S3 (Dynamic Initial CGM Baseline G0) achieves lower 60m RMSE (25.40 vs 25.83 mg/dL) and NIS (1.27 vs 1.30) on validation patients compared to S2 by eliminating day-1 basal glucose transient error, evaluated without inspecting test set."
+  }
+}
