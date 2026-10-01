@@ -69,8 +69,12 @@ filtered state 120 min ahead (mean, or sigma points for uncertainty) under optio
 meals, activity and extra glucose flux -- this replaces the linearized TwinPrior.
 
 Usage
-    python ukf_twin.py validate --data-dir synthetic_v2          # accuracy vs. ground truth
-    python ukf_twin.py stream-demo --data-dir synthetic_v2       # streaming API walkthrough
+    python ukf_twin.py validate --data-dir DIR --mode s3 --log-corruption   # accuracy vs. ground truth
+    python ukf_twin.py stream-demo --data-dir DIR --mode s3                  # streaming API walkthrough
+
+Modes (input_contract.py): "s2" / "s3" derive every parameter from observable EHR (s3 also
+takes the basal level from the first CGM reading); "oracle" reads the simulator latents and
+fails if any is missing. An unknown mode raises; no mode falls back to another.
 
 Requires jax (float64 is enabled on import), numpy, pandas.
 """
@@ -93,6 +97,8 @@ import pandas as pd
 jax.config.update("jax_enable_x64", True)
 
 import generate_health_data_v2 as gen  # single source of truth for the ODE constants  # noqa: E402
+from input_contract import (HR_REST_STEPS, ORACLE_LATENT_COLUMNS, STEP_MIN, check_twin_mode,  # noqa: E402
+                            meal_step_index)
 
 LOG = logging.getLogger("ukf_twin")
 
@@ -100,7 +106,6 @@ STATE_NAMES = ("G", "X", "I", "Ss", "Q1", "Q2", "Gisf", "Y", "Z", "theta_si", "t
 N_STATE = len(STATE_NAMES)
 G, X, I, SS, Q1, Q2, GISF, Y, Z, TH_SI, TH_EGP, V1, V2, BIAS = range(N_STATE)
 N_PHYS = 9
-STEP_MIN = 5
 SUBSTEPS = 5  # 1-min RK4 substeps per CGM interval
 HORIZON = 24  # 120 min
 
@@ -142,13 +147,23 @@ class ModelParams(NamedTuple):
     hr_rest: float  # resting heart rate, bpm
 
 
-def derive_params(ehr: Mapping[str, Any], hr_rest: float, mode: str = "s2", first_cgm: float | None = None) -> ModelParams:
+def derive_params(ehr: Mapping[str, Any], hr_rest: float, *, mode: str, first_cgm: float | None = None) -> ModelParams:
     """EHR-derived priors, following generate_health_data_v2.derive_physiology.
 
-    mode = "oracle": uses latent simulator parameters (basal_glucose, insulin_sensitivity_rel, tmax0_min, tau_isf_min)
-    mode = "s2": EHR clinical demographics regression (BMI, age, HbA1c, status, meds)
-    mode = "s3": Dynamic initial CGM baseline for gb + EHR clinical demographics regression for S_I
+    mode = "oracle": latent simulator parameters (basal_glucose, insulin_sensitivity_rel,
+                     tmax0_min, tau_isf_min); KeyError if any is missing or not finite
+    mode = "s2":     observable EHR regression (BMI, age, HbA1c, status, meds)
+    mode = "s3":     as s2, but the basal level is the first CGM reading; ValueError without one
+    Any other mode raises ValueError. No mode silently falls back to another.
     """
+    check_twin_mode(mode)
+    if mode == "oracle":
+        missing = [c for c in ORACLE_LATENT_COLUMNS
+                   if c not in ehr or ehr[c] is None or not math.isfinite(float(ehr[c]))]
+        if missing:
+            raise KeyError(f"oracle mode requires latent fields {missing}")
+    if mode == "s3" and (first_cgm is None or not math.isfinite(first_cgm)):
+        raise ValueError("s3 mode requires a finite first CGM reading")
     status = str(ehr["diabetes_status"])
     t2d, t1d, pre = status == "Type 2", status == "Type 1", status == "Prediabetes"
     meds = set(str(ehr.get("med_classes", "")).split(";")) - {"", "nan"}
@@ -158,18 +173,18 @@ def derive_params(ehr: Mapping[str, Any], hr_rest: float, mode: str = "s2", firs
     bmi = float(ehr["bmi"])
     age = float(ehr["age"])
 
-    if mode == "oracle" and "insulin_sensitivity_rel" in ehr:
+    if mode == "oracle":
         si_rel = float(ehr["insulin_sensitivity_rel"])
         gb = float(ehr["basal_glucose"])
         tmax0 = float(ehr["tmax0_min"])
         tau_isf_val = float(ehr["tau_isf_min"])
-    elif mode == "s3" and first_cgm is not None and math.isfinite(first_cgm):
+    elif mode == "s3":
         ln_si = -0.035 * (bmi - 25) - 0.005 * (age - 45) - 0.40 * t2d - 0.20 * pre
         si_rel = float(np.clip(math.exp(ln_si), 0.15, 1.2)) * (1.10 if "metformin" in meds else 1.0)
         gb = float(np.clip(first_cgm, 70.0, 250.0))
         tmax0 = 38.0
         tau_isf_val = 8.0
-    else:  # default mode == "s2" (or fallback for s3 without valid first_cgm)
+    else:  # s2
         ln_si = -0.035 * (bmi - 25) - 0.005 * (age - 45) - 0.40 * t2d - 0.20 * pre
         si_rel = float(np.clip(math.exp(ln_si), 0.15, 1.2)) * (1.10 if "metformin" in meds else 1.0)
         a1c = float(ehr["hba1c"])
@@ -461,8 +476,9 @@ rollout_many = jax.jit(jax.vmap(rollout, in_axes=(0, None, 0)))
 # --------------------------------------------------------------------------- #
 
 
-def estimate_hr_rest(hr: np.ndarray, steps: np.ndarray, asleep: np.ndarray, n: int = 288) -> float:
-    """Median awake, non-stepping HR over the first day (causal once that day has passed)."""
+def estimate_hr_rest(hr: np.ndarray, steps: np.ndarray, asleep: np.ndarray, n: int = HR_REST_STEPS) -> float:
+    """Median awake, non-stepping HR over the first day (steps 0 .. n-1). Causal from step n-1
+    on, which is why no anchor or alert decision precedes step HR_REST_STEPS - 1."""
     sel = (~asleep[:n]) & (steps[:n] == 0) & np.isfinite(hr[:n])
     return float(np.median(hr[:n][sel])) if sel.sum() >= 12 else float(np.nanmedian(hr[:n]))
 
@@ -592,12 +608,15 @@ class PatientData:
     asleep: np.ndarray | None = None
 
 
-def load_cohort(data_dir: str, include_type1: bool = False, limit: int = 0,
-                log_corruption: bool = False, seed: int = 20260930, mode: str = "s2",
+def load_cohort(data_dir: str, *, mode: str, include_type1: bool = False, limit: int = 0,
+                log_corruption: bool = False, seed: int = 20260930,
                 patient_ids: set[str] | list[str] | None = None) -> list[PatientData]:
-    """Load a generator cohort. log_corruption turns the true carbs into a realistic meal log
-    (missed meals, under-estimation, delays) exactly as train_pr_tft.py does."""
-    rng = np.random.default_rng(seed)
+    """Load a generator cohort for the standalone validate/stream-demo commands. With
+    log_corruption the meal log is train_pr_tft.observed_meal_log -- the same per-patient
+    corruption and the same ceil timing as training -- so inputs match the training pipeline."""
+    import train_pr_tft as T
+
+    check_twin_mode(mode)
     tele = pd.read_csv(f"{data_dir}/patient_cgm_telemetry.csv", parse_dates=["timestamp"])
     ehr = pd.read_csv(f"{data_dir}/patients_ehr.csv").set_index("patient_id")
     p_set = set(patient_ids) if patient_ids is not None else None
@@ -620,17 +639,13 @@ def load_cohort(data_dir: str, include_type1: bool = False, limit: int = 0,
         hr_rest = estimate_hr_rest(hr, steps, asleep)
         cgm = g["glucose_level"].to_numpy(float)
         first_cgm = float(cgm[np.isfinite(cgm)][0]) if np.isfinite(cgm).any() else None
-        carbs = g["carbs_g"].fillna(0).to_numpy(float)
-        if log_corruption:
-            import train_pr_tft as T  # same corruption model as training
-            idx = np.flatnonzero(carbs > 0)
-            minutes, logged = T.corrupt_meal_log(idx * float(STEP_MIN), carbs[idx], rng)
-            carbs = np.zeros_like(carbs)
-            bins = np.clip(np.round(minutes / STEP_MIN).astype(int), 0, carbs.size - 1)
-            np.add.at(carbs, bins, logged)
+        meal_min, meal_g = T.observed_meal_log(pid, g["meal_event"].to_numpy(), g["carbs_g"].to_numpy(), seed,
+                                               log_corruption)
+        carbs = meal_input_series(meal_min, meal_g, cgm.size)
         obs = build_inputs(stamps, cgm, hr, steps, asleep, carbs, hr_rest)
         t = truth.get(pid)
-        cohort.append(PatientData(pid, row["diabetes_status"], stamps, obs, derive_params(row.to_dict(), hr_rest, mode=mode, first_cgm=first_cgm),
+        cohort.append(PatientData(pid, row["diabetes_status"], stamps, obs,
+                                  derive_params(row.to_dict(), hr_rest, mode=mode, first_cgm=first_cgm),
                                   cgm, None if t is None else t["plasma_glucose"].to_numpy(float),
                                   None if t is None else t["interstitial_glucose"].to_numpy(float),
                                   hr, steps, asleep))
@@ -639,28 +654,37 @@ def load_cohort(data_dir: str, include_type1: bool = False, limit: int = 0,
     return cohort
 
 
-def validate(data_dir: str, limit: int = 0, log_corruption: bool = False,
-             cfg: UKFConfig = UKFConfig(), mode: str = "s2",
-             patient_ids: set[str] | list[str] | None = None) -> dict[str, Any]:
-    """Filter the cohort and score it against the generator's ground truth."""
-    cohort = load_cohort(data_dir, limit=limit, log_corruption=log_corruption, mode=mode, patient_ids=patient_ids)
-    obs = jnp.asarray(np.stack([c.obs for c in cohort]))
-    params = stack_params([c.params for c in cohort])
+def meal_input_series(meal_min: np.ndarray, meal_g: np.ndarray, n: int) -> np.ndarray:
+    """Grams of logged carbohydrate entering the filter at each 5-min step (ceil timing)."""
+    carbs = np.zeros(n)
+    bins = meal_step_index(meal_min)
+    ok = (bins >= 0) & (bins < n)
+    np.add.at(carbs, bins[ok], np.asarray(meal_g, dtype=float)[ok])
+    return carbs
+
+
+def score_filter(obs_list: list[np.ndarray], params_list: list[ModelParams], cgm_list: list[np.ndarray],
+                 truth_plasma: list[np.ndarray] | None, cfg: UKFConfig = UKFConfig()) -> dict[str, Any]:
+    """Filter a set of patients and score them: tracking of true plasma glucose (if given),
+    filter consistency (NIS, gating, innovation whiteness) and 30/60/120-min forecasts of the
+    filtered state vs. persistence. Shared by validate() and validate_series()."""
+    obs = jnp.asarray(np.stack(obs_list))
+    params = stack_params(params_list)
     t0 = time.perf_counter()
     _, out = filter_batch(obs, params, cfg)
     jax.block_until_ready(out["mean"])
     runtime = time.perf_counter() - t0
     mean = np.asarray(out["mean"])  # (P, T, n)
     T = mean.shape[1]
-    steps = len(cohort) * T
-    report: dict[str, Any] = {"patients": len(cohort), "steps": steps, "filter_seconds": round(runtime, 2),
+    steps = len(obs_list) * T
+    report: dict[str, Any] = {"patients": len(obs_list), "steps": steps, "filter_seconds": round(runtime, 2),
                               "us_per_step": round(1e6 * runtime / steps, 1)}
 
-    burn = 288  # first day: parameters still converging
-    cgm = np.stack([c.cgm for c in cohort])[:, burn:]
+    burn = HR_REST_STEPS  # first day: parameters still converging
+    cgm = np.stack(cgm_list)[:, burn:]
     ok = np.isfinite(cgm)
-    if cohort[0].truth_plasma is not None:
-        plasma = np.stack([c.truth_plasma for c in cohort])[:, burn:]
+    if truth_plasma is not None:
+        plasma = np.stack(truth_plasma)[:, burn:]
         g_hat = mean[:, burn:, G]
         rmse = lambda a, b, m: float(np.sqrt(np.mean((a[m] - b[m]) ** 2)))
         mard = lambda a, b, m: float(np.mean(np.abs(a[m] - b[m]) / b[m]) * 100)
@@ -683,13 +707,13 @@ def validate(data_dir: str, limit: int = 0, log_corruption: bool = False,
     # 30/60/120-min forecasts from filtered means (no future meals or activity) vs persistence.
     anchors = np.arange(burn, T - HORIZON, 3)
     errs = {"ukf": [], "persistence": []}
-    for i, c in enumerate(cohort):
+    for i, (o, p, c) in enumerate(zip(obs_list, params_list, cgm_list)):
         x0 = jnp.asarray(mean[i, anchors])
-        fut = jnp.asarray(np.stack([future_inputs(c.obs[a, 3], stress0=c.obs[a, 2]) for a in anchors]))
-        paths = np.asarray(rollout_many(x0, c.params, fut))
+        fut = jnp.asarray(np.stack([future_inputs(o[a, 3], stress0=o[a, 2]) for a in anchors]))
+        paths = np.asarray(rollout_many(x0, p, fut))
         pred = paths[:, :, GISF] + paths[:, :, BIAS] + paths[:, :, V1]
-        target = c.cgm[anchors[:, None] + np.arange(1, HORIZON + 1)[None, :]]
-        last = pd.Series(c.cgm).ffill().to_numpy()[anchors]
+        target = c[anchors[:, None] + np.arange(1, HORIZON + 1)[None, :]]
+        last = pd.Series(c).ffill().to_numpy()[anchors]
         errs["ukf"].append(pred - target)
         errs["persistence"].append(last[:, None] - target)
     report["forecast_rmse_mg_dl"] = {}
@@ -697,6 +721,25 @@ def validate(data_dir: str, limit: int = 0, log_corruption: bool = False,
         e = np.concatenate(e)
         report["forecast_rmse_mg_dl"][name] = {f"{m}min": float(np.sqrt(np.nanmean(e[:, m // 5 - 1] ** 2))) for m in (30, 60, 120)}
     return report
+
+
+def validate(data_dir: str, limit: int = 0, log_corruption: bool = False,
+             cfg: UKFConfig = UKFConfig(), *, mode: str,
+             patient_ids: set[str] | list[str] | None = None) -> dict[str, Any]:
+    """Filter a cohort read straight from the generator files and score it against ground truth."""
+    cohort = load_cohort(data_dir, mode=mode, limit=limit, log_corruption=log_corruption, patient_ids=patient_ids)
+    truth = [c.truth_plasma for c in cohort] if cohort[0].truth_plasma is not None else None
+    return score_filter([c.obs for c in cohort], [c.params for c in cohort], [c.cgm for c in cohort], truth, cfg)
+
+
+def validate_series(series: list, mode: str, truth_plasma: dict[str, np.ndarray] | None = None,
+                    cfg: UKFConfig = UKFConfig()) -> dict[str, Any]:
+    """Score the UKF on train_pr_tft PatientSeries, with exactly the inputs UKFTwinPrior feeds the
+    PR-TFT (same meal log, same timing, same resting HR). Used for the S2/S3 selection."""
+    twin = UKFTwinPrior(cfg, mode=mode)
+    prepared = [twin._prepare(ps) for ps in series]
+    truth = [truth_plasma[ps.pid] for ps in series] if truth_plasma is not None else None
+    return score_filter([o for _, o in prepared], [p for p, _ in prepared], [ps.cgm for ps in series], truth, cfg)
 
 
 # --------------------------------------------------------------------------- #
@@ -720,17 +763,15 @@ class UKFTwinPrior:
 
     kind = "ukf"
 
-    def __init__(self, cfg: UKFConfig = UKFConfig(), mode: str = "s2"):
+    def __init__(self, cfg: UKFConfig = UKFConfig(), *, mode: str):
         self.cfg = cfg
-        self.mode = mode
+        self.mode = check_twin_mode(mode)
         self._cache: dict[tuple, dict[str, Any]] = {}
 
     # -- PatientSeries (train_pr_tft) -> filter inputs -------------------------
-    def _run(self, ps) -> dict[str, Any]:
-        key = (ps.pid, ps.meal_min.tobytes(), ps.meal_carbs.tobytes(), ps.n, self.mode)
-        hit = self._cache.get(key)
-        if hit is not None:
-            return hit
+    def _prepare(self, ps) -> tuple[ModelParams, np.ndarray]:
+        """Parameters and (T, 5) filter inputs for one patient, from observable data (and, in
+        oracle mode only, the latents carried in static_raw)."""
         sr = ps.static_raw
         status = next((s for s in ("Type 1", "Type 2", "Prediabetes", "Healthy") if sr.get(f"status_{s}", 0) > 0), "Healthy")
         meds = ";".join(m for m in ("metformin", "sglt2i", "glp1_ra", "dpp4i", "sulfonylurea", "basal_insulin",
@@ -740,10 +781,16 @@ class UKFTwinPrior:
         hr_rest = estimate_hr_rest(ps.hr, ps.steps, asleep)
         first_cgm = float(ps.cgm[np.isfinite(ps.cgm)][0]) if np.isfinite(ps.cgm).any() else None
         params = derive_params(ehr, hr_rest, mode=self.mode, first_cgm=first_cgm)
-        carbs = np.zeros(ps.n)
-        bins = np.clip(np.ceil(ps.meal_min / STEP_MIN).astype(int), 0, ps.n - 1)
-        np.add.at(carbs, bins, ps.meal_carbs)
-        obs = build_inputs(ps.stamps, ps.cgm, ps.hr, ps.steps, asleep, carbs, hr_rest)
+        carbs = meal_input_series(ps.meal_min, ps.meal_carbs, ps.n)
+        return params, build_inputs(ps.stamps, ps.cgm, ps.hr, ps.steps, asleep, carbs, hr_rest)
+
+    def _run(self, ps) -> dict[str, Any]:
+        key = (ps.pid, ps.meal_min.tobytes(), ps.meal_carbs.tobytes(), ps.cgm.tobytes(), ps.hr.tobytes(),
+               ps.steps.tobytes(), ps.asleep.tobytes(), ps.n, self.mode)
+        hit = self._cache.get(key)
+        if hit is not None:
+            return hit
+        params, obs = self._prepare(ps)
         _, out = _filter_one(jnp.asarray(obs), params, self.cfg)
         res = {"params": params, "obs": obs, "mean": np.asarray(out["mean"]),
                "innov_z": np.asarray(out["innovation"] / jnp.sqrt(out["S"])),
@@ -761,6 +808,11 @@ class UKFTwinPrior:
 
     def describe(self) -> dict[str, Any]:
         return {"kind": "ukf", "mode": self.mode, **self.cfg._asdict()}
+
+    def parameter_summary(self, ps) -> dict[str, float]:
+        """Displayable twin parameters (from the mode's own derivation, never read off the EHR)."""
+        p = self._run(ps)["params"]
+        return {"insulin_sensitivity_rel": float(p.si / gen.SI_REF), "t_max_min": float(p.tmax)}
 
     def meal_effect_series(self, ps) -> np.ndarray:
         """Glucose (mg/dL) still to appear from the filtered gut: F * (Q1 + Q2) / V_G."""
@@ -814,19 +866,19 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="UKF twin state estimator (Blueprint 7.2).")
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("validate")
-    v.add_argument("--data-dir", default="synthetic_v2")
+    v.add_argument("--data-dir", required=True)
     v.add_argument("--limit", type=int, default=0)
     v.add_argument("--log-corruption", action="store_true", help="validate against an imperfect meal log")
-    v.add_argument("--mode", choices=["oracle", "s2", "s3"], default="s2")
+    v.add_argument("--mode", choices=["oracle", "s2", "s3"], required=True)
     s = sub.add_parser("stream-demo")
-    s.add_argument("--data-dir", default="synthetic_v2")
-    s.add_argument("--mode", choices=["oracle", "s2", "s3"], default="s2")
+    s.add_argument("--data-dir", required=True)
+    s.add_argument("--mode", choices=["oracle", "s2", "s3"], required=True)
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if args.cmd == "validate":
         print(json.dumps(validate(args.data_dir, args.limit, args.log_corruption, mode=args.mode), indent=2))
     else:
-        c = load_cohort(args.data_dir, limit=1, mode=args.mode)[0]
+        c = load_cohort(args.data_dir, mode=args.mode, limit=1)[0]
         twin = UKFTwinStream(c.params, first_cgm=float(c.cgm[np.isfinite(c.cgm)][0]))
         for k in range(12 * 24):  # one day of 5-min readings
             o = c.obs[k]

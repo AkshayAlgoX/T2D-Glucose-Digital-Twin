@@ -1,20 +1,74 @@
 {
-  "locked_status": "Locked AFTER S2/S3 validation but BEFORE test/final-model evaluation",
+  "rule_id": "hh-dtc-2026/pr-tft-ukf-selection",
+  "version": 2,
+  "locked": "2026-10-01, before any final-model training and before any test-set evaluation. train_pr_tft.py and evaluate_run.py refuse to run unless the sha256 of this file and of model_selection_rule.md equal the values pinned in final_config.json; evaluate_run.py additionally requires the hashes recorded at training time.",
+  "applied_by": {
+    "twin_mode_selection": "twin_mode_selection.py (validation patients only)",
+    "final_model_selection": "evaluate_run.py (test patients, after training)"
+  },
   "primary_population": ["Prediabetes", "Type 2"],
   "secondary_population": ["Healthy"],
   "excluded_population": ["Type 1"],
-  "models": ["persistence", "realistic_twin_only", "realistic_pr_tft_ukf"],
-  "oracle_is_reference_only": true,
-  "metrics": {
-    "spike_event_sensitivity": "higher_is_better",
-    "alert_precision": "higher_is_better",
-    "rmse_60": "lower_is_better",
-    "rmse_120": "lower_is_better",
-    "mae_60": "lower_is_better",
-    "mae_120": "lower_is_better",
-    "alerts_per_day": "lower_is_better",
-    "prediction_interval_coverage": "target_within_5_percent",
-    "ece": "lower_is_better"
+  "candidates": {
+    "persistence": "last CGM value carried forward; forecast-accuracy baseline only, no alerting",
+    "twin_only": "realistic UKF twin (selected twin mode) habit-scenario forecast; alerts when the forecast meets the spike rule",
+    "pr_tft": "realistic PR-TFT + UKF twin (selected twin mode); alerts on calibrated P(onset within 120 min)"
   },
-  "tie_break": "If RMSE/MAE better but sensitivity similar (within stat tolerance), pick model with strictly lower false alert rate. If equal, pick narrower conformal intervals. If 0.60 tier unreachable, use 0.35. If coverage misses by >5%, model downgraded."
+  "reference_only": {
+    "oracle": "simulator-latent inputs (21 static features, oracle UKF); privileged-information diagnostic, never selectable"
+  },
+  "twin_mode_selection": {
+    "scope": "validation split of split_293.json only; training-pipeline inputs (same meal-log corruption and timing as training)",
+    "candidates": ["s2", "s3"],
+    "metric": "ukf_forecast_rmse_60min_mg_dl",
+    "direction": "lower",
+    "tie_tolerance_mg_dl": 0.1,
+    "tie_break": "mean_nis_closest_to_1",
+    "final_tie_break": "s2",
+    "disclosure": "S2/S3 validation numbers were first computed on 2026-09-30, before this clause was written. The clause formalizes the comparison used then (60-min forecast RMSE, NIS as consistency check) and is evaluated on validation patients only; test patients are never used to choose the twin mode."
+  },
+  "alerting": {
+    "thresholds": [0.35, 0.6],
+    "primary_threshold": 0.35,
+    "secondary_threshold": 0.6,
+    "probability": "isotonic-calibrated P(onset within 120 min), calibration fitted on validation patients",
+    "policy": "alert when the patient is at risk (causal flag) and the trigger holds; at most one alert per 120 min",
+    "unreachable_threshold": "a threshold above the maximum calibrated probability is unreachable: it is reported as unreachable with no metrics, never replaced by another threshold. If the primary threshold is unreachable, PR-TFT has no alerting operating point and twin_only is selected.",
+    "true_alert": "a spike onset occurs within (t, t + 120 min]",
+    "monitored_onset": "an onset whose whole 120-min warning window lies within the decision period (decision times start at step 287)",
+    "detected_onset": "at least one alert raised within [onset - 120 min, onset - 5 min]"
+  },
+  "metrics": {
+    "event_sensitivity": {"direction": "higher", "tie_tolerance": 0.02},
+    "false_alerts_per_patient_day": {"direction": "lower", "tie_tolerance": 0.1},
+    "alert_precision": {"direction": "higher", "tie_tolerance": 0.02, "role": "reported"},
+    "alerts_per_patient_day": {"direction": "lower", "tie_tolerance": 0.1, "role": "reported"},
+    "lead_time_median_min": {"direction": "higher", "role": "reported"},
+    "rmse_60": {"direction": "lower", "tie_tolerance": 0.5},
+    "rmse_120": {"direction": "lower", "tie_tolerance": 0.5},
+    "mae_60": {"direction": "lower", "tie_tolerance": 0.5, "role": "reported"},
+    "mae_120": {"direction": "lower", "tie_tolerance": 0.5, "role": "reported"},
+    "coverage_80_conformal": {"target": 0.8, "role": "eligibility"},
+    "ece_calibrated": {"direction": "lower", "role": "reported"}
+  },
+  "uncertainty": {
+    "method": "paired patient-level bootstrap, stratified by diabetes status within the population",
+    "resamples": 2000,
+    "ci": 0.95,
+    "seed": 20260930
+  },
+  "comparison": "A beats B on a metric when the whole 95% CI of the paired difference (A - B) lies beyond the metric's tie tolerance on A's favourable side. A is not worse than B when the CI stays within the tie tolerance on B's favourable side. Anything else is a tie.",
+  "final_model_selection": {
+    "population": "primary",
+    "coverage_window": [0.75, 0.85],
+    "non_inferiority": ["event_sensitivity", "false_alerts_per_patient_day"],
+    "superiority_any_of": ["event_sensitivity", "false_alerts_per_patient_day", "rmse_60", "rmse_120"],
+    "decision": [
+      "1. If the primary alert threshold is unreachable for PR-TFT after calibration, select twin_only.",
+      "2. If PR-TFT conformal 80% coverage on the primary population is outside [0.75, 0.85], PR-TFT is downgraded: select twin_only.",
+      "3. PR-TFT must be not worse than twin_only on event_sensitivity and on false_alerts_per_patient_day at the primary threshold; otherwise select twin_only.",
+      "4. PR-TFT is selected only if it also beats twin_only on at least one of event_sensitivity, false_alerts_per_patient_day, rmse_60, rmse_120; if everything ties, select the simpler model, twin_only.",
+      "5. Persistence is not an alerting candidate; the report states whether the selected forecast beats persistence on rmse_60 and rmse_120."
+    ]
+  }
 }

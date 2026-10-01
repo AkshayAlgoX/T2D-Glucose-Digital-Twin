@@ -1,0 +1,26 @@
+{
+  "dataset": "synthetic_v2_300",
+  "files": {
+    "patients_ehr.csv": "c9c3d3d3e4d8b0dc77732715cb4f8d90e48920162a4538103377cb4f68ae8254",
+    "patient_cgm_telemetry.csv": "d4585ae39009da43d95f8560409fc1ede5e2e3eeb57eee4fd6519df4c3e3544f",
+    "patient_cgm_truth.csv": "7b43574008b8a2bc2a53f7398d5748caac3c4ec9dd7ac570f43a7de5d9c71f5f"
+  },
+  "split_file": "split_293.json",
+  "split_sha256": "950bbdce192f389a9404d91d05b3346537507a3cbdcb9f954774d35b5f882587",
+  "split_counts": {
+    "test": 44,
+    "train": 205,
+    "val": 44
+  },
+  "cohort_total": 300,
+  "type1_excluded_pids": [
+    "P0024",
+    "P0033",
+    "P0087",
+    "P0109",
+    "P0117",
+    "P0170",
+    "P0267"
+  ],
+  "active_patients": 293
+}
