@@ -1,17 +1,19 @@
-fastapi
-httpx
-jax
-jaxlib
-jsonschema
-lightning
-numpy
-pandas
-pydantic
-pytest
-pytorch-lightning
-referencing
-torch
-uvicorn
-scikit-learn
-scipy
-xgboost
+# Exact versions verified by a clean `pip install -r requirements.txt` + full test suite.
+# torch==2.14.1 also accepts the CPU-only build (2.14.1+cpu) from
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+numpy==2.5.3
+pandas==3.0.6
+scipy==1.18.1
+scikit-learn==1.9.1
+torch==2.14.1
+lightning==2.6.6
+jax==0.11.2
+jaxlib==0.11.2
+xgboost==3.4.1
+fastapi==0.142.2
+pydantic==2.13.5
+uvicorn==0.54.0
+httpx==0.28.1
+jsonschema==4.26.0
+referencing==0.37.0
+pytest==9.1.1
