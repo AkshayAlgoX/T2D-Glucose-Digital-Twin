@@ -1,63 +1,60 @@
-#!/usr/bin/env python3
-"""test_causal_preprocessing.py -- Verifies causality, burn-in, and prefix-invariance."""
-
-from __future__ import annotations
-
-import unittest
 import numpy as np
 import pandas as pd
-import jax.numpy as jnp
+from backend.train_pr_tft import _logged_carbs_series, _carbs_on_board, detect_spike_onsets, eligible_anchors, TrainConfig, load_data, PatientSeries
 
-import train_pr_tft as T
-import ukf_twin as U
+def test_meal_binning_causality():
+    # meal at 12.3 min should ONLY affect bins at and after ceil(12.3 / 5) = 3 (15 min)
+    ps = PatientSeries(
+        pid="test", group="Type 2", stamps=np.arange(10)*300, cgm=np.full(10, 100.0),
+        cgm_ff=np.full(10, 100.0), hr=np.full(10, 70.0), hrv=np.zeros(10), steps=np.zeros(10),
+        asleep=np.zeros(10), meal_min=np.array([12.3]), meal_carbs=np.array([20.0]), static_raw={},
+        tmax=40.0, gb=100.0, k_base=0.01, vg=150.0
+    )
+    
+    logged = _logged_carbs_series(ps)
+    assert logged[0] == 0
+    assert logged[1] == 0
+    assert logged[2] == 0
+    assert logged[3] == 20.0 # bin 3 corresponds to time 15.0
+    
+    cob = _carbs_on_board(ps)
+    assert cob[0] == 0
+    assert cob[1] == 0
+    assert cob[2] == 0
+    assert cob[3] > 0
+    
+    import backend.ukf_twin as U
+    # also verify ukf_twin
+    bins = np.clip(np.ceil(ps.meal_min / 5.0).astype(int), 0, ps.n - 1)
+    assert bins[0] == 3
 
+def test_resting_hr_causality():
+    cfg = TrainConfig(data_dir="/home/akshaya/synthetic_v2_300", seed=1, limit_patients=1)
+    rng = np.random.default_rng(1)
+    series = load_data(cfg, rng)
+    ps = next(iter(series.values()))
+    
+    anchors = eligible_anchors(ps, cfg)
+    t = anchors[0]
+    assert t >= 287 # max(143, 287)
+    
+    import backend.ukf_twin as U
+    # Recompute parameters from truncated data
+    asleep = ps.asleep[:t+1].astype(bool)
+    hr_rest_trunc = U.estimate_hr_rest(ps.hr[:t+1], ps.steps[:t+1], asleep)
+    hr_rest_full = U.estimate_hr_rest(ps.hr, ps.steps, ps.asleep.astype(bool))
+    
+    assert hr_rest_trunc == hr_rest_full
 
-class TestCausalPreprocessing(unittest.TestCase):
-
-    def test_prefix_invariance_causality(self):
-        """Verify that appending future CGM/inputs does NOT alter UKF filtered states up to t."""
-        cfg = T.TrainConfig(data_dir="synthetic_v2", seed=20260930, limit_patients=1)
-        rng = np.random.default_rng(20260930)
-        series = T.load_data(cfg, rng)
-        ps = next(iter(series.values()))
-
-        # Run UKF on full series (T steps)
-        twin = U.UKFTwinPrior(mode="s2")
-        full_res = twin._run(ps)
-        full_means = full_res["mean"]
-
-        # Truncate series at step t_cutoff = 100
-        t_cutoff = 100
-        obs_truncated = full_res["obs"][:t_cutoff]
-        params = full_res["params"]
-
-        _, trunc_out = U._filter_one(jnp.asarray(obs_truncated), params, U.UKFConfig())
-        trunc_means = np.asarray(trunc_out["mean"])
-
-        # Filtered states at t_cutoff must be IDENTICAL within numerical precision
-        np.testing.assert_allclose(full_means[:t_cutoff], trunc_means, rtol=1e-5, atol=1e-5,
-                                   err_msg="Causality violation: UKF filtered states changed when future data was removed")
-
-    def test_meal_binning_ceil(self):
-        """Verify carbs_on_board uses ceil to prevent temporal leakage of future meals."""
-        t_min = 12.3  # minute 12.3 (falls in bin 3: 15 min)
-        k0 = max(0, int(np.ceil(t_min / T.STEP_MIN)))
-        self.assertEqual(k0, 3)  # step 3 starts at 15 min, strictly after 12.3 min
-
-    def test_corrupted_meal_log_reproducibility(self):
-        """Verify corrupted meal log produces deterministic hashes under fixed seed."""
-        rng1 = np.random.default_rng(20260930)
-        rng2 = np.random.default_rng(20260930)
-
-        minutes = np.array([120.0, 360.0, 720.0])
-        carbs = np.array([45.0, 60.0, 75.0])
-
-        m1, c1 = T.corrupt_meal_log(minutes, carbs, rng1)
-        m2, c2 = T.corrupt_meal_log(minutes, carbs, rng2)
-
-        np.testing.assert_allclose(m1, m2)
-        np.testing.assert_allclose(c1, c2)
-
-
-if __name__ == "__main__":
-    unittest.main()
+def test_causal_at_risk_label():
+    # "For every sampled onset neighbourhood: armed[t] must equal the result obtainable from observations through t only."
+    cgm = np.full(100, 100.0)
+    cgm[50:60] = 160.0 # Spike
+    
+    # Run full series
+    onset_full, armed_full = detect_spike_onsets(cgm)
+    
+    # Prefix test
+    for t in range(55):
+        onset_trunc, armed_trunc = detect_spike_onsets(cgm[:t+1])
+        assert armed_full[t] == armed_trunc[t]

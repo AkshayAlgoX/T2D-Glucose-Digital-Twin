@@ -161,8 +161,8 @@ def derive_params(ehr: Mapping[str, Any], hr_rest: float, mode: str = "s2", firs
     if mode == "oracle" and "insulin_sensitivity_rel" in ehr:
         si_rel = float(ehr["insulin_sensitivity_rel"])
         gb = float(ehr["basal_glucose"])
-        tmax0 = float(ehr.get("tmax0_min", 38.0))
-        tau_isf_val = float(ehr.get("tau_isf_min", 8.0))
+        tmax0 = float(ehr["tmax0_min"])
+        tau_isf_val = float(ehr["tau_isf_min"])
     elif mode == "s3" and first_cgm is not None and math.isfinite(first_cgm):
         ln_si = -0.035 * (bmi - 25) - 0.005 * (age - 45) - 0.40 * t2d - 0.20 * pre
         si_rel = float(np.clip(math.exp(ln_si), 0.15, 1.2)) * (1.10 if "metformin" in meds else 1.0)
@@ -741,7 +741,7 @@ class UKFTwinPrior:
         first_cgm = float(ps.cgm[np.isfinite(ps.cgm)][0]) if np.isfinite(ps.cgm).any() else None
         params = derive_params(ehr, hr_rest, mode=self.mode, first_cgm=first_cgm)
         carbs = np.zeros(ps.n)
-        bins = np.clip(np.round(ps.meal_min / STEP_MIN).astype(int), 0, ps.n - 1)
+        bins = np.clip(np.ceil(ps.meal_min / STEP_MIN).astype(int), 0, ps.n - 1)
         np.add.at(carbs, bins, ps.meal_carbs)
         obs = build_inputs(ps.stamps, ps.cgm, ps.hr, ps.steps, asleep, carbs, hr_rest)
         _, out = _filter_one(jnp.asarray(obs), params, self.cfg)

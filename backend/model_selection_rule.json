@@ -1,0 +1,20 @@
+{
+  "locked_status": "Locked AFTER S2/S3 validation but BEFORE test/final-model evaluation",
+  "primary_population": ["Prediabetes", "Type 2"],
+  "secondary_population": ["Healthy"],
+  "excluded_population": ["Type 1"],
+  "models": ["persistence", "realistic_twin_only", "realistic_pr_tft_ukf"],
+  "oracle_is_reference_only": true,
+  "metrics": {
+    "spike_event_sensitivity": "higher_is_better",
+    "alert_precision": "higher_is_better",
+    "rmse_60": "lower_is_better",
+    "rmse_120": "lower_is_better",
+    "mae_60": "lower_is_better",
+    "mae_120": "lower_is_better",
+    "alerts_per_day": "lower_is_better",
+    "prediction_interval_coverage": "target_within_5_percent",
+    "ece": "lower_is_better"
+  },
+  "tie_break": "If RMSE/MAE better but sensitivity similar (within stat tolerance), pick model with strictly lower false alert rate. If equal, pick narrower conformal intervals. If 0.60 tier unreachable, use 0.35. If coverage misses by >5%, model downgraded."
+}

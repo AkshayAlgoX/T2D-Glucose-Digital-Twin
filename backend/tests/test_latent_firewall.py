@@ -26,7 +26,7 @@ class TestLatentFirewall(unittest.TestCase):
 
     def test_ehr_allowlist_filtering(self):
         """Verify load_data filters out any blocked latent columns."""
-        cfg = T.TrainConfig(data_dir="synthetic_v2", seed=20260930, limit_patients=10)
+        cfg = T.TrainConfig(data_dir="/home/akshaya/synthetic_v2_300", seed=20260930, limit_patients=10)
         rng = np.random.default_rng(20260930)
         series = T.load_data(cfg, rng)
         self.assertTrue(len(series) > 0)
@@ -40,10 +40,10 @@ class TestLatentFirewall(unittest.TestCase):
         """Verify static features contain only observable EHR fields."""
         self.assertEqual(T.STATIC_CONTINUOUS, ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg"))
         self.assertEqual(len(T.STATIC_CONTINUOUS), 6)
-        self.assertEqual(len(T.STATIC_FEATURES), 6 + 1 + 4 + 7)  # 6 cont + sex + 4 status + 7 meds = 18
+        self.assertEqual(len(T.STATIC_FEATURES_REALISTIC), 6 + 1 + 4 + 7)  # 6 cont + sex + 4 status + 7 meds = 18
 
         for blocked in BLOCKED_LATENT_FIELDS:
-            self.assertNotIn(blocked, T.STATIC_FEATURES, f"Blocked field {blocked} in STATIC_FEATURES")
+            self.assertNotIn(blocked, T.STATIC_FEATURES_REALISTIC, f"Blocked field {blocked} in STATIC_FEATURES_REALISTIC")
 
     def test_patient_series_physiology_derivations(self):
         """Verify gb, k_base, tmax are derived without simulator latent fields."""
@@ -55,7 +55,7 @@ class TestLatentFirewall(unittest.TestCase):
             "med_classes": "metformin;glp1_ra"
         })
 
-        s_vec = T.static_vector(mock_ehr)
+        s_vec = T.static_vector(mock_ehr, "s3")
         for blocked in BLOCKED_LATENT_FIELDS:
             self.assertNotIn(blocked, s_vec)
 
@@ -92,9 +92,9 @@ class TestLatentFirewall(unittest.TestCase):
 
     def test_hazard_target_isolation(self):
         """Verify future_spike_2h is absent from past, static, and future input features."""
-        cfg = T.TrainConfig(data_dir="synthetic_v2", seed=20260930, limit_patients=5)
+        cfg = T.TrainConfig(data_dir="/home/akshaya/synthetic_v2_300", seed=20260930, limit_patients=5)
         self.assertNotIn("future_spike_2h", T.PAST_FEATURES)
-        self.assertNotIn("future_spike_2h", T.STATIC_FEATURES)
+        self.assertNotIn("future_spike_2h", T.STATIC_FEATURES_REALISTIC)
         self.assertNotIn("future_spike_2h", T.FUTURE_FEATURES)
         self.assertNotIn("future_spike_2h", U.UKF_PAST_FEATURES)
 
