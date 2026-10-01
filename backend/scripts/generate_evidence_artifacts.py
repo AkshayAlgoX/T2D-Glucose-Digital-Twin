@@ -28,7 +28,8 @@ def sha256_file(path: Path | str) -> str:
 def generate_split_manifest():
     print("Generating split_manifest.json...")
     split_path = Path("backend/split_293.json") if Path("backend/split_293.json").exists() else Path("split_293.json")
-    data_dir = Path("backend/synthetic_v2") if Path("backend/synthetic_v2").exists() else Path("synthetic_v2")
+    with open("backend/final_config.json") as f: cfg = json.load(f)
+    data_dir = Path(cfg["data_dir"])
     
     with open(split_path) as f:
         split_data = json.load(f)
@@ -62,7 +63,8 @@ def generate_split_manifest():
 
 def generate_s2_s3_validation_report(val_pids: set[str]):
     print("Generating s2_s3_validation_report.json (strictly on validation patients)...")
-    data_dir = "backend/synthetic_v2" if Path("backend/synthetic_v2").exists() else "synthetic_v2"
+    with open("backend/final_config.json") as f: cfg = json.load(f)
+    data_dir = Path(cfg["data_dir"])
     
     modes = ["s2", "s3", "oracle"]
     results = {}
@@ -72,13 +74,28 @@ def generate_s2_s3_validation_report(val_pids: set[str]):
         res = U.validate(data_dir, log_corruption=True, mode=m, patient_ids=val_pids)
         results[m] = res
 
+    
+    s2_rmse = results["s2"]["rmse_60m"]
+    s3_rmse = results["s3"]["rmse_60m"]
+    best_mode = "s3" if s3_rmse < s2_rmse else "s2"
+
+    
+    import subprocess
+    try:
+        git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    except:
+        git_sha = "unknown"
+
     report = {
         "evaluation_scope": "validation_split_only",
         "validation_patient_count": len(val_pids),
         "validation_patient_ids": sorted(list(val_pids)),
+        "git_sha": git_sha,
+        "model_selection_rule_sha256": cfg.get("model_selection_rule_sha256", ""),
+        "data_dir": str(data_dir),
         "modes": results,
         "decision_rule": {
-            "selected_mode": "s3",
+            "selected_mode": best_mode,
             "justification": "S3 (Dynamic Initial CGM Baseline G0) achieves lower 60m RMSE (25.40 vs 25.83 mg/dL) and NIS (1.27 vs 1.30) on validation patients compared to S2 by eliminating day-1 basal glucose transient error, evaluated without inspecting test set."
         }
     }
@@ -91,7 +108,8 @@ def generate_s2_s3_validation_report(val_pids: set[str]):
 
 def generate_ukf_smoke_report():
     print("Generating ukf_smoke_report.json...")
-    data_dir = "backend/synthetic_v2" if Path("backend/synthetic_v2").exists() else "synthetic_v2"
+    with open("backend/final_config.json") as f: cfg = json.load(f)
+    data_dir = Path(cfg["data_dir"])
     smoke_out_dir = RUNS_DIR / "pr_tft_smoke_ukf"
     
     cfg = T.TrainConfig(
@@ -147,7 +165,19 @@ def generate_ukf_smoke_report():
     
     runtime = time.perf_counter() - t0
 
-    smoke_report = {
+    smoke_
+    s2_rmse = results["s2"]["rmse_60m"]
+    s3_rmse = results["s3"]["rmse_60m"]
+    best_mode = "s3" if s3_rmse < s2_rmse else "s2"
+
+    
+    import subprocess
+    try:
+        git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    except:
+        git_sha = "unknown"
+
+    report = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "config": T.dataclasses.asdict(cfg),
         "twin_prior_kind": twin.kind,

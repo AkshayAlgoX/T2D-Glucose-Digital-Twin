@@ -120,8 +120,18 @@ STATUS_LEVELS = ("Healthy", "Prediabetes", "Type 1", "Type 2")
 MED_CLASSES = ("metformin", "sglt2i", "glp1_ra", "dpp4i", "sulfonylurea", "basal_insulin",
                "prandial_insulin")
 STATIC_CONTINUOUS = ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg")
-STATIC_FEATURES = (STATIC_CONTINUOUS + ("sex_male",) + tuple(f"status_{s}" for s in STATUS_LEVELS)
-                   + tuple(f"med_{m}" for m in MED_CLASSES))
+STATIC_FEATURES_REALISTIC = (STATIC_CONTINUOUS + ("sex_male",) + tuple(f"status_{s}" for s in STATUS_LEVELS) + tuple(f"med_{m}" for m in MED_CLASSES))
+STATIC_FEATURES_ORACLE = STATIC_FEATURES_REALISTIC + ("basal_glucose", "insulin_sensitivity_rel", "tmax0_min")
+
+def get_static_features(cfg_or_mode) -> tuple[str, ...]:
+    mode = getattr(cfg_or_mode, "twin_mode", cfg_or_mode)
+    if mode == "oracle":
+        return STATIC_FEATURES_ORACLE
+    elif mode in ("s2", "s3", "realistic"):
+        return STATIC_FEATURES_REALISTIC
+    else:
+        raise ValueError(f"Unsupported twin_mode: {mode}")
+
 
 # z-scored past features; the rest are binary or already bounded.
 ZSCORE_PAST = ("cgm_roc", "heart_rate", "hrv", "step_count", "carbs_logged", "carbs_on_board",
@@ -144,7 +154,8 @@ class TrainConfig:
     twin_base: str = "habit"  # forecast base scenario: "habit" or "no_meal"
     twin: str = "linear"  # twin prior: "linear" (TwinPrior) or "ukf" (ukf_twin.UKFTwinPrior)
     twin_mode: str = "s2"  # UKF initialization mode: "oracle", "s2", or "s3"
-    limit_patients: int = 0  # 0 = all
+    limit_patients: int = 0
+    model_selection_rule_sha256: str = ""  # 0 = all
     # Model (Blueprint 7.2)
     d_model: int = 96
     n_heads: int = 4
@@ -208,21 +219,38 @@ def detect_spike_onsets(cgm: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     n = cgm.size
     onset = np.zeros(n, dtype=bool)
     armed_out = np.ones(n, dtype=bool)
-    armed, below = True, 0
+    armed_at_k = np.ones(n, dtype=bool)
+    
+    armed = True
+    below = 0
+    
+    causal_armed = True
+    
     for k in range(n):
-        v = cgm[k]
-        if not np.isnan(v):
-            below = below + 1 if v < REFRACTORY_LEVEL else 0
+        vk = cgm[k]
+        
+        # 1. Update causal armed state
+        if not np.isnan(vk):
+            below = below + 1 if vk < REFRACTORY_LEVEL else 0
             if below >= REFRACTORY_STEPS:
+                causal_armed = True
                 armed = True
-            if armed and v >= SPIKE_LEVEL and k >= RISE_STEPS:
-                prior = cgm[k - RISE_STEPS:k]
-                persist = cgm[k:k + PERSIST_STEPS]
-                if (np.isfinite(prior).any() and v - np.nanmin(prior) >= SPIKE_RISE
-                        and persist.size == PERSIST_STEPS and np.all(persist >= SPIKE_LEVEL)):
-                    onset[k] = True
-                    armed = False
-        armed_out[k] = armed
+                
+        check_k = k - PERSIST_STEPS + 1
+        if check_k >= 0 and onset[check_k]:
+            causal_armed = False
+            
+        armed_out[k] = causal_armed
+        armed_at_k[k] = armed
+        
+        if not np.isnan(vk) and armed and armed_at_k[k] and vk >= SPIKE_LEVEL and k >= RISE_STEPS:
+            prior = cgm[k - RISE_STEPS:k]
+            persist = cgm[k:k + PERSIST_STEPS]
+            if (np.isfinite(prior).any() and vk - np.nanmin(prior) >= SPIKE_RISE
+                    and persist.size == PERSIST_STEPS and np.all(persist >= SPIKE_LEVEL)):
+                onset[k] = True
+                armed = False
+
     return onset, armed_out
 
 
@@ -274,9 +302,16 @@ def corrupt_meal_log(minutes: np.ndarray, carbs: np.ndarray,
     return (minutes + shift)[order], carbs[order]
 
 
-def static_vector(row: pd.Series) -> dict[str, float]:
+def static_vector(row: pd.Series, mode: str) -> dict[str, float]:
     meds = set(str(row.get("med_classes", "")).split(";")) - {"", "nan"}
     out = {c: float(row[c]) for c in STATIC_CONTINUOUS}
+    if mode == "oracle":
+        try:
+            out["basal_glucose"] = float(row["basal_glucose"])
+            out["insulin_sensitivity_rel"] = float(row["insulin_sensitivity_rel"])
+            out["tmax0_min"] = float(row["tmax0_min"])
+        except KeyError as e:
+            raise KeyError(f"Oracle mode requires latent field {e}")
     out["sex_male"] = float(row["gender"] == "M")
     for s in STATUS_LEVELS:
         out[f"status_{s}"] = float(row["diabetes_status"] == s)
@@ -325,7 +360,7 @@ def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfi
             hrv=g["hrv"].interpolate(limit_direction="both").to_numpy(dtype=float),
             steps=g["step_count"].fillna(0).to_numpy(dtype=float),
             asleep=(g["sleep_stage"].fillna("Awake") != "Awake").to_numpy(dtype=float),
-            meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row),
+            meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row, cfg.twin_mode),
             gb=gb,
             k_base=0.01 + 0.01 * si_rel,
             tmax=1.3 * tmax0,  # average macronutrient slowing (Blueprint 3.3)
@@ -461,6 +496,7 @@ class TwinPrior:
 
 
 BINS_PER_DAY = 1440 // STEP_MIN
+HR_REST_STEPS = 288
 
 
 def _smooth_circular(profile: np.ndarray) -> np.ndarray:
@@ -475,7 +511,7 @@ def population_habit(series: list[PatientSeries]) -> tuple[np.ndarray, float]:
     counts = np.zeros(BINS_PER_DAY)
     days, carbs = 0.0, []
     for ps in series:
-        bins = (ps.meal_min // STEP_MIN).astype(int) % BINS_PER_DAY
+        bins = np.ceil(ps.meal_min / STEP_MIN).astype(int) % BINS_PER_DAY
         np.add.at(counts, bins, 1.0)
         days += ps.n / BINS_PER_DAY
         carbs.extend(ps.meal_carbs.tolist())
@@ -490,7 +526,7 @@ def habit_features(ps: PatientSeries, t_idx: np.ndarray,
     n_days = int(math.ceil(ps.n / BINS_PER_DAY))
     counts = np.zeros((n_days, BINS_PER_DAY))
     carb_sum = np.zeros(n_days)
-    meal_bins = (ps.meal_min // STEP_MIN).astype(int)
+    meal_bins = np.ceil(ps.meal_min / STEP_MIN).astype(int)
     valid = (meal_bins >= 0) & (meal_bins < ps.n)
     np.add.at(counts, (meal_bins[valid] // BINS_PER_DAY, meal_bins[valid] % BINS_PER_DAY), 1.0)
     np.add.at(carb_sum, meal_bins[valid] // BINS_PER_DAY, ps.meal_carbs[valid])
@@ -522,7 +558,7 @@ def habit_features(ps: PatientSeries, t_idx: np.ndarray,
 
 def eligible_anchors(ps: PatientSeries, cfg: TrainConfig) -> np.ndarray:
     """Anchors with a current CGM value, enough past data and enough future targets."""
-    t = np.arange(PAST_STEPS - 1, ps.n - HORIZON, cfg.stride_steps)
+    t = np.arange(max(PAST_STEPS - 1, HR_REST_STEPS - 1), ps.n - HORIZON, cfg.stride_steps)
     finite = np.isfinite(ps.cgm).astype(float)
     csum = np.concatenate(([0.0], np.cumsum(finite)))
     past_cov = (csum[t + 1] - csum[t + 1 - PAST_STEPS]) / PAST_STEPS
@@ -546,6 +582,7 @@ class Normalizer:
     @classmethod
     def fit(cls, series: list[PatientSeries], meal_effect: dict[str, np.ndarray],
             extras: dict[str, dict[str, np.ndarray]] | None = None, realistic_ehr: bool = False) -> "Normalizer":
+        sf = STATIC_FEATURES_REALISTIC if realistic_ehr else STATIC_FEATURES_ORACLE
         cgm = np.concatenate([ps.cgm[np.isfinite(ps.cgm)] for ps in series])
         raw = {
             "cgm_roc": np.concatenate([np.diff(ps.cgm_ff, prepend=np.nan) for ps in series]),
@@ -561,9 +598,9 @@ class Normalizer:
         mean = {k: float(np.nanmean(v)) for k, v in raw.items()}
         std = {k: float(np.nanstd(v)) or 1.0 for k, v in raw.items()}
         static = pd.DataFrame([ps.static_raw for ps in series])
-        s_mean = {c: float(static[c].mean()) if c in STATIC_CONTINUOUS else 0.0 for c in STATIC_FEATURES}
-        s_std = {c: float(static[c].std(ddof=0)) or 1.0 if c in STATIC_CONTINUOUS else 1.0
-                 for c in STATIC_FEATURES}
+        s_mean = {c: float(static[c].mean()) if c in (STATIC_CONTINUOUS + ("basal_glucose", "insulin_sensitivity_rel", "tmax0_min")) else 0.0 for c in sf}
+        s_std = {c: float(static[c].std(ddof=0)) or 1.0 if c in (STATIC_CONTINUOUS + ("basal_glucose", "insulin_sensitivity_rel", "tmax0_min")) else 1.0
+                 for c in sf}
         carbs = np.concatenate([ps.meal_carbs for ps in series])
         return cls(float(cgm.mean()), float(cgm.std()), mean, std, s_mean, s_std,
                    float(carbs.std()) if carbs.size else 30.0)
@@ -574,7 +611,7 @@ class Normalizer:
 
 def _logged_carbs_series(ps: PatientSeries) -> np.ndarray:
     out = np.zeros(ps.n)
-    bins = (ps.meal_min // STEP_MIN).astype(int)
+    bins = np.ceil(ps.meal_min / STEP_MIN).astype(int)
     ok = (bins >= 0) & (bins < ps.n)
     np.add.at(out, bins[ok], ps.meal_carbs[ok])
     return out
@@ -671,7 +708,7 @@ def build_split(series: list[PatientSeries], anchors: dict[str, np.ndarray], twi
         past.append(torch.from_numpy(past_matrix(ps, norm, effect, twin.state_features(ps))))
         time_feats.append(torch.from_numpy(time_matrix(ps)))
         targets.append(torch.from_numpy(ps.cgm.astype(np.float32)))
-        static.append([(ps.static_raw[c] - norm.static_mean[c]) / norm.static_std[c] for c in STATIC_FEATURES])
+        static.append([(ps.static_raw[c] - norm.static_mean[c]) / norm.static_std[c] for c in get_static_features(cfg)])
         t = anchors[ps.pid]
         if t.size == 0:
             continue
@@ -1196,6 +1233,9 @@ def split_patients(series: dict[str, PatientSeries], seed: int) -> dict[str, lis
 
 def load_data(cfg: TrainConfig, rng: np.random.Generator, glucose_override: pd.DataFrame | None = None):
     data_dir = Path(cfg.data_dir)
+    if not data_dir.exists() or not (data_dir / "patient_cgm_telemetry.csv").exists():
+        raise FileNotFoundError(f"data_dir {data_dir} missing or invalid!")
+    data_dir = Path(cfg.data_dir)
     telemetry = pd.read_csv(data_dir / "patient_cgm_telemetry.csv", parse_dates=["timestamp"])
     ehr = pd.read_csv(data_dir / "patients_ehr.csv")
     missing = {"meal_event", "carbs_g"} - set(telemetry.columns)
@@ -1234,7 +1274,7 @@ def build_datamodule(series: dict[str, PatientSeries], split_ids: dict[str, list
         twin.fit(train_series, anchors, rng)
     if norm is None:
         norm = Normalizer.fit(train_series, {ps.pid: twin.meal_effect_series(ps) for ps in train_series},
-                              {ps.pid: twin.state_features(ps) for ps in train_series})
+                              {ps.pid: twin.state_features(ps) for ps in train_series}, realistic_ehr=(cfg.twin_mode != "oracle"))
     if pop is None:
         pop = population_habit(train_series)
     splits = {name: build_split([series[p] for p in ids], anchors, twin, norm, pop, cfg) for name, ids in split_ids.items()}
@@ -1298,6 +1338,11 @@ def parse_args() -> TrainConfig:
                     help="tiny end-to-end run: 24 patients, 2 epochs, 20 batches per epoch")
     args = ap.parse_args()
     values = {f.name: getattr(args, f.name) for f in dataclasses.fields(TrainConfig)}
+    if args.config:
+        with open(args.config) as c:
+            for k, v in __import__("json").load(c).items():
+                if k in values:
+                    values[k] = v
     values["alert_thresholds"] = tuple(values["alert_thresholds"])
     cfg = TrainConfig(**values)
     if args.smoke_test:
@@ -1305,6 +1350,38 @@ def parse_args() -> TrainConfig:
                                   limit_train_batches=20, limit_val_batches=10, d_model=32,
                                   out_dir=str(Path(cfg.out_dir) / "smoke"))
     return cfg
+
+
+
+def check_hashes_and_tree(cfg: TrainConfig, split_ids: dict[str, list[str]], override_dirty: bool = False):
+    try:
+        status = __import__("subprocess").check_output(["git", "status", "--short"]).decode().strip()
+        git_sha = __import__("subprocess").check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    except Exception:
+        status = ""
+        git_sha = "unknown"
+    if status and not override_dirty:
+        raise RuntimeError("Dirty git tree! Run only from a clean checkout.")
+    
+    import hashlib, json
+    
+    def hash_file(p):
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                h.update(chunk)
+        return h.hexdigest()
+        
+    data_dir = __import__("pathlib").Path(cfg.data_dir)
+    ehr_path = data_dir / "patients_ehr.csv"
+    tel_path = data_dir / "patient_cgm_telemetry.csv"
+    
+    ehr_hash = hash_file(ehr_path)
+    tel_hash = hash_file(tel_path)
+    split_hash = hashlib.sha256(json.dumps(split_ids, sort_keys=True).encode()).hexdigest()
+    
+    cfg_hash = hashlib.sha256(json.dumps(__import__("dataclasses").asdict(cfg), sort_keys=True).encode()).hexdigest()
+    return git_sha, ehr_hash, tel_hash, split_hash, cfg_hash
 
 
 def main() -> None:
@@ -1322,7 +1399,7 @@ def main() -> None:
     split_ids = split_patients(series, cfg.seed)
     (out_dir / "split.json").write_text(json.dumps(split_ids, indent=2))
     dm, twin, norm, pop = build_datamodule(series, split_ids, cfg, rng)
-    module = PRTFTModule(dataclasses.asdict(cfg), len(STATIC_FEATURES), len(past_feature_names(cfg)),
+    module = PRTFTModule(dataclasses.asdict(cfg), len(get_static_features(cfg)), len(past_feature_names(cfg)),
                          len(FUTURE_FEATURES), norm.glu_std)
     LOG.info("PR-TFT: %.2fM parameters", sum(p.numel() for p in module.parameters()) / 1e6)
 
