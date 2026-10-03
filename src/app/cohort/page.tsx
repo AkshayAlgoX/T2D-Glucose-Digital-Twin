@@ -8,7 +8,7 @@ export default function CohortPage() {
 
   useEffect(() => {
     fetch('/api/subjects').then(r => r.json()).then(data => {
-      setSubjects(data.items || []);
+      setSubjects(Array.isArray(data) ? data : []);
     });
   }, []);
 
