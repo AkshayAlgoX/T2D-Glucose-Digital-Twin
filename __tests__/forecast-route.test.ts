@@ -8,11 +8,15 @@ jest.mock('../src/lib/schema-validator', () => ({
 }));
 
 describe('/api/forecast proxy', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
+    process.env = { ...originalEnv, BACKEND_URL: 'http://127.0.0.1:8001' };
     global.fetch = jest.fn();
   });
   
   afterEach(() => {
+    process.env = originalEnv;
     jest.resetAllMocks();
   });
 

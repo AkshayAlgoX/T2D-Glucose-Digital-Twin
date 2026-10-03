@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateForecastResponse, validateForecastRequest } from '@/lib/schema-validator';
 
 export async function POST(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8001';
+  const backendUrl = process.env.BACKEND_URL;
+  if (!backendUrl) return NextResponse.json({ error: "BACKEND_URL missing" }, { status: 500 });
   
   try {
     const body = await request.json();
@@ -20,9 +21,15 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ error: "Invalid ForecastRequest schema" }, { status: 400 });
     }
 
+    const token = process.env.PR_TFT_SERVICE_TOKEN;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const backendRes = await fetch(`${backendUrl}/v1/forecasts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(backendReq)
     });
 
