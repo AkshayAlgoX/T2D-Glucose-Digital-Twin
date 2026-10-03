@@ -11,16 +11,8 @@ jest.mock('../src/hooks/useRealtimeTelemetry', () => ({
   useRealtimeTelemetry: jest.fn()
 }));
 
-jest.mock('../src/components/digital-twin/BodyVisualizer3D', () => ({
-  BodyVisualizer3D: () => <div data-testid="body-3d-mock" />
-}));
-
-jest.mock('../src/components/digital-twin/TelemetryChartSuite', () => ({
-  TelemetryChartSuite: () => <div data-testid="chart-suite-mock" />
-}));
-
-jest.mock('../src/components/digital-twin/PredictiveInsightsPanel', () => ({
-  PredictiveInsightsPanel: () => <div data-testid="insights-panel-mock" />
+jest.mock('../src/components/digital-twin/ForecastCanvas', () => ({
+  ForecastCanvas: () => <div data-testid="chart-suite-mock" />
 }));
 
 jest.mock('../src/components/digital-twin/ScenarioEditor', () => ({
@@ -37,27 +29,23 @@ describe('PatientDashboard', () => {
   it('renders fallback state on insufficient data without crashing', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
-        _raw_data_quality: { status: 'insufficient' },
-        data: []
+        data_quality: { status: 'insufficient' }
       },
       isConnected: true,
       isStale: false,
       error: null
     });
 
-    // PatientDashboard is not actually async in Next 14 Client Components or Server Components where we don't await anything in it?
-    // Wait, PatientDashboard does not use `await`.
     render(<PatientDashboard />);
     
-    expect(screen.getByText(/Insufficient Data/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('chart-suite-mock')).not.toBeInTheDocument();
+    expect(screen.getByText(/No forecast/i)).toBeInTheDocument();
   });
 
   it('displays stale/disconnected state', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
         data: [{ timestamp: '2026-09-28T11:55:00Z', historicalGlucose: 100 }],
-        _raw_data_quality: { status: 'ok' }
+        data_quality: { status: 'ok' }
       },
       isConnected: false,
       isStale: true,
@@ -67,5 +55,6 @@ describe('PatientDashboard', () => {
     render(<PatientDashboard />);
     
     expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
+    expect(screen.getByText(/Stale/i)).toBeInTheDocument();
   });
 });

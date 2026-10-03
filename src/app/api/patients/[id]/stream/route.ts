@@ -12,19 +12,21 @@ export async function GET(
   
   const searchParams = request.nextUrl.searchParams;
   const asOf = searchParams.get('as_of');
+  const speed = searchParams.get('speed') || '60';
   
-  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=10`;
+  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}`;
   if (asOf) {
     url += `&as_of=${encodeURIComponent(asOf)}`;
   }
 
   try {
-    const backendResponse = await fetch(url, {
-      headers: {
-        'Accept': 'text/event-stream',
-      },
-      signal: request.signal,
-    });
+    const headers: HeadersInit = { 'Accept': 'text/event-stream' };
+    const lastEventId = request.headers.get('Last-Event-ID');
+    if (lastEventId) {
+      headers['Last-Event-ID'] = lastEventId;
+    }
+
+    const backendResponse = await fetch(url, { headers, signal: request.signal });
 
     if (!backendResponse.ok || !backendResponse.body) {
       return new Response('Backend error or no body', { status: backendResponse.status || 500 });
@@ -58,11 +60,10 @@ export async function GET(
                   if (validateStreamEvent(payload)) {
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
                   } else {
-                    console.error("Invalid StreamEvent schema:", validateStreamEvent.errors);
-                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract" })}\n\n`));
+                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema" })}\n\n`));
                   }
                 } catch (e) {
-                  // ignore parse error if partial, but standard SSE lines should be full
+                  controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid JSON" })}\n\n`));
                 }
                 currentEventData = '';
               } else {
