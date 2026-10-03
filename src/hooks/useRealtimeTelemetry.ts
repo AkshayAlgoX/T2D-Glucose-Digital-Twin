@@ -107,6 +107,7 @@ export function useRealtimeTelemetry(
                 spikeProbability120m: chunk.spikeProbability120m,
                 predictedEvent: chunk.predictedEvent,
                 drivers: chunk.drivers,
+                _raw_data_quality: chunk._raw_data_quality,
                 data: combinedData
               } as ForecastResponse;
             });
