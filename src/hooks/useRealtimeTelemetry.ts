@@ -1,32 +1,17 @@
-import { useState, useEffect } from 'react';
-import type { ForecastResponse, TelemetryDataPoint } from '@/types/digital-twin';
+import { useState, useEffect, useRef } from 'react';
+import { useTime } from '@/components/digital-twin/TimeContext';
 
-interface UseRealtimeTelemetryOptions {
-  /** Maximum number of historical points to keep in memory to prevent DOM/memory bloat */
-  maxHistoricalPoints?: number;
+export interface SubjectCache {
+  cgm: { t: string; value: number | null; trend: string }[];
+  risk: { t: string; p: number }[];
+  alerts: { t: string; state: string }[];
+  dataQuality: { t: string; status: string }[];
 }
 
-interface UseRealtimeTelemetryReturn {
-  forecast: ForecastResponse | null;
-  isConnected: boolean;
-  isStale: boolean;
-  error: Error | null;
-}
-
-/**
- * Custom hook to manage the real-time EventSource connection for the Digital Twin.
- * Appends streaming historical telemetry while seamlessly hot-swapping the AI's 
- * forward-looking 24-step forecast.
- */
-export function useRealtimeTelemetry(
-  patientId: string, 
-  options: UseRealtimeTelemetryOptions = {}
-): UseRealtimeTelemetryReturn {
-  
-  // Default to 120 points (e.g., 2 hours of 1-minute interval data)
-  const { maxHistoricalPoints = 120 } = options;
-  
-  const [forecastResponse, setForecastResponse] = useState<ForecastResponse | null>(null);
+export function useRealtimeTelemetry(patientId: string) {
+  const { asOf } = useTime() || {}; // Fallback if outside provider
+  const [forecastResponse, setForecastResponse] = useState<any>(null);
+  const [cache, setCache] = useState<SubjectCache>({ cgm: [], risk: [], alerts: [], dataQuality: [] });
   const [isConnected, setIsConnected] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -34,113 +19,84 @@ export function useRealtimeTelemetry(
   useEffect(() => {
     if (!patientId) return;
 
-    let eventSource: EventSource;
+    let eventSource: EventSource | null = null;
     let staleTimer: NodeJS.Timeout;
+    
+    // Clear stale forecast immediately on scrub
+    setForecastResponse(null);
 
-    const resetStaleTimer = () => {
-      setIsStale(false);
-      clearTimeout(staleTimer);
-      staleTimer = setTimeout(() => {
-        setIsStale(true);
-      }, 15000); // Flag as stale after 15 seconds without data
-    };
+    const debounceTimer = setTimeout(() => {
+      const resetStaleTimer = () => {
+        setIsStale(false);
+        clearTimeout(staleTimer);
+        staleTimer = setTimeout(() => setIsStale(true), 15000);
+      };
 
-    const connect = () => {
-      // Initialize the native browser Server-Sent Events (SSE) connection
-      // Temporarily point to mock-stream for stress-testing if env flag is set, otherwise use real backend contract
-      const endpoint = process.env.NEXT_PUBLIC_USE_MOCK === 'true' 
-        ? `/api/mock-stream`
+      const endpoint = asOf 
+        ? `/api/patients/${patientId}/stream?as_of=${encodeURIComponent(asOf)}`
         : `/api/patients/${patientId}/stream`;
-        
+
       eventSource = new EventSource(endpoint);
 
       eventSource.onopen = () => {
         setIsConnected(true);
         setError(null);
-        console.info(`[Telemetry] Connected to digital twin stream for ${patientId}`);
       };
 
       eventSource.onmessage = (event) => {
         resetStaleTimer();
         try {
           const raw = JSON.parse(event.data);
-          
-          // Determine if we are processing the mock stream or the real stream
-          // Mock stream is already mapped to the frontend shape.
-          // Real stream emits StreamEvent where the payload is nested.
-          let chunk: ForecastResponse;
-          if (raw.event === "forecast.updated" && raw.payload) {
-             import('@/lib/api-mapper').then(({ mapBackendForecast }) => {
-                const mapped = mapBackendForecast(raw.payload);
-                processChunk(mapped);
-             });
-             return;
-          } else {
-             chunk = raw as ForecastResponse;
-             processChunk(chunk);
-          }
+          setForecastResponse(raw);
 
-          function processChunk(chunk: ForecastResponse) {
-            setForecastResponse((prev) => {
-              const existingData = prev?.data || [];
-              
-              const incomingHistorical = chunk.data.filter(d => d.historicalGlucose != null);
-              const incomingForecast = chunk.data.filter(d => d.forecastGlucose != null);
+          setCache(prev => {
+            const newCache = { ...prev };
+            
+            if (raw.current?.measured_at) {
+              const t = raw.current.measured_at;
+              if (raw.current.value_mg_dl !== null) {
+                // Avoid duplicates in a real app, but for now just push
+                if (!newCache.cgm.some(c => c.t === t)) {
+                  newCache.cgm = [...prev.cgm, { t, value: raw.current.value_mg_dl, trend: raw.current.trend_arrow }];
+                }
+              }
+            }
 
-              const existingHistorical = existingData.filter(d => d.historicalGlucose != null);
+            if (raw.spike_risk?.probability_120m !== undefined && raw.as_of) {
+               if (!newCache.risk.some(r => r.t === raw.as_of)) {
+                 newCache.risk = [...prev.risk, { t: raw.as_of, p: raw.spike_risk.probability_120m }];
+               }
+            }
 
-              const historicalMap = new Map<string, TelemetryDataPoint>();
-              existingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
-              incomingHistorical.forEach(d => historicalMap.set(d.timestamp, d));
+            if (raw.alert?.state && raw.as_of) {
+               if (!newCache.alerts.some(a => a.t === raw.as_of)) {
+                 newCache.alerts = [...prev.alerts, { t: raw.as_of, state: raw.alert.state }];
+               }
+            }
 
-              const mergedHistorical = Array.from(historicalMap.values())
-                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                .slice(-maxHistoricalPoints);
-
-              const combinedData = [...mergedHistorical, ...incomingForecast]
-                .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-              return {
-                patientId: chunk.patientId,
-                generatedAt: chunk.generatedAt,
-                spike_risk: chunk.spike_risk,
-                spikeProbability120m: chunk.spikeProbability120m,
-                predictedEvent: chunk.predictedEvent,
-                drivers: chunk.drivers,
-                _raw_data_quality: chunk._raw_data_quality,
-                data: combinedData
-              } as ForecastResponse;
-            });
-          }
+            if (raw.data_quality?.status && raw.as_of) {
+               if (!newCache.dataQuality.some(q => q.t === raw.as_of)) {
+                 newCache.dataQuality = [...prev.dataQuality, { t: raw.as_of, status: raw.data_quality.status }];
+               }
+            }
+            
+            return newCache;
+          });
         } catch (err) {
-          console.error('[Telemetry] JSON Parse Error:', err);
-          setError(err instanceof Error ? err : new Error('Failed to parse telemetry chunk'));
+          setError(err instanceof Error ? err : new Error('Failed to parse telemetry'));
         }
       };
 
-      eventSource.onerror = (err) => {
-        // SSE natively auto-reconnects on drop. We update the UI state.
-        console.error('[Telemetry] Connection lost. Attempting reconnect...', err);
-        setIsConnected(false);
-      };
-    };
+      eventSource.onerror = () => setIsConnected(false);
+    }, 120);
 
-    connect();
-
-    // Cleanup phase: Teardown connection on unmount or when patientId changes
     return () => {
+      clearTimeout(debounceTimer);
       clearTimeout(staleTimer);
-      if (eventSource) {
-        eventSource.close();
-        setIsConnected(false);
-      }
+      if (eventSource) eventSource.close();
+      setIsConnected(false);
     };
-  }, [patientId, maxHistoricalPoints]);
+  }, [patientId, asOf]);
 
-  return {
-    forecast: forecastResponse,
-    isConnected,
-    isStale,
-    error
-  };
+  return { forecast: forecastResponse, cache, isConnected, isStale, error };
 }
