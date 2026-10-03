@@ -22,8 +22,10 @@ export function mapBackendForecast(payload: any): FrontendForecastResponse {
         timestamp: p.t,
         historicalGlucose: null,
         forecastGlucose: p.p50 ?? null,
-        quantileLower: p.p05 ?? null,
-        quantileUpper: p.p95 ?? null,
+        ukfBaseline: p.twin_p50 ?? null,
+        learnedCorrection: (p.p50 != null && p.twin_p50 != null) ? Number((p.p50 - p.twin_p50).toFixed(1)) : null,
+        quantileLower: p.p10 ?? null,
+        quantileUpper: p.p90 ?? null,
         isSpikePredicted: false
       });
     }
@@ -43,9 +45,8 @@ export function mapBackendForecast(payload: any): FrontendForecastResponse {
     drivers: (payload.drivers || []).map((d: any) => ({
       feature_key: d.feature_key || d.label_key,
       direction: d.direction,
-      // importance should be 0-1, but impact_mg_dl is absolute. Let's just normalize or pass
-      importance: d.impact_mg_dl ? Math.min(Math.abs(d.impact_mg_dl) / 50, 1.0) : 0,
-      raw_value: d.impact_mg_dl ? `${d.impact_mg_dl.toFixed(1)} mg/dL` : undefined
+      impact_mg_dl: d.impact_mg_dl,
+      source: d.source
     })),
     data,
     _raw_data_quality: payload.data_quality

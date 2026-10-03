@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateForecastResponse } from '@/lib/schema-validator';
 
 export async function POST(request: NextRequest) {
   const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8001';
   
   try {
     const body = await request.json();
-    // frontend sends: { patientId, pinned_as_of, scenario: { type, value, intensity } }
     
-    // We must map it to backend ForecastRequest
     const backendReq = {
       schema_version: "1.0.0",
       request_id: crypto.randomUUID(),
@@ -48,25 +47,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Backend failed" }, { status: backendRes.status });
     }
 
-    const resData = await backendRes.json();
+    const resData: any = await backendRes.json();
     
-    // Map backend ForecastResponse scenarios back to ScenarioSimulationResponse
-    const scenario = resData.scenarios?.[0];
+    // Validate boundary
+    if (!validateForecastResponse(resData)) {
+      console.error("Invalid ForecastResponse schema", validateForecastResponse.errors);
+      return NextResponse.json({ error: "Invalid upstream contract" }, { status: 502 });
+    }
+
+    const scenario = (resData as any).scenarios?.[0];
     if (!scenario) {
       return NextResponse.json({ error: "No scenario returned" }, { status: 500 });
     }
 
     const scenario_forecast = scenario.points.map((p: any) => ({
-      timestamp: new Date(new Date(resData.as_of).getTime() + p.offset_min * 60000).toISOString(),
-      forecastGlucose: p.p50
+      timestamp: new Date(new Date((resData as any).as_of).getTime() + p.offset_min * 60000).toISOString(),
+      p10: p.p10,
+      p50: p.p50,
+      p90: p.p90
     }));
 
     return NextResponse.json({
-      pinned_as_of: resData.as_of,
+      pinned_as_of: (resData as any).as_of,
       scenario_forecast,
       metrics: {
         delta_peak_mg_dl: scenario.delta_peak_mg_dl,
-        new_peak_mg_dl: 0, // Not explicitly in output?
+        new_peak_mg_dl: 0,
         baseline_peak_mg_dl: 0
       }
     });

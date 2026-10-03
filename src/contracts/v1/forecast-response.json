@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glucose-twin.dev/v1/forecast-response.json",
+  "title": "ForecastResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "generated_at", "as_of", "subject", "model", "data_quality", "current", "forecast", "spike_risk", "alert", "intended_use"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "request_id": { "type": "string", "format": "uuid" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "as_of": { "type": "string", "format": "date-time", "description": "Forecast anchor t = timestamp of the last CGM reading used" },
+    "subject": { "$ref": "#/$defs/Subject" },
+    "model": { "$ref": "#/$defs/ModelInfo" },
+    "data_quality": { "$ref": "#/$defs/DataQuality" },
+    "current": { "$ref": "#/$defs/CurrentGlucose" },
+    "forecast": { "oneOf": [{ "$ref": "#/$defs/Forecast" }, { "type": "null" }], "description": "null when data_quality.status is insufficient" },
+    "spike_risk": { "oneOf": [{ "$ref": "#/$defs/SpikeRisk" }, { "type": "null" }], "description": "null when data_quality.status is insufficient" },
+    "alert": { "$ref": "#/$defs/Alert" },
+    "drivers": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/Driver" } },
+    "scenarios": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/ScenarioResult" } },
+    "twin_state": { "$ref": "#/$defs/TwinState" },
+    "ehr_context": { "$ref": "#/$defs/EhrContext" },
+    "intended_use": { "const": "research_only_not_for_clinical_decisions" },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/Problem" } }
+  },
+  "$defs": {
+    "GlucoseMgDl": { "type": "number", "minimum": 20, "maximum": 600 },
+    "Probability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "OffsetMin": { "type": "integer", "minimum": 5, "maximum": 120, "multipleOf": 5 },
+    "Subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["subject_id", "synthetic"],
+      "properties": {
+        "subject_id": { "type": "string", "format": "uuid" },
+        "synthetic": { "const": true },
+        "cohort": { "type": "string" },
+        "simulator": {
+          "type": "object", "additionalProperties": false,
+          "required": ["version", "seed", "param_set_id"],
+          "properties": { "version": { "type": "string" }, "seed": { "type": "integer" }, "param_set_id": { "type": "string" } }
+        }
+      }
+    },
+    "ModelInfo": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version", "run_id", "alert_policy_version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "run_id": { "type": "string" },
+        "trained_at": { "type": "string", "format": "date-time" },
+        "simulator_version": { "type": "string" },
+        "calibration_id": { "type": "string" },
+        "alert_policy_version": { "type": "string" },
+        "fallback_used": { "enum": [null, "xgboost", "twin_only", "persistence"] }
+      }
+    },
+    "DataQuality": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "cgm_coverage_6h_pct", "last_cgm_at", "staleness_min"],
+      "properties": {
+        "status": { "enum": ["ok", "degraded", "insufficient"] },
+        "cgm_coverage_6h_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "last_cgm_at": { "type": "string", "format": "date-time" },
+        "staleness_min": { "type": "integer", "minimum": 0 },
+        "sensor_day": { "type": "integer", "minimum": 0, "maximum": 15 },
+        "in_warmup": { "type": "boolean" },
+        "ood_score": { "type": "number", "minimum": 0 },
+        "reasons": {
+          "type": "array", "uniqueItems": true,
+          "items": { "enum": ["cgm_gap", "stale_data", "sensor_warmup", "sensor_day1", "compression_low_suspected", "ood_subject", "no_recent_meal_logs", "twin_not_calibrated"] }
+        }
+      }
+    },
+    "CurrentGlucose": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value_mg_dl", "flag", "measured_at", "trend_arrow"],
+      "properties": {
+        "value_mg_dl": { "oneOf": [{ "$ref": "#/$defs/GlucoseMgDl" }, { "type": "null" }] },
+        "flag": { "enum": ["in_range", "LOW", "HIGH"] },
+        "measured_at": { "type": "string", "format": "date-time" },
+        "trend_mg_dl_per_min": { "type": ["number", "null"] },
+        "trend_arrow": { "enum": ["rising_fast", "rising", "rising_slow", "flat", "falling_slow", "falling", "falling_fast", "unknown"] }
+      }
+    },
+    "QuantilePoint": {
+      "type": "object", "additionalProperties": false,
+      "required": ["offset_min", "t", "p05", "p10", "p25", "p50", "p75", "p90", "p95"],
+      "properties": {
+        "offset_min": { "$ref": "#/$defs/OffsetMin" },
+        "t": { "type": "string", "format": "date-time" },
+        "p05": { "$ref": "#/$defs/GlucoseMgDl" }, "p10": { "$ref": "#/$defs/GlucoseMgDl" },
+        "p25": { "$ref": "#/$defs/GlucoseMgDl" }, "p50": { "$ref": "#/$defs/GlucoseMgDl" },
+        "p75": { "$ref": "#/$defs/GlucoseMgDl" }, "p90": { "$ref": "#/$defs/GlucoseMgDl" },
+        "p95": { "$ref": "#/$defs/GlucoseMgDl" },
+        "twin_p50": { "$ref": "#/$defs/GlucoseMgDl", "description": "Mechanistic-only forecast, for the physics overlay" }
+      }
+    },
+    "Forecast": {
+      "type": "object", "additionalProperties": false,
+      "required": ["units", "step_min", "horizon_min", "points"],
+      "properties": {
+        "units": { "const": "mg/dL" }, "step_min": { "const": 5 }, "horizon_min": { "const": 120 },
+        "conformal_adjusted": { "type": "boolean" },
+        "points": { "type": "array", "minItems": 24, "maxItems": 24, "items": { "$ref": "#/$defs/QuantilePoint" } }
+      }
+    },
+    "SpikeRisk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["probability_120m", "tier", "calibrated", "definition", "spike_in_progress", "cumulative"],
+      "properties": {
+        "probability_120m": { "$ref": "#/$defs/Probability" },
+        "tier": { "enum": ["low", "elevated", "high"] },
+        "calibrated": { "type": "boolean" },
+        "spike_in_progress": { "type": "boolean" },
+        "definition": {
+          "type": "object", "additionalProperties": false,
+          "required": ["threshold_mg_dl", "min_rise_mg_dl", "rise_window_min", "persistence_min"],
+          "properties": { "threshold_mg_dl": { "type": "number" }, "min_rise_mg_dl": { "type": "number" }, "rise_window_min": { "type": "integer" }, "persistence_min": { "type": "integer" } }
+        },
+        "cumulative": {
+          "type": "array", "minItems": 24, "maxItems": 24,
+          "items": { "type": "object", "additionalProperties": false, "required": ["offset_min", "p"],
+                     "properties": { "offset_min": { "$ref": "#/$defs/OffsetMin" }, "p": { "$ref": "#/$defs/Probability" } } }
+        },
+        "onset_offset_min": {
+          "type": ["object", "null"], "additionalProperties": false, "required": ["p25", "p50", "p75"],
+          "properties": { "p25": { "type": "integer" }, "p50": { "type": "integer" }, "p75": { "type": "integer" } }
+        },
+        "peak_mg_dl": {
+          "type": ["object", "null"], "additionalProperties": false, "required": ["p50", "p90"],
+          "properties": { "p50": { "$ref": "#/$defs/GlucoseMgDl" }, "p90": { "$ref": "#/$defs/GlucoseMgDl" } }
+        },
+        "time_to_peak_min": { "type": ["integer", "null"] }
+      }
+    },
+    "Alert": {
+      "type": "object", "additionalProperties": false, "required": ["state"],
+      "properties": {
+        "state": { "enum": ["none", "watch", "warning"] },
+        "alert_id": { "type": ["string", "null"], "format": "uuid" },
+        "since": { "type": ["string", "null"], "format": "date-time" },
+        "suppressed_until": { "type": ["string", "null"], "format": "date-time" },
+        "message_key": { "type": ["string", "null"] }
+      }
+    },
+    "Driver": {
+      "type": "object", "additionalProperties": false,
+      "required": ["feature_key", "label_key", "direction", "impact_mg_dl"],
+      "properties": {
+        "feature_key": { "type": "string" }, "label_key": { "type": "string" },
+        "direction": { "enum": ["raises", "lowers"] },
+        "impact_mg_dl": { "type": "number", "description": "Signed contribution to the p50 peak" },
+        "source": { "enum": ["twin", "residual", "both"] }
+      }
+    },
+    "ScenarioInput": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "offset_min", "carbs_g"],
+          "properties": { "kind": { "const": "meal" }, "offset_min": { "type": "integer", "minimum": 0, "maximum": 120 }, "carbs_g": { "type": "number", "minimum": 0, "maximum": 250 }, "fat_g": { "type": "number", "minimum": 0 }, "protein_g": { "type": "number", "minimum": 0 }, "fiber_g": { "type": "number", "minimum": 0 }, "glycemic_index": { "enum": ["low", "medium", "high"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "offset_min", "duration_min", "intensity"],
+          "properties": { "kind": { "const": "activity" }, "offset_min": { "type": "integer", "minimum": 0, "maximum": 120 }, "duration_min": { "type": "integer", "minimum": 5, "maximum": 120 }, "intensity": { "enum": ["light", "moderate", "vigorous"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "meal_slot"],
+          "properties": { "kind": { "const": "skip_habitual_meal" }, "meal_slot": { "enum": ["breakfast", "lunch", "dinner", "snack"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "offset_min", "med_class", "taken"],
+          "properties": { "kind": { "const": "medication" }, "offset_min": { "type": "integer", "minimum": 0, "maximum": 120 }, "med_class": { "$ref": "#/$defs/MedClass" }, "taken": { "type": "boolean" } } }
+      ]
+    },
+    "ScenarioResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scenario_id", "inputs", "points", "probability_120m", "delta_probability", "delta_peak_mg_dl"],
+      "properties": {
+        "scenario_id": { "type": "string" },
+        "label": { "type": "string", "maxLength": 60 },
+        "inputs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ScenarioInput" } },
+        "points": {
+          "type": "array", "minItems": 24, "maxItems": 24,
+          "items": { "type": "object", "additionalProperties": false, "required": ["offset_min", "p10", "p50", "p90"],
+                     "properties": { "offset_min": { "$ref": "#/$defs/OffsetMin" }, "p10": { "$ref": "#/$defs/GlucoseMgDl" }, "p50": { "$ref": "#/$defs/GlucoseMgDl" }, "p90": { "$ref": "#/$defs/GlucoseMgDl" } } }
+        },
+        "probability_120m": { "$ref": "#/$defs/Probability" },
+        "delta_probability": { "type": "number", "minimum": -1, "maximum": 1 },
+        "delta_peak_mg_dl": { "type": "number" }
+      }
+    },
+    "TwinState": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "insulin_sensitivity_rel": { "type": "number", "minimum": 0 },
+        "beta_cell_rel": { "type": "number", "minimum": 0 },
+        "carbs_on_board_g": { "type": "number", "minimum": 0 },
+        "insulin_on_board_u": { "type": ["number", "null"], "minimum": 0 },
+        "unannounced_meal": {
+          "type": "object", "additionalProperties": false, "required": ["probability"],
+          "properties": { "probability": { "$ref": "#/$defs/Probability" }, "estimated_carbs_g": { "type": ["number", "null"] }, "estimated_at": { "type": ["string", "null"], "format": "date-time" } }
+        },
+        "last_calibrated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MedClass": { "enum": ["metformin", "sglt2i", "glp1_ra", "dpp4i", "sulfonylurea", "tzd", "basal_insulin", "prandial_insulin", "corticosteroid"] },
+    "EhrContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["age_years", "sex", "bmi", "hba1c_pct", "hba1c_date"],
+      "properties": {
+        "age_years": { "type": "integer", "minimum": 18, "maximum": 110 },
+        "sex": { "enum": ["female", "male", "other", "unknown"] },
+        "bmi": { "type": "number", "minimum": 12, "maximum": 80 },
+        "hba1c_pct": { "type": "number", "minimum": 4, "maximum": 18 },
+        "hba1c_date": { "type": "string", "format": "date" },
+        "t2d_duration_years": { "type": "number", "minimum": 0 },
+        "egfr": { "type": ["number", "null"], "minimum": 0 },
+        "med_classes": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/MedClass" } }
+      }
+    },
+    "Problem": {
+      "type": "object",
+      "required": ["type", "title", "code"],
+      "properties": {
+        "type": { "type": "string", "format": "uri-reference" },
+        "title": { "type": "string" }, "status": { "type": "integer" },
+        "detail": { "type": "string" }, "code": { "type": "string" }
+      }
+    }
+  }
+}

@@ -66,7 +66,7 @@ export function PredictiveInsightsPanel({
   
   // Sort drivers by highest importance first
   const sortedDrivers = useMemo(() => {
-    return [...drivers].sort((a, b) => b.importance - a.importance);
+    return [...drivers].sort((a, b) => Math.abs(b.impact_mg_dl) - Math.abs(a.impact_mg_dl));
   }, [drivers]);
 
   const isSpike = predictedEvent === 'hyperglycemia_spike';
@@ -78,7 +78,7 @@ export function PredictiveInsightsPanel({
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center text-slate-800">
             <BrainCircuit className="w-5 h-5 mr-2 text-indigo-500" />
-            AI Explainability
+            How the forecast is built
           </CardTitle>
           <Badge 
             variant={confidencePercent > 80 ? "destructive" : "secondary"}
@@ -88,7 +88,7 @@ export function PredictiveInsightsPanel({
           </Badge>
         </div>
         <CardDescription className="text-slate-600 mt-2">
-          Primary factors contributing to the forecasted glucose trend.
+          Supported component decomposition of the hybrid model.
         </CardDescription>
       </CardHeader>
 
@@ -128,9 +128,9 @@ export function PredictiveInsightsPanel({
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-slate-500 font-normal">
                           {meta.category}
                         </Badge>
-                        {driver.raw_value !== undefined && (
-                          <span className="text-xs text-slate-500 font-mono">
-                            val: {driver.raw_value}
+                        {driver.source && (
+                          <span className="text-xs text-slate-500 font-mono capitalize">
+                            source: {driver.source}
                           </span>
                         )}
                       </div>
@@ -140,18 +140,18 @@ export function PredictiveInsightsPanel({
                   {/* Right: Direction & Weight */}
                   <div className="flex flex-col items-end gap-1">
                     <div className={`flex items-center text-xs font-semibold ${directionColor}`}>
-                      {driver.direction === 'raises' ? 'Raises' : 'Lowers'} Glucose
+                      {driver.direction === 'raises' ? 'Positive' : 'Negative'} contribution
                       <DirectionIcon className="w-3 h-3 ml-1" />
                     </div>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      Weight: {(driver.importance * 100).toFixed(1)}%
+                      Impact: {Math.abs(driver.impact_mg_dl).toFixed(1)} mg/dL
                     </span>
                   </div>
                 </div>
 
                 {/* Importance Bar */}
                 <Progress 
-                  value={driver.importance * 100} 
+                  value={Math.min((Math.abs(driver.impact_mg_dl) / 50) * 100, 100)} 
                   className="h-1.5 mt-1"
                   indicatorClassName={isExacerbating ? 'bg-red-400' : 'bg-green-400'}
                 />

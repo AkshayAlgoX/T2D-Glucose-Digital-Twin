@@ -2,6 +2,8 @@ export interface TelemetryDataPoint {
   timestamp: string;
   historicalGlucose: number | null;
   forecastGlucose: number | null;
+  ukfBaseline?: number | null;
+  learnedCorrection?: number | null;
   quantileLower: number | null;
   quantileUpper: number | null;
   isSpikePredicted?: boolean;
@@ -10,8 +12,8 @@ export interface TelemetryDataPoint {
 export interface MLDriver {
   feature_key: string;
   direction: 'raises' | 'lowers';
-  importance: number;
-  raw_value?: string | number;
+  impact_mg_dl: number;
+  source?: 'twin' | 'residual' | 'both';
 }
 
 export interface ForecastResponse {
