@@ -50,7 +50,11 @@ export default function PatientDashboard() {
         </div>
         <div>
            <div className="text-ink-2 mb-1">Model Info</div>
-           <div>not available</div>
+           <div className="text-xs space-y-1">
+             <div><span className="text-ink-3">Intended Use:</span> <span className="font-mono">{forecast?.intended_use || '--'}</span></div>
+             <div><span className="text-ink-3">Conformal:</span> {forecast?.forecast?.conformal_adjusted ? 'Yes' : 'No'}</div>
+             <div><span className="text-ink-3">Risk Calibrated:</span> {forecast?.spike_risk?.calibrated ? 'Yes' : 'No'}</div>
+           </div>
         </div>
       </aside>
 

@@ -16,7 +16,7 @@ export function RiskPanel({ forecast }: any) {
     alertDisplay = 'Spike in progress — new alerts resume after 30 min below 160 mg/dL';
   } else if (forecast?.alert?.state === 'watch' || forecast?.alert?.state === 'warning') {
     alertState = forecast.alert.state;
-    alertDisplay = 'steady amber banner'; // As requested for UI testing state
+    alertDisplay = forecast.alert.message_key || `${forecast.alert.state} alert`;
   }
 
   // Waterfall

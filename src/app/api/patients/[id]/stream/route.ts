@@ -8,7 +8,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: patientId } = await params;
-  const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8001';
+  const backendUrl = process.env.BACKEND_URL;
+  const token = process.env.PR_TFT_SERVICE_TOKEN;
+
+  if (!backendUrl) {
+    return new Response('BACKEND_URL environment variable is missing.', { status: 500 });
+  }
   
   const searchParams = request.nextUrl.searchParams;
   const asOf = searchParams.get('as_of');
@@ -20,10 +25,13 @@ export async function GET(
   }
 
   try {
-    const headers: HeadersInit = { 'Accept': 'text/event-stream' };
+    const headers: Record<string, string> = { 'Accept': 'text/event-stream' };
     const lastEventId = request.headers.get('Last-Event-ID');
     if (lastEventId) {
       headers['Last-Event-ID'] = lastEventId;
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     const backendResponse = await fetch(url, { headers, signal: request.signal });
@@ -54,7 +62,6 @@ export async function GET(
               if (line.startsWith('data: ')) {
                 currentEventData += line.slice(6);
               } else if (line.trim() === '' && currentEventData) {
-                // We have a full event
                 try {
                   const payload = JSON.parse(currentEventData);
                   if (validateStreamEvent(payload)) {
