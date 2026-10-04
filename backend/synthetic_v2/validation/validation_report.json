@@ -1,0 +1,399 @@
+{
+  "tool": "validation_gates.py",
+  "blueprint_section": "5. Validating the synthetic data",
+  "generated_at": "2026-09-30T09:55:28.628616+00:00",
+  "runtime_s": 114.45,
+  "overall_status": "FAIL",
+  "environment": {
+    "python": "3.12.3",
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "scikit_learn": "1.9.1",
+    "xgboost": "3.4.1"
+  },
+  "inputs": {
+    "telemetry": {
+      "path": "synthetic_v2_300/patient_cgm_telemetry.csv",
+      "sha256": "d4585ae39009da43d95f8560409fc1ede5e2e3eeb57eee4fd6519df4c3e3544f",
+      "rows_read": 1209600,
+      "rows_used": 1199071,
+      "patients": 300,
+      "unparseable_timestamps": 0,
+      "missing_glucose": 10529,
+      "implausible_glucose": 0,
+      "duplicate_timestamps_averaged": 0
+    },
+    "ehr": {
+      "path": "synthetic_v2_300/patients_ehr.csv",
+      "sha256": "c9c3d3d3e4d8b0dc77732715cb4f8d90e48920162a4538103377cb4f68ae8254",
+      "patients": 300
+    },
+    "meals": {
+      "telemetry_column": "meal_event",
+      "rows": 16740
+    }
+  },
+  "config": {
+    "id_col": "patient_id",
+    "time_col": "timestamp",
+    "glucose_col": "glucose_level",
+    "hba1c_col": "hba1c",
+    "group_col": "diabetes_status",
+    "plausible_mg_dl": [
+      20.0,
+      600.0
+    ],
+    "ci_level": 0.9,
+    "n_boot": 2000,
+    "seed": 20260930,
+    "min_patients": 10,
+    "min_days": 14.0,
+    "min_coverage": 0.7,
+    "max_interp_gap_min": 15.0,
+    "adag_groups": [],
+    "adag_bias_tolerance_mg_dl": 10.0,
+    "adag_slope_rel_tolerance": 0.2,
+    "min_hba1c_sd": 0.5,
+    "residual_sd_band_mg_dl": [
+      10.0,
+      18.0
+    ],
+    "glycation_gap_sd_mg_dl": 12.0,
+    "outlier_sd_multiple": 3.0,
+    "max_outlier_fraction": 0.05,
+    "cv_groups": [
+      "Type 2"
+    ],
+    "cv_median_band_pct": [
+      20.0,
+      30.0
+    ],
+    "cv_patient_band_pct": [
+      15.0,
+      40.0
+    ],
+    "peak_band_min": [
+      60.0,
+      90.0
+    ],
+    "peak_horizon_min": 180.0,
+    "baseline_window_min": 15.0,
+    "meal_merge_min": 30.0,
+    "meal_isolation_before_min": 120.0,
+    "min_meal_rise_mg_dl": 15.0,
+    "min_window_coverage": 0.8,
+    "min_meals": 30,
+    "detect_min_rise_mg_dl": 30.0,
+    "detect_lookback_min": 180.0,
+    "detect_hysteresis_mg_dl": 5.0,
+    "max_onset_lag_min": 30.0,
+    "window_hours": 6.0,
+    "auroc_max": 0.65,
+    "n_folds": 5,
+    "power_noise_sd_mg_dl": 5.0,
+    "power_min_auroc": 0.8,
+    "null_tolerance": 0.1,
+    "harmonize_device": false,
+    "discriminator_groups": [],
+    "n_jobs": null
+  },
+  "gates": [
+    {
+      "gate_id": "GATE 1",
+      "title": "EHR consistency",
+      "status": "PASS",
+      "notes": [
+        "ADAG checks use all patients (300); CV checks use group 'Type 2' (63)."
+      ],
+      "checks": [
+        {
+          "check_id": "G1.0",
+          "title": "Data sufficiency",
+          "status": "INFO",
+          "message": "300 of 300 patients with telemetry are eligible (>= 14 days, >= 70% of readings, HbA1c on file).",
+          "estimate": null,
+          "ci": null,
+          "acceptance": "",
+          "n": 300,
+          "details": {
+            "excluded": [],
+            "ehr_without_telemetry": []
+          }
+        },
+        {
+          "check_id": "G1.1",
+          "title": "ADAG bias: simulated mean glucose vs. HbA1c target",
+          "status": "PASS",
+          "message": "Mean residual +0.7 mg/dL (90% CI -0.4 to +1.9) across 300 patients.",
+          "estimate": 0.7487549956470401,
+          "ci": [
+            -0.44819022309490286,
+            1.945700214388983
+          ],
+          "acceptance": "90% CI of mean(CGM mean - ADAG target) within +/-10 mg/dL",
+          "n": 300,
+          "details": {
+            "p_value_vs_zero": 0.3028386840146931
+          }
+        },
+        {
+          "check_id": "G1.2",
+          "title": "ADAG slope: mean glucose per HbA1c point",
+          "status": "PASS",
+          "message": "Slope 28.3 mg/dL per HbA1c point (90% CI 26.6-30.1); intercept -43.8 mg/dL; r = 0.84.",
+          "estimate": 28.34184492536325,
+          "ci": [
+            26.5767652609891,
+            30.106924589737403
+          ],
+          "acceptance": "90% CI of OLS slope within 23.0-34.4 mg/dL per point (ADAG 28.7 +/-20%)",
+          "n": 300,
+          "details": {
+            "intercept_mg_dl": -43.826072176483365,
+            "intercept_stderr": 6.3890188670054755,
+            "r": 0.837839864533728,
+            "hba1c_sd": 0.6802762734725659
+          }
+        },
+        {
+          "check_id": "G1.3",
+          "title": "ADAG residual scatter (glycation gap)",
+          "status": "PASS",
+          "message": "Residual SD 12.6 mg/dL (90% CI 11.8-13.5). Real cohorts scatter around the ADAG line, so near-zero scatter is as unrealistic as too much.",
+          "estimate": 12.564926943735395,
+          "ci": [
+            11.77732925630324,
+            13.475798485511325
+          ],
+          "acceptance": "90% CI of residual SD within 10-18 mg/dL",
+          "n": 300,
+          "details": {
+            "shapiro_p_value": 0.30186058529208837
+          }
+        },
+        {
+          "check_id": "G1.4",
+          "title": "Per-patient ADAG outliers",
+          "status": "PASS",
+          "message": "0 of 300 patients (0%) sit more than 36 mg/dL from their ADAG target.",
+          "estimate": 0.0,
+          "ci": null,
+          "acceptance": "<= 5% of patients beyond 3 x 12 mg/dL",
+          "n": 300,
+          "details": {
+            "flagged": []
+          }
+        },
+        {
+          "check_id": "G1.5",
+          "title": "Glycemic variability: cohort median CV",
+          "status": "PASS",
+          "message": "Median CV 25.1% (90% CI 22.9-27.1) across 63 patients in group 'Type 2'.",
+          "estimate": 25.068820449810318,
+          "ci": [
+            22.944035083323044,
+            27.081305839783827
+          ],
+          "acceptance": "90% CI of median CV within 20-30%",
+          "n": 63,
+          "details": {
+            "cv_quartiles_pct": {
+              "0.25": 21.04,
+              "0.5": 25.07,
+              "0.75": 28.94
+            }
+          }
+        },
+        {
+          "check_id": "G1.6",
+          "title": "Glycemic variability: every patient's CV",
+          "status": "PASS",
+          "message": "63 of 63 patients have CV inside 15-40%.",
+          "estimate": 1.0,
+          "ci": null,
+          "acceptance": "every patient's CV within 15-40%",
+          "n": 63,
+          "details": {
+            "outside_band": []
+          }
+        },
+        {
+          "check_id": "G1.7",
+          "title": "GMI vs. HbA1c discordance",
+          "status": "INFO",
+          "message": "|GMI - HbA1c| >= 0.5 points in 32% of patients and >= 1.0 in 3%. Compare with the published discordance rate before making this a gate.",
+          "estimate": 0.3233333333333333,
+          "ci": null,
+          "acceptance": "",
+          "n": 300,
+          "details": {
+            "share_ge_0_5": 0.3233333333333333,
+            "share_ge_1_0": 0.02666666666666667
+          }
+        }
+      ]
+    },
+    {
+      "gate_id": "GATE 2",
+      "title": "Population realism: postprandial peak timing",
+      "status": "PASS",
+      "notes": [],
+      "checks": [
+        {
+          "check_id": "G2.1",
+          "title": "Postprandial time-to-peak (logged meals)",
+          "status": "PASS",
+          "message": "Median time from meal start to peak 75 min (90% CI 70-75) over 8701 isolated meals in 300 patients.",
+          "estimate": 75.0,
+          "ci": [
+            70.0,
+            75.0
+          ],
+          "acceptance": "90% CI of the median within 60-90 min",
+          "n": 8701,
+          "details": {
+            "mode": "logged_meal",
+            "max_onset_lag_min": null
+          }
+        },
+        {
+          "check_id": "G2.2",
+          "title": "Per-patient median time-to-peak",
+          "status": "INFO",
+          "message": "88% of 300 patients have a median inside 60-90 min (per-patient medians: 10th-90th percentile 60-90 min).",
+          "estimate": 0.88,
+          "ci": null,
+          "acceptance": "",
+          "n": 300,
+          "details": {
+            "quantiles_min": {
+              "0.1": 60.0,
+              "0.25": 65.0,
+              "0.5": 70.0,
+              "0.75": 80.0,
+              "0.9": 90.0
+            }
+          }
+        },
+        {
+          "check_id": "G2.3",
+          "title": "Postprandial rise",
+          "status": "INFO",
+          "message": "Median rise 73 mg/dL (IQR 51-100).",
+          "estimate": 73.0,
+          "ci": null,
+          "acceptance": "",
+          "n": 8701,
+          "details": {}
+        },
+        {
+          "check_id": "G2.4",
+          "title": "Event accounting",
+          "status": "INFO",
+          "message": "8701 of 15917 events usable; excluded: next_meal_within_horizon 3730, prior_meal_within_isolation 2845, non_responsive 425, insufficient_cgm 157, peak_at_horizon 59.",
+          "estimate": null,
+          "ci": null,
+          "acceptance": "",
+          "n": 15917,
+          "details": {
+            "status_counts": {
+              "ok": 8701,
+              "next_meal_within_horizon": 3730,
+              "prior_meal_within_isolation": 2845,
+              "non_responsive": 425,
+              "insufficient_cgm": 157,
+              "peak_at_horizon": 59
+            }
+          }
+        }
+      ]
+    },
+    {
+      "gate_id": "GATE 3",
+      "title": "Indistinguishability from real CGM",
+      "status": "FAIL",
+      "notes": [
+        "No --real data, so the comparison used an HbA1c-matched mock-real cohort from an independent generator. This verifies the pipeline end to end; it is not evidence of realism. Rerun with CGMacros or ShanghaiT2DM before relying on this gate."
+      ],
+      "checks": [
+        {
+          "check_id": "G3.1",
+          "title": "Discriminator: synthetic vs. mock-real windows",
+          "status": "FAIL",
+          "message": "AUROC 0.932 (90% CI 0.928-0.936) on 16719 synthetic vs. 16443 mock_real windows from 300 and 300 patients. Top tell: jerk_sd.",
+          "estimate": 0.9320309633698008,
+          "ci": [
+            0.9283679358498572,
+            0.9357564893075543
+          ],
+          "acceptance": "90% CI of AUROC <= 0.65",
+          "n": 33162,
+          "details": {
+            "evidence": "mock",
+            "grid_min": 5,
+            "window_hours": 6.0,
+            "n_features": 40,
+            "fold_aurocs": [
+              0.9401,
+              0.9343,
+              0.9272,
+              0.9284,
+              0.9306
+            ],
+            "top_tells_mean_abs_shap": {
+              "jerk_sd": 0.8878,
+              "roc_max_fall": 0.7662,
+              "roc_mean_abs": 0.5195,
+              "mage_approx": 0.3131,
+              "kurtosis": 0.2972,
+              "acf_120m": 0.2889,
+              "cv": 0.2479,
+              "roc_max_rise": 0.2265,
+              "acf_15m": 0.2209,
+              "psd_slow": 0.1128
+            }
+          }
+        },
+        {
+          "check_id": "G3.2",
+          "title": "Null control: two random halves of the synthetic cohort",
+          "status": "INFO",
+          "message": "AUROC 0.507 (90% CI 0.481-0.533). Valid: no departure from 0.5 beyond +/-0.1.",
+          "estimate": 0.5071482920834981,
+          "ci": [
+            0.4811163320411346,
+            0.5328061236990204
+          ],
+          "acceptance": "CI not entirely outside 0.4-0.6",
+          "n": 16719,
+          "details": {
+            "valid": true
+          }
+        },
+        {
+          "check_id": "G3.3",
+          "title": "Power control: +5 mg/dL sensor noise on one half",
+          "status": "INFO",
+          "message": "AUROC 1.000 (90% CI 1.000-1.000). Valid: the discriminator detects a known distortion.",
+          "estimate": 1.0,
+          "ci": [
+            1.0,
+            1.0
+          ],
+          "acceptance": "CI low >= 0.8",
+          "n": 16719,
+          "details": {
+            "valid": true
+          }
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    "gate1_patients.csv",
+    "gate2_meal_responses.csv",
+    "gate3_windows.csv",
+    "gate3_feature_importance.csv"
+  ]
+}
