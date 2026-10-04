@@ -89,3 +89,15 @@ describe('API Contract Validation Gates', () => {
     expect(isValidEnvelope && isPayloadValid).toBe(true);
   });
 });
+
+  it('rejects truncated SSE chunks', () => {
+    const truncatedPayload = {
+      event_id: '123',
+      subject_id: '123',
+      emitted_at: '2026-09-30T15:14:28Z',
+      event: 'forecast.updated',
+      // missing payload
+    };
+    const isValidEnvelope = validateStreamEvent(truncatedPayload);
+    expect(isValidEnvelope).toBe(false);
+  });
