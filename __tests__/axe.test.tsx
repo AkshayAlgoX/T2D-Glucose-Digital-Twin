@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import PatientDashboard from '../src/app/patients/[id]/page';
 import CohortPage from '../src/app/cohort/page';
@@ -41,8 +41,12 @@ describe('Axe accessibility checks', () => {
   });
 
   it('has zero violations on CohortPage', async () => {
-    const { container } = render(<CohortPage />);
-    const results = await axe(container);
+    let container: HTMLElement;
+    await act(async () => {
+      const result = render(<CohortPage />);
+      container = result.container;
+    });
+    const results = await axe(container!);
     expect(results).toHaveNoViolations();
   });
 });

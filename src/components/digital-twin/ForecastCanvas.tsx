@@ -28,7 +28,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: any) {
   const end = now + 2 * 60 * 60 * 1000;   // +2 hours
 
   const historical = cache?.cgm || [];
-  const forecastPoints = forecast?.scenarios?.[0]?.points || forecast?.points || [];
+  const forecastPoints = forecast?.scenarios?.[0]?.points || forecast?.forecast?.points || [];
   
   const mappedForecast = forecastPoints.map((p: any) => ({
     t: now + p.offset_min * 60 * 1000,
