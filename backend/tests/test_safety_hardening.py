@@ -115,3 +115,13 @@ def test_stream_include_options_b1_b5(client, subjects):
         assert "twin_state" in payload
         assert "ehr_context" in payload
         assert "twin_p50" in payload["forecast"]["points"][0]
+
+    # test comma-separated include parameter string
+    with client.stream("GET", f"/v1/subjects/{sid}/stream?speed=0&max_events=1&include=drivers,ehr_context,twin_overlay") as r:
+        text = "".join(r.iter_text())
+        events = [S.json.loads(line[len("data: "):]) for line in text.splitlines() if line.startswith("data: ")]
+        payload = events[0]["payload"]
+        assert "drivers" in payload
+        assert "ehr_context" in payload
+        assert "twin_state" not in payload
+        assert "twin_p50" in payload["forecast"]["points"][0]
