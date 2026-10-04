@@ -664,14 +664,20 @@ def _carbs_on_board(ps: PatientSeries) -> np.ndarray:
     return out
 
 
-TWIN_KINDS = ("linear", "ukf")
+TWIN_KINDS = ("linear", "ukf", "persistence", "generic")
 
 
 def past_feature_names(cfg: TrainConfig) -> tuple[str, ...]:
-    """PAST_FEATURES, plus the UKF latent states when the UKF twin is used."""
+    """PAST_FEATURES, plus the UKF or ablation state features when state twins are used."""
     if cfg.twin == "ukf":
         from ukf_twin import UKF_PAST_FEATURES
         return PAST_FEATURES + UKF_PAST_FEATURES
+    if cfg.twin == "persistence":
+        from ablation_twins import PERSISTENCE_PAST_FEATURES
+        return PAST_FEATURES + PERSISTENCE_PAST_FEATURES
+    if cfg.twin == "generic":
+        from ablation_twins import GENERIC_PAST_FEATURES
+        return PAST_FEATURES + GENERIC_PAST_FEATURES
     if cfg.twin == "linear":
         return PAST_FEATURES
     raise ValueError(f"twin must be one of {TWIN_KINDS}, got {cfg.twin!r}")
@@ -682,6 +688,12 @@ def make_twin(cfg: TrainConfig):
     if cfg.twin == "ukf":
         from ukf_twin import UKFTwinPrior
         return UKFTwinPrior(mode=cfg.twin_mode)
+    if cfg.twin == "persistence":
+        from ablation_twins import PersistenceTwinPrior
+        return PersistenceTwinPrior(mode=cfg.twin_mode)
+    if cfg.twin == "generic":
+        from ablation_twins import GenericCausalTwinPrior
+        return GenericCausalTwinPrior(mode=cfg.twin_mode)
     if cfg.twin == "linear":
         return TwinPrior()
     raise ValueError(f"twin must be one of {TWIN_KINDS}, got {cfg.twin!r}")

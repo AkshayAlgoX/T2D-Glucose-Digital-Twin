@@ -889,9 +889,15 @@ class AlertMachine:
                 self.state = "none"
                 self.since = self.alert_id = None
 
+        def _iso(d: dt.datetime | None) -> str | None:
+            if not d:
+                return None
+            s = d.isoformat()
+            return s[:-6] + "Z" if s.endswith("+00:00") else (s if s.endswith("Z") else s + "Z")
+
         alert = {"state": self.state, "alert_id": self.alert_id,
-                 "since": self.since.isoformat() + "Z" if self.since else None,
-                 "suppressed_until": self.suppressed_until.isoformat() + "Z" if self.suppressed_until and self.state != "none" else None,
+                 "since": _iso(self.since),
+                 "suppressed_until": _iso(self.suppressed_until) if self.state != "none" else None,
                  "message_key": f"alert.spike.{self.state}" if self.state != "none" else None}
         return alert, event
 
