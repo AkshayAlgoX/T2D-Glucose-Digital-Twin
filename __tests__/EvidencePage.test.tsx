@@ -18,9 +18,9 @@ const VALID_MANIFEST = {
 
 const VALID_REPORT = {
   provenance: {
-    run_manifest_sha256: 'abc123hash',
-    checkpoint_sha256: 'def456hash',
-    data_sha256: 'ghi789hash'
+    run_manifest_sha256: 'a'.repeat(64),
+    checkpoint_sha256: 'b'.repeat(64),
+    data_sha256: 'c'.repeat(64)
   },
   populations: {
     primary: {
@@ -107,9 +107,9 @@ describe('EvidencePage', () => {
     expect(screen.queryByText('Invalid or incomplete evaluation artifacts')).not.toBeInTheDocument();
     
     expect(screen.getByText('test-run-123')).toBeInTheDocument();
-    expect(screen.getByText('abc123hash')).toBeInTheDocument();
-    expect(screen.getByText('def456hash')).toBeInTheDocument();
-    expect(screen.getByText('ghi789hash')).toBeInTheDocument();
+    expect(screen.getByText('a'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByText('b'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByText('c'.repeat(64))).toBeInTheDocument();
     expect(screen.getByText('12.345')).toBeInTheDocument();
     expect(screen.getByText('18.765')).toBeInTheDocument();
     expect(screen.getByText('0.823')).toBeInTheDocument();

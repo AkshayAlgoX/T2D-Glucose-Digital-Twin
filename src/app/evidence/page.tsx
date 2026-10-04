@@ -19,9 +19,9 @@ const MetricSchema = z.object({
 
 const ReportSchema = z.object({
   provenance: z.object({
-    run_manifest_sha256: z.string(),
-    checkpoint_sha256: z.string(),
-    data_sha256: z.string()
+    run_manifest_sha256: z.string().length(64).regex(/^[a-f0-9]{64}$/i),
+    checkpoint_sha256: z.string().length(64).regex(/^[a-f0-9]{64}$/i),
+    data_sha256: z.string().length(64).regex(/^[a-f0-9]{64}$/i)
   }).passthrough(),
   populations: z.object({
     primary: z.object({
