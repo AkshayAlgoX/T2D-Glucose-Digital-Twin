@@ -73,18 +73,15 @@ LOG = logging.getLogger("serve_pr_tft")
 
 SERVICE_VERSION = "0.1.0"
 CONTRACT_VERSION = "1.0.0"
-ALERT_POLICY_VERSION = "ap-1.1-service"
+ALERT_POLICY_VERSION = "ap-1.0"
 SIMULATOR_VERSION = "generate_health_data_v2"
 SUBJECT_NAMESPACE = uuid.UUID("6f0c3a52-9d1e-4c57-8a2b-3e41d7b9c0aa")
 INTENDED_USE = "research_only_not_for_clinical_decisions"
 
-# Alert policy (Service logic: differs from evaluator in evaluate_run.py)
-# - Evaluator uses a single threshold with a 120-min cooldown and a causal filter.
-# - Service uses a tiered approach (watch/warning/clear) with a 60-min warning cooldown,
-#   and checks p50 >= 180 without the causal filter.
-# Policy version bumped to ap-1.1-service to prevent presenting evaluator metrics as service metrics.
+# Alert policy (Locked Evaluated Policy from model_selection_rule.json)
+# - Evaluator uses independent thresholds with a 120-min cooldown and a causal filter.
 WATCH_P, WARNING_P, CLEAR_P = 0.35, 0.60, 0.25
-SUPPRESS_MIN = 60
+SUPPRESS_MIN = 120
 # Exercise uptake for activity scenarios: U = ALPHA_EX * dHR * G * V_G (generator constants).
 ALPHA_EX = 6.7e-5
 INTENSITY_DHR = {"light": 15.0, "moderate": 30.0, "vigorous": 50.0}
@@ -543,7 +540,8 @@ class ServiceContext:
             out = self.module.model(batch)
         q = out["quantiles"][0].numpy()
         calibrated_q = self.calib.apply_interval(q[None])[0]
-        calibrated_q = np.sort(calibrated_q, axis=-1)
+        if not (np.diff(calibrated_q, axis=-1) >= -1e-6).all():
+            raise RuntimeError("Calibrated quantiles crossed and failed monotonic validation")
         return {"q": calibrated_q, "q_raw": q,
                 "p_bin": torch.sigmoid(out["hazard_logits"][0]).numpy(), "peak": out["peak"][0].numpy()}
 
@@ -859,38 +857,41 @@ def twin_card(ctx: ServiceContext, pc: PatientCache) -> dict[str, Any]:
 
 @dataclasses.dataclass
 class AlertMachine:
-    """Blueprint 8.5: watch >= 0.35, warning >= 0.60 with p50 >= 180, clear below 0.25,
-    at most one warning per 60 min."""
+    """Locked Policy (model_selection_rule.json): alert when at risk (causal flag) and the trigger holds; 
+    at most one alert per 120 min. Evaluated statelessly without UI hysteresis."""
 
     state: str = "none"
     since: dt.datetime | None = None
     alert_id: str | None = None
     suppressed_until: dt.datetime | None = None
 
-    def step(self, p: float, p50_max: float, subject: uuid.UUID, now: dt.datetime) -> tuple[dict[str, Any], str | None]:
-        previous = self.state
-        wants_warning = p >= WARNING_P and p50_max >= T.SPIKE_LEVEL
-        if wants_warning and (self.suppressed_until is None or now >= self.suppressed_until):
+    def step(self, p: float, in_progress: bool, subject: uuid.UUID, now: dt.datetime) -> tuple[dict[str, Any], str | None]:
+        at_risk = not in_progress
+        target = "none"
+        if p >= WARNING_P and at_risk:
             target = "warning"
-        elif p >= WATCH_P or (previous != "none" and p >= CLEAR_P):
-            target = "watch" if previous != "warning" or not wants_warning else "warning"
-        else:
-            target = "none"
-        if target != previous:
-            self.state = target
-            if target == "none":
-                self.since = self.alert_id = None
-            else:
+        elif p >= WATCH_P and at_risk:
+            target = "watch"
+            
+        event = None
+        if target != "none":
+            if self.suppressed_until is None or now >= self.suppressed_until:
+                self.state = target
                 self.since = now
                 self.alert_id = str(uuid.uuid5(subject, f"{target}-{now.isoformat()}"))
-            if target == "warning":
-                self.suppressed_until = now + dt.timedelta(minutes=SUPPRESS_MIN)
-        event = None
-        if target != previous:
-            event = "alert.cleared" if target == "none" else "alert.raised"
+                self.suppressed_until = now + dt.timedelta(minutes=120)
+                event = "alert.raised"
+            elif target != self.state:
+                self.state = target
+        else:
+            if self.state != "none":
+                event = "alert.cleared"
+                self.state = "none"
+                self.since = self.alert_id = None
+
         alert = {"state": self.state, "alert_id": self.alert_id,
-                 "since": self.since.isoformat() if self.since else None,
-                 "suppressed_until": self.suppressed_until.isoformat() if self.suppressed_until and self.state != "none" else None,
+                 "since": self.since.isoformat() + "Z" if self.since else None,
+                 "suppressed_until": self.suppressed_until.isoformat() + "Z" if self.suppressed_until and self.state != "none" else None,
                  "message_key": f"alert.spike.{self.state}" if self.state != "none" else None}
         return alert, event
 
@@ -984,8 +985,8 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
                 body = await run_in_threadpool(build_forecast, c, req, idx)
                 stamp = dt.datetime.fromisoformat(body["as_of"])
                 if body["spike_risk"] is not None:
-                    p50_max = max(pt["p50"] for pt in body["forecast"]["points"])
-                    body["alert"], alert_event = machine.step(body["spike_risk"]["probability_120m"], p50_max,
+                    in_progress = body["spike_risk"]["spike_in_progress"]
+                    body["alert"], alert_event = machine.step(body["spike_risk"]["probability_120m"], in_progress,
                                                               subject_id, stamp)
                 else:
                     alert_event = None
