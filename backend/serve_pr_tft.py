@@ -971,10 +971,20 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     @app.get("/v1/subjects/{subject_id}/stream", dependencies=[Depends(auth)])
     async def stream(subject_id: uuid.UUID, as_of: Optional[dt.datetime] = None, speed: float = 300.0,
                      max_events: int = 0, last_event_id: Optional[str] = Header(default=None),
-                     include: list[IncludeKey] = Query(default=["drivers", "twin_state"]),
+                     include: list[str] = Query(default=["drivers", "twin_state"]),
                      c: ServiceContext = Depends(ctx)):
         """Replay: one forecast per 5-min reading from as_of, paced at `speed` x real time
         (300 -> one reading per second). Resumes after Last-Event-ID when given."""
+        parsed_include: list[IncludeKey] = []
+        for item in include:
+          for part in item.split(","):
+            part = part.strip()
+            if part:
+              if part not in ("drivers", "scenarios", "twin_state", "ehr_context", "twin_overlay"):
+                raise ServiceError(422, "REQUEST_INVALID", "Invalid include key", f"Unknown include key: {part}")
+              if part not in parsed_include:
+                parsed_include.append(part)  # type: ignore
+
         pc = c.patient(subject_id)
         t = c.anchor_index(pc, as_of) if as_of else T.PAST_STEPS - 1
         if last_event_id:
@@ -987,7 +997,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
         async def events():
             machine, sent, quality = AlertMachine(), 0, None
             for idx in range(t, pc.ps.n):
-                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=include)
+                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=parsed_include)
                 body = await run_in_threadpool(build_forecast, c, req, idx)
                 stamp = dt.datetime.fromisoformat(body["as_of"])
                 if body["spike_risk"] is not None:
