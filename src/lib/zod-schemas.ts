@@ -19,7 +19,7 @@ export const ModelInfoSchema = z.object({
   name: z.string(),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   run_id: z.string(),
-  trained_at: z.string().datetime().optional(),
+  trained_at: z.string().datetime({ offset: true }).optional(),
   simulator_version: z.string().optional(),
   calibration_id: z.string().optional(),
   alert_policy_version: z.string(),
@@ -29,7 +29,7 @@ export const ModelInfoSchema = z.object({
 export const DataQualitySchema = z.object({
   status: z.enum(['ok', 'degraded', 'insufficient']),
   cgm_coverage_6h_pct: z.number().min(0).max(100),
-  last_cgm_at: z.string().datetime(),
+  last_cgm_at: z.string().datetime({ offset: true }),
   staleness_min: z.number().int().min(0),
   sensor_day: z.number().int().min(0).max(15).optional(),
   in_warmup: z.boolean().optional(),
@@ -43,14 +43,14 @@ export const DataQualitySchema = z.object({
 export const CurrentGlucoseSchema = z.object({
   value_mg_dl: GlucoseMgDlSchema.nullable(),
   flag: z.enum(['in_range', 'LOW', 'HIGH']),
-  measured_at: z.string().datetime(),
+  measured_at: z.string().datetime({ offset: true }),
   trend_mg_dl_per_min: z.number().nullable().optional(),
   trend_arrow: z.enum(['rising_fast', 'rising', 'rising_slow', 'flat', 'falling_slow', 'falling', 'falling_fast', 'unknown'])
 }).strict();
 
 export const QuantilePointSchema = z.object({
   offset_min: OffsetMinSchema,
-  t: z.string().datetime(),
+  t: z.string().datetime({ offset: true }),
   p05: GlucoseMgDlSchema,
   p10: GlucoseMgDlSchema,
   p25: GlucoseMgDlSchema,
@@ -102,8 +102,8 @@ export const SpikeRiskSchema = z.object({
 export const AlertSchema = z.object({
   state: z.enum(['none', 'watch', 'warning']),
   alert_id: z.string().uuid().nullable().optional(),
-  since: z.string().datetime().nullable().optional(),
-  suppressed_until: z.string().datetime().nullable().optional(),
+  since: z.string().datetime({ offset: true }).nullable().optional(),
+  suppressed_until: z.string().datetime({ offset: true }).nullable().optional(),
   message_key: z.string().nullable().optional()
 }).strict();
 
@@ -123,9 +123,9 @@ export const TwinStateSchema = z.object({
   unannounced_meal: z.object({
     probability: ProbabilitySchema,
     estimated_carbs_g: z.number().nullable().optional(),
-    estimated_at: z.string().datetime().nullable().optional()
+    estimated_at: z.string().datetime({ offset: true }).nullable().optional()
   }).strict().optional(),
-  last_calibrated_at: z.string().datetime().optional()
+  last_calibrated_at: z.string().datetime({ offset: true }).optional()
 }).strict();
 
 export const MedClassSchema = z.enum([
@@ -155,8 +155,8 @@ export const ProblemSchema = z.object({
 export const ForecastResponseSchema = z.object({
   schema_version: z.literal('1.0.0'),
   request_id: z.string().uuid(),
-  generated_at: z.string().datetime(),
-  as_of: z.string().datetime(),
+  generated_at: z.string().datetime({ offset: true }),
+  as_of: z.string().datetime({ offset: true }),
   subject: SubjectSchema,
   model: ModelInfoSchema,
   data_quality: DataQualitySchema,
@@ -176,7 +176,7 @@ export const StreamEventSchema = z.object({
   event: z.enum(['forecast.updated', 'alert.raised', 'alert.cleared', 'data_quality.changed', 'twin.recalibrated']),
   event_id: z.string(),
   subject_id: z.string().uuid(),
-  emitted_at: z.string().datetime(),
+  emitted_at: z.string().datetime({ offset: true }),
   payload: z.unknown()
 }).strict();
 
@@ -184,7 +184,7 @@ export const ForecastRequestSchema = z.object({
   schema_version: z.literal('1.0.0'),
   request_id: z.string().uuid(),
   subject_id: z.string().uuid(),
-  as_of: z.string().datetime().optional(),
+  as_of: z.string().datetime({ offset: true }).optional(),
   include: z.array(z.enum(['drivers', 'scenarios', 'twin_state', 'ehr_context', 'twin_overlay'])).optional(),
   scenarios: z.array(z.object({
     scenario_id: z.string().regex(/^[a-z0-9_-]{1,32}$/),
@@ -198,7 +198,7 @@ export const TwinCardSchema = z.object({
   schema_version: z.literal('1.0.0'),
   subject_id: z.string().uuid(),
   synthetic: z.literal(true),
-  calibrated_at: z.string().datetime(),
+  calibrated_at: z.string().datetime({ offset: true }),
   calibration_stage: z.enum(['ehr_prior', 'nightly_map', 'adapter_finetuned']),
   parameters: z.array(z.object({
     key: z.enum(['insulin_sensitivity_rel', 'beta_cell_rel', 'first_phase_rel', 'egp_basal_mg_per_min', 't_max_min', 'tau_isf_min', 'dawn_amplitude']),
