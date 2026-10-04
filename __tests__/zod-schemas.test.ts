@@ -65,3 +65,36 @@ describe('Zod Validation', () => {
     })).toThrow();
   });
 });
+
+describe('Zod Datetime Offset Validation', () => {
+  const baseEvent = {
+    event: 'forecast.updated',
+    event_id: '1',
+    subject_id: '123e4567-e89b-12d3-a456-426614174000',
+    payload: {}
+  };
+
+  it('accepts valid Z UTC timestamps', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: '2026-10-04T12:00:00Z' })).not.toThrow();
+  });
+
+  it('accepts valid +00:00 timezone offset', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: '2026-10-04T12:00:00+00:00' })).not.toThrow();
+  });
+
+  it('accepts valid +05:30 timezone offset', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: '2026-10-04T12:00:00+05:30' })).not.toThrow();
+  });
+
+  it('rejects malformed timestamps', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: '2026/10/04 12:00:00' })).toThrow();
+  });
+
+  it('rejects impossible dates', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: '2026-13-40T12:00:00Z' })).toThrow();
+  });
+
+  it('rejects arbitrary strings', () => {
+    expect(() => StreamEventSchema.parse({ ...baseEvent, emitted_at: 'not a timestamp' })).toThrow();
+  });
+});
