@@ -52,7 +52,7 @@ def test_inference_equivalence(run_dir, tmp_path):
         np.testing.assert_array_equal(pc_dyn.past, pc_stat.past)
         
         for as_of in [None, pc_dyn.ps.stamps[100]]:
-            req = ForecastRequest(subject_id=str(sid), as_of=as_of.isoformat() + "Z" if as_of else None, request_id="123")
+            req = ForecastRequest(schema_version="1.0.0", subject_id=str(sid), as_of=as_of.isoformat() + "Z" if as_of else None, request_id="00000000-0000-0000-0000-000000000123")
             res_dyn = build_forecast(ctx_dyn, req)
             res_stat = build_forecast(ctx_stat, req)
             
