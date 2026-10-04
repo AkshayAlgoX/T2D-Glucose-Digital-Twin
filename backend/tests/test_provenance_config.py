@@ -36,8 +36,13 @@ def write_config(tmp_path, mutate) -> str:
 
 def test_committed_manifest_matches_the_locked_dataset(real_data_dir):
     manifest = prov.load_json(BACKEND / "data_manifest.json")
-    got = prov.verify_data(real_data_dir, manifest, include_truth=True)
-    assert set(got) == {"patients_ehr.csv", "patient_cgm_telemetry.csv", "patient_cgm_truth.csv"}
+    has_truth = (real_data_dir / prov.TRUTH_FILE).is_file()
+    got = prov.verify_data(real_data_dir, manifest, include_truth=has_truth)
+    expected_files = {
+        "patients_ehr.csv",
+        "patient_cgm_telemetry.csv",
+    } | ({"patient_cgm_truth.csv"} if has_truth else set())
+    assert set(got) == expected_files
     split = prov.verify_split(BACKEND / "split_293.json", manifest)
     assert {k: len(v) for k, v in split.items()} == {"train": 205, "val": 44, "test": 44}
     assert manifest["active_patients"] == 293 and len(manifest["type1_excluded_pids"]) == 7
