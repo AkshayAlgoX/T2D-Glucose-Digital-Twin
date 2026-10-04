@@ -5,7 +5,7 @@ import numpy as np
 import serve_pr_tft as S
 from test_serve_pr_tft import client, subjects, request_body
 
-def test_quantile_ordering_validation_b2(client):
+def test_quantile_ordering_validation_b2(client, subjects):
     svc = client.app.state.ctx
     orig_apply = svc.calib.apply_interval
     
@@ -22,7 +22,8 @@ def test_quantile_ordering_validation_b2(client):
     svc.calib.apply_interval = apply_interval_mock
     try:
         r = client.post("/v1/forecasts", json=request_body(subjects[0]["subject_id"]))
-        assert r.status_code == 500  # FastAPI converts RuntimeError to 500
+        assert r.status_code == 200
+        assert r.json()["model"]["fallback_used"] == "twin_only"
     finally:
         svc.calib.apply_interval = orig_apply
 
@@ -45,8 +46,8 @@ def test_alert_policy_semantics(client, subjects):
     alert, event = machine.step(0.20, in_progress=False, subject=subject, now=now + dt.timedelta(minutes=5))
     assert alert["state"] == "none" and event == "alert.cleared"
 
-    # Warning threshold
-    now += dt.timedelta(minutes=15)
+    # Warning threshold (advance past 120-min suppression from previous alert)
+    now += dt.timedelta(minutes=125)
     alert, event = machine.step(0.60, in_progress=False, subject=subject, now=now)
     assert alert["state"] == "warning" and event == "alert.raised"
     

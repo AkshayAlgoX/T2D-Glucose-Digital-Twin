@@ -1,0 +1,28 @@
+{
+  "Baseline (num_workers=0, pin_memory=False)": {
+    "num_workers": 0,
+    "pin_memory": false,
+    "n_batches": 20,
+    "elapsed_seconds": 42.877,
+    "throughput_batches_per_sec": 0.466,
+    "seconds_per_batch": 2.144,
+    "mean_loss": 0.31501,
+    "peak_mem_mb": 71.7
+  },
+  "Candidate A (num_workers=0, pin_memory=True)": {
+    "num_workers": 0,
+    "pin_memory": true,
+    "n_batches": 20,
+    "elapsed_seconds": 41.677,
+    "throughput_batches_per_sec": 0.48,
+    "seconds_per_batch": 2.084,
+    "mean_loss": 0.31501,
+    "peak_mem_mb": 71.7
+  },
+  "Candidate B (num_workers=2, pin_memory=True)": {
+    "error": "Operation not permitted"
+  },
+  "Candidate C (num_workers=4, pin_memory=True)": {
+    "error": "Operation not permitted"
+  }
+}
