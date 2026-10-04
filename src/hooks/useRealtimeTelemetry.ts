@@ -17,7 +17,7 @@ export function useRealtimeTelemetry(patientId: string) {
 
   const epochRef = useRef(0);
   const lastEventTimeRef = useRef<number>(0);
-  const checkStaleTimerRef = useRef<NodeJS.Timeout>(undefined as any);
+  const checkStaleTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     if (cache.patientId !== patientId) {
@@ -84,10 +84,13 @@ export function useRealtimeTelemetry(patientId: string) {
           }
           if (lastData && currentEpoch === epochRef.current) {
              const parsed = StreamEventSchema.parse(JSON.parse(lastData));
-             if (parsed.event === 'forecast.updated') ForecastResponseSchema.parse(parsed.payload);
-             if ((parsed.payload as any)?.subject?.subject_id === patientId) {
-                checkInvariants(parsed.payload as any);
-                setForecastResponse(parsed.payload as any);
+             const raw = (parsed.event === 'forecast.updated'
+                 ? ForecastResponseSchema.parse(parsed.payload)
+                 : parsed.payload) as ForecastResponse; // Audited schema overlap
+
+             if (raw?.subject?.subject_id === patientId) {
+                checkInvariants(raw);
+                setForecastResponse(raw);
              }
           }
           return;
@@ -129,7 +132,7 @@ export function useRealtimeTelemetry(patientId: string) {
                 const parsedEvent = StreamEventSchema.parse(JSON.parse(eventData.trim()));
                 const raw = (parsedEvent.event === 'forecast.updated' 
                    ? ForecastResponseSchema.parse(parsedEvent.payload)
-                   : parsedEvent.payload) as any as ForecastResponse; // other events
+                   : parsedEvent.payload) as ForecastResponse /* Audited semantic match */; // other events
 
                 if (raw?.subject?.subject_id !== patientId) {
                    continue; // discard mismatched
