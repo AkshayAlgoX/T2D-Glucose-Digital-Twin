@@ -173,7 +173,7 @@ export function useRealtimeTelemetry(patientId: string) {
                   
                   return newCache;
                 });
-              } catch (err: any) {
+              } catch (err: unknown) {
                  console.error("Stream parse error or invariant failure", err);
                  setError(new Error("contract-invalid"));
                  setIsConnected(false);
@@ -182,14 +182,14 @@ export function useRealtimeTelemetry(patientId: string) {
             }
           }
         }
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if ((err as Error).name === 'AbortError') return;
         if (currentEpoch === epochRef.current) {
-           if (err?.message?.includes('404')) {
+           if ((err as Error)?.message?.includes('404')) {
              setError(new Error('patient-not-found'));
-           } else if (err?.message?.includes('contract-invalid')) {
-             setError(err);
-           } else if (err?.name === 'ZodError') {
+           } else if ((err as Error)?.message?.includes('contract-invalid')) {
+             setError(err as Error);
+           } else if ((err as Error)?.name === 'ZodError') {
              setError(new Error('contract-invalid'));
            } else {
              setError(new Error('unavailable'));

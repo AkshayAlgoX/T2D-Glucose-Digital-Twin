@@ -3,15 +3,22 @@ import { ForecastResponseSchema, StreamEventSchema } from './zod-schemas';
 
 interface ValidatorFn {
   (data: unknown): boolean;
-  errors: any[] | null;
+  errors: z.ZodIssue[] | null;
+}
+
+function extractErrors(e: unknown): z.ZodIssue[] | null {
+  if (e && typeof e === 'object' && 'errors' in e && Array.isArray((e as Record<string, unknown>).errors)) {
+    return (e as Record<string, unknown>).errors as z.ZodIssue[];
+  }
+  return null;
 }
 
 export const validateForecastResponse: ValidatorFn = (data: unknown) => {
   try {
     ForecastResponseSchema.parse(data);
     return true;
-  } catch (e: any) {
-    validateForecastResponse.errors = e.errors;
+  } catch (e: unknown) {
+    validateForecastResponse.errors = extractErrors(e);
     return false;
   }
 };
@@ -21,8 +28,8 @@ export const validateStreamEvent: ValidatorFn = (data: unknown) => {
   try {
     StreamEventSchema.parse(data);
     return true;
-  } catch (e: any) {
-    validateStreamEvent.errors = e.errors;
+  } catch (e: unknown) {
+    validateStreamEvent.errors = extractErrors(e);
     return false;
   }
 };
@@ -33,8 +40,8 @@ export const validateForecastRequest: ValidatorFn = (data: unknown) => {
     const { ForecastRequestSchema } = require('./zod-schemas');
     ForecastRequestSchema.parse(data);
     return true;
-  } catch (e: any) {
-    validateForecastRequest.errors = e.errors;
+  } catch (e: unknown) {
+    validateForecastRequest.errors = extractErrors(e);
     return false;
   }
 };
@@ -45,8 +52,8 @@ export const validateTwinCard: ValidatorFn = (data: unknown) => {
     const { TwinCardSchema } = require('./zod-schemas');
     TwinCardSchema.parse(data);
     return true;
-  } catch (e: any) {
-    validateTwinCard.errors = e.errors;
+  } catch (e: unknown) {
+    validateTwinCard.errors = extractErrors(e);
     return false;
   }
 };

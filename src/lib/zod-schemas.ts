@@ -165,7 +165,7 @@ export const ForecastResponseSchema = z.object({
   spike_risk: SpikeRiskSchema.nullable(),
   alert: AlertSchema,
   drivers: z.array(DriverSchema).max(8).optional(),
-  scenarios: z.array(z.any()).max(4).optional(),
+  scenarios: z.array(z.unknown()).max(4).optional(),
   twin_state: TwinStateSchema.optional(),
   ehr_context: EhrContextSchema.optional(),
   intended_use: z.literal('research_only_not_for_clinical_decisions'),
@@ -177,7 +177,7 @@ export const StreamEventSchema = z.object({
   event_id: z.string(),
   subject_id: z.string().uuid(),
   emitted_at: z.string().datetime(),
-  payload: z.any()
+  payload: z.unknown()
 }).strict();
 
 export const ForecastRequestSchema = z.object({
@@ -189,7 +189,7 @@ export const ForecastRequestSchema = z.object({
   scenarios: z.array(z.object({
     scenario_id: z.string().regex(/^[a-z0-9_-]{1,32}$/),
     label: z.string().max(60).optional(),
-    inputs: z.array(z.any()).min(1).max(6) // ScenarioInput is complex, any for now
+    inputs: z.array(z.unknown()).min(1).max(6) // ScenarioInput is complex, any for now
   })).max(4).optional(),
   alert_policy_version: z.string().optional()
 }).strict();
