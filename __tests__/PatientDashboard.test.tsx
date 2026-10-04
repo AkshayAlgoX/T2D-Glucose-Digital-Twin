@@ -44,7 +44,7 @@ describe('PatientDashboard', () => {
   it('displays stale/disconnected state', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
-        data: [{ timestamp: '2026-09-28T11:55:00Z', historicalGlucose: 100 }],
+        current: { value_mg_dl: 100 },
         data_quality: { status: 'ok' }
       },
       isConnected: false,
@@ -56,5 +56,32 @@ describe('PatientDashboard', () => {
     
     expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
     expect(screen.getByText(/Stale/i)).toBeInTheDocument();
+  });
+
+  it('renders alert message from actual alert.message_key', () => {
+    mockUseTelemetry.mockReturnValue({
+      forecast: {
+        data_quality: { status: 'ok' },
+        alert: { state: 'warning', message_key: 'Critical High Prediction' },
+        spike_risk: { probability_120m: 0.8, peak_mg_dl: { p50: 190 } }
+      },
+      isConnected: true,
+      isStale: false
+    });
+    render(<PatientDashboard />);
+    expect(screen.getByText('Critical High Prediction')).toBeInTheDocument();
+  });
+
+  it('preserves research-only intended use indication', () => {
+    mockUseTelemetry.mockReturnValue({
+      forecast: {
+        intended_use: "research_only_not_for_clinical_decisions",
+        data_quality: { status: 'ok' }
+      },
+      isConnected: true,
+      isStale: false
+    });
+    render(<PatientDashboard />);
+    expect(screen.getByText(/research_only_not_for_clinical_decisions/i)).toBeInTheDocument();
   });
 });

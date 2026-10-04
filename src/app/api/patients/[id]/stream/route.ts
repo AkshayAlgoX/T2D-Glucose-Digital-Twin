@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { validateStreamEvent } from '@/lib/schema-validator';
+import { validateStreamEvent, validateForecastResponse } from '@/lib/schema-validator';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,11 +63,22 @@ export async function GET(
                 currentEventData += line.slice(6);
               } else if (line.trim() === '' && currentEventData) {
                 try {
-                  const payload = JSON.parse(currentEventData);
-                  if (validateStreamEvent(payload)) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+                  const parsed = JSON.parse(currentEventData);
+                  if (validateStreamEvent(parsed)) {
+                    let isPayloadValid = true;
+                    const validParsed = parsed as any;
+                    if (validParsed.event === 'forecast.updated' && !validateForecastResponse(validParsed.payload)) {
+                      isPayloadValid = false;
+                      console.error("Invalid forecast payload inside stream", validateForecastResponse.errors);
+                    }
+                    if (isPayloadValid) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
+                    } else {
+                      controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema in payload" })}\n\n`));
+                    }
                   } else {
-                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema" })}\n\n`));
+                    console.error("Invalid stream event envelope", validateStreamEvent.errors);
+                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema envelope" })}\n\n`));
                   }
                 } catch (e) {
                   controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid JSON" })}\n\n`));

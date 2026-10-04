@@ -6,6 +6,7 @@ import { useRealtimeTelemetry } from '@/hooks/useRealtimeTelemetry';
 import { ForecastCanvas } from '@/components/digital-twin/ForecastCanvas';
 import { ScenarioEditor } from '@/components/digital-twin/ScenarioEditor';
 import { RiskPanel } from '@/components/digital-twin/RiskPanel';
+import { RiskStrip } from '@/components/digital-twin/RiskStrip';
 import { TimeScrubber } from '@/components/digital-twin/TimeScrubber';
 import { TimeProvider } from '@/components/digital-twin/TimeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -124,7 +125,7 @@ export default function PatientDashboard() {
 
             {/* Risk Strip */}
             <div className="h-[72px] shrink-0 border-b border-line bg-surface">
-              <div className="p-4 font-mono text-sm text-ink-3">Risk Strip Stub</div>
+              <RiskStrip forecast={forecast} />
             </div>
           </main>
 
