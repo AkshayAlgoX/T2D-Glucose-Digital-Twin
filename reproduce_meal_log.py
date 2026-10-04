@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, "backend")
 import sys, json, hashlib, os
 import numpy as np
 
