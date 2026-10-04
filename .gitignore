@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Backend run outputs are not committed; each run carries its own provenance
+# (see backend/runs/README.md).
+backend/runs/*
+!backend/runs/README.md
+
+# Node / Next.js build outputs
+node_modules/
+.next/
+tsconfig.tsbuildinfo

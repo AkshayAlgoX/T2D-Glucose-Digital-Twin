@@ -13,9 +13,11 @@ Endpoints (Blueprint 9.1)
 
 Data source
     This proof of concept serves the synthetic cohort the model was trained on
-    (patient_cgm_telemetry.csv + patients_ehr.csv). "as_of" picks the replay time; without
+    (patient_cgm_telemetry.csv + patients_ehr.csv), restricted to the run's split patients and
+    read through the same latent firewall as training. "as_of" picks the replay time; without
     it, a request forecasts from each subject's last reading. Meal logs are rebuilt exactly
-    as in training (same seed), so the model sees the same kind of imperfect log.
+    as in training (per-patient seed), and the data files must match the hashes the run
+    recorded; the checkpoint is the one named (and hashed) in run_manifest.json.
 
 Per request (Blueprint 10.2)
     data-quality gate -> twin rollouts -> PR-TFT -> conformal + isotonic calibration ->
@@ -27,15 +29,16 @@ Honest limits
     * Scenarios are handled by the linearized twin (meals, activity uptake, skipping a
       habitual meal) and then re-scored by the network. Medication scenarios return
       SCENARIO_UNSUPPORTED because the linearized twin has no drug terms.
-    * TwinCard parameters are the generator's values; their 80 % intervals are degenerate
-      until nightly MAP fitting (Blueprint 7.5) exists, and calibration_stage says so.
+    * TwinCard parameters are the twin's own EHR-derived priors (never simulator latents in a
+      realistic run); their 80 % intervals are degenerate until nightly MAP fitting
+      (Blueprint 7.5) exists, and calibration_stage says so.
     * unannounced_meal.probability is a heuristic: a CGM rise over 45 min that logged meals
       do not explain.
 
 Run
-    python serve_pr_tft.py --run-dir runs/pr_tft_demo --port 8001
+    python serve_pr_tft.py --run-dir runs/pr_tft_final --port 8001
     # optional shared-secret auth (production: OAuth2 client credentials over mTLS)
-    PR_TFT_SERVICE_TOKEN=... python serve_pr_tft.py --run-dir runs/pr_tft_demo
+    PR_TFT_SERVICE_TOKEN=... python serve_pr_tft.py --run-dir runs/pr_tft_final
 """
 
 from __future__ import annotations
@@ -57,12 +60,13 @@ from typing import Annotated, Any, Literal, Optional, Union
 
 import numpy as np
 import torch
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
+import provenance as prov
 import train_pr_tft as T
 
 LOG = logging.getLogger("serve_pr_tft")
@@ -74,9 +78,10 @@ SIMULATOR_VERSION = "generate_health_data_v2"
 SUBJECT_NAMESPACE = uuid.UUID("6f0c3a52-9d1e-4c57-8a2b-3e41d7b9c0aa")
 INTENDED_USE = "research_only_not_for_clinical_decisions"
 
-# Alert policy (Blueprint 8.5)
+# Alert policy (Locked Evaluated Policy from model_selection_rule.json)
+# - Evaluator uses independent thresholds with a 120-min cooldown and a causal filter.
 WATCH_P, WARNING_P, CLEAR_P = 0.35, 0.60, 0.25
-SUPPRESS_MIN = 60
+SUPPRESS_MIN = 120
 # Exercise uptake for activity scenarios: U = ALPHA_EX * dHR * G * V_G (generator constants).
 ALPHA_EX = 6.7e-5
 INTENSITY_DHR = {"light": 15.0, "moderate": 30.0, "vigorous": 50.0}
@@ -420,42 +425,53 @@ class ServiceContext:
     def __init__(self, run_dir: Path, data_dir: Path | None = None, simulator_seed: int = 101):
         t0 = time.perf_counter()
         self.run_dir = run_dir
-        self.cfg = T.TrainConfig(**{k: tuple(v) if isinstance(v, list) else v
-                                    for k, v in json.loads((run_dir / "config.json").read_text()).items()})
+        manifest = json.loads((run_dir / "run_manifest.json").read_text())
+        if manifest.get("schema") != T.RUN_MANIFEST_SCHEMA:
+            raise ValueError(f"{run_dir / 'run_manifest.json'} is not a {T.RUN_MANIFEST_SCHEMA} manifest")
+        for name, sha in manifest["files"].items():
+            if prov.sha256_file(run_dir / name) != sha:
+                raise ValueError(f"{run_dir / name} changed after training")
+        self.cfg = T.validate_train_config(T.TrainConfig(**{
+            k: tuple(v) if isinstance(v, list) else v for k, v in json.loads((run_dir / "config.json").read_text()).items()}))
         if data_dir is not None:
             self.cfg = dataclasses.replace(self.cfg, data_dir=str(data_dir))
+        prov.verify_data(self.cfg.data_dir, {"files": manifest["preflight"]["data_sha256"]})
         self.norm = T.Normalizer(**json.loads((run_dir / "normalization.json").read_text()))
         calib_text = (run_dir / "calibration.json").read_text()
         self.calib = T.Calibrators(**json.loads(calib_text))
         self.calibration_id = "cal-" + hashlib.sha256(calib_text.encode()).hexdigest()[:10]
-        report = json.loads((run_dir / "metrics_test.json").read_text())
-        tw = report["twin_prior"]
-        if tw.get("kind") == "ukf":
-            from ukf_twin import UKFTwinPrior
-            self.twin = UKFTwinPrior()
-        else:
-            self.twin = T.TwinPrior(tw["k_scale"], tw["gain"], tw.get("eq_quantile", 0.5))
-        ckpts = sorted((run_dir / "checkpoints").glob("stage2_observed-*.ckpt"), key=lambda p: p.stat().st_mtime)
-        if not ckpts:
-            raise FileNotFoundError(f"no stage2 checkpoint in {run_dir / 'checkpoints'}")
-        self.ckpt = ckpts[-1]
+        self.twin = T.make_twin(self.cfg)
+        if self.cfg.twin == "linear":
+            tw = manifest["twin"]
+            self.twin = T.TwinPrior(tw["k_scale"], tw["gain"], tw["eq_quantile"])
+        if json.loads(json.dumps(self.twin.describe())) != manifest["twin"]:
+            raise ValueError(f"twin {self.twin.describe()} does not match the run manifest {manifest['twin']}")
+        self.ckpt = run_dir / manifest["checkpoint"]["path"]
+        if prov.sha256_file(self.ckpt) != manifest["checkpoint"]["sha256"]:
+            raise ValueError(f"{self.ckpt} does not match the checkpoint hash in the run manifest")
         self.module = T.PRTFTModule.load_from_checkpoint(str(self.ckpt), map_location="cpu").eval()
+        self.static_features = T.get_static_features(self.cfg)
+        if self.module.hparams.n_static != len(self.static_features):
+            raise ValueError(f"checkpoint has {self.module.hparams.n_static} static inputs, twin_mode "
+                             f"{self.cfg.twin_mode} provides {len(self.static_features)}")
         self.trained_at = dt.datetime.fromtimestamp(self.ckpt.stat().st_mtime, tz=dt.timezone.utc)
         self.run_id = f"{run_dir.name}/{self.ckpt.stem}"
         self.simulator_seed = simulator_seed
 
-        # Same seed and order as training, so the corrupted meal log is identical.
-        series = T.load_data(self.cfg, np.random.default_rng(self.cfg.seed))
+        # The run's patients, through the same firewall and per-patient meal-log seed as training.
         split = json.loads((run_dir / "split.json").read_text())
+        series = T.load_data(self.cfg, patient_ids=[p for ids in split.values() for p in ids])
+        if T.meal_log_sha256(series) != manifest["meal_log_sha256"]:
+            raise ValueError("meal logs differ from the ones the run was trained on")
         self.split_of = {pid: name for name, ids in split.items() for pid in ids}
-        self.pop = T.population_habit([series[p] for p in split["train"] if p in series])
+        self.pop = T.population_habit([series[p] for p in split["train"]])
         self.patients: dict[uuid.UUID, PatientCache] = {}
         self.by_pid: dict[str, uuid.UUID] = {}
         for pid, ps in series.items():
             sid = uuid.uuid5(SUBJECT_NAMESPACE, pid)
             effect = self.twin.meal_effect_series(ps)
             static = np.array([(ps.static_raw[c] - self.norm.static_mean[c]) / self.norm.static_std[c]
-                               for c in T.STATIC_FEATURES], dtype=np.float32)
+                               for c in self.static_features], dtype=np.float32)
             self.patients[sid] = PatientCache(ps, sid, T.past_matrix(ps, self.norm, effect, self.twin.state_features(ps)),
                                               T._carbs_on_board(ps), effect, static)
             self.by_pid[pid] = sid
@@ -523,7 +539,10 @@ class ServiceContext:
         with torch.inference_mode():
             out = self.module.model(batch)
         q = out["quantiles"][0].numpy()
-        return {"q": self.calib.apply_interval(q[None])[0], "q_raw": q,
+        calibrated_q = self.calib.apply_interval(q[None])[0]
+        if not (np.diff(calibrated_q, axis=-1) >= -1e-6).all():
+            raise RuntimeError("Calibrated quantiles crossed and failed monotonic validation")
+        return {"q": calibrated_q, "q_raw": q,
                 "p_bin": torch.sigmoid(out["hazard_logits"][0]).numpy(), "peak": out["peak"][0].numpy()}
 
     def twin_only(self, twin_base: np.ndarray) -> dict[str, np.ndarray]:
@@ -734,7 +753,7 @@ def twin_state(ctx: ServiceContext, pc: PatientCache, t: int) -> dict[str, Any]:
     ps = pc.ps
     lookback = 9  # 45 min
     state: dict[str, Any] = {
-        "insulin_sensitivity_rel": round(ps.static_raw["insulin_sensitivity_rel"], 3),
+        "insulin_sensitivity_rel": round(ctx.twin.parameter_summary(ps)["insulin_sensitivity_rel"], 3),
         "carbs_on_board_g": round(float(pc.cob[t]), 1),
         "insulin_on_board_u": None,
         "last_calibrated_at": utc(ps.stamps[0]).isoformat(),
@@ -819,9 +838,10 @@ def twin_card(ctx: ServiceContext, pc: PatientCache) -> dict[str, Any]:
         k = 60 // T.STEP_MIN - 1
         ok = np.isfinite(y[:, k])
         fit["rmse_60m_14d_mg_dl"] = round(float(np.sqrt(np.mean((pred[ok, k] - y[ok, k]) ** 2))), 1)
+    summary = ctx.twin.parameter_summary(ps)
     params = [
-        ("insulin_sensitivity_rel", ps.static_raw["insulin_sensitivity_rel"], "relative to healthy"),
-        ("t_max_min", ps.static_raw["tmax0_min"], "min"),
+        ("insulin_sensitivity_rel", summary["insulin_sensitivity_rel"], "relative to healthy"),
+        ("t_max_min", summary["t_max_min"], "min"),
     ]
     return {"schema_version": CONTRACT_VERSION, "subject_id": str(pc.subject_id), "synthetic": True,
             "calibrated_at": utc(ps.stamps[0]).isoformat(), "calibration_stage": "ehr_prior",
@@ -837,38 +857,41 @@ def twin_card(ctx: ServiceContext, pc: PatientCache) -> dict[str, Any]:
 
 @dataclasses.dataclass
 class AlertMachine:
-    """Blueprint 8.5: watch >= 0.35, warning >= 0.60 with p50 >= 180, clear below 0.25,
-    at most one warning per 60 min."""
+    """Locked Policy (model_selection_rule.json): alert when at risk (causal flag) and the trigger holds; 
+    at most one alert per 120 min. Evaluated statelessly without UI hysteresis."""
 
     state: str = "none"
     since: dt.datetime | None = None
     alert_id: str | None = None
     suppressed_until: dt.datetime | None = None
 
-    def step(self, p: float, p50_max: float, subject: uuid.UUID, now: dt.datetime) -> tuple[dict[str, Any], str | None]:
-        previous = self.state
-        wants_warning = p >= WARNING_P and p50_max >= T.SPIKE_LEVEL
-        if wants_warning and (self.suppressed_until is None or now >= self.suppressed_until):
+    def step(self, p: float, in_progress: bool, subject: uuid.UUID, now: dt.datetime) -> tuple[dict[str, Any], str | None]:
+        at_risk = not in_progress
+        target = "none"
+        if p >= WARNING_P and at_risk:
             target = "warning"
-        elif p >= WATCH_P or (previous != "none" and p >= CLEAR_P):
-            target = "watch" if previous != "warning" or not wants_warning else "warning"
-        else:
-            target = "none"
-        if target != previous:
-            self.state = target
-            if target == "none":
-                self.since = self.alert_id = None
-            else:
+        elif p >= WATCH_P and at_risk:
+            target = "watch"
+            
+        event = None
+        if target != "none":
+            if self.suppressed_until is None or now >= self.suppressed_until:
+                self.state = target
                 self.since = now
                 self.alert_id = str(uuid.uuid5(subject, f"{target}-{now.isoformat()}"))
-            if target == "warning":
-                self.suppressed_until = now + dt.timedelta(minutes=SUPPRESS_MIN)
-        event = None
-        if target != previous:
-            event = "alert.cleared" if target == "none" else "alert.raised"
+                self.suppressed_until = now + dt.timedelta(minutes=120)
+                event = "alert.raised"
+            elif target != self.state:
+                self.state = target
+        else:
+            if self.state != "none":
+                event = "alert.cleared"
+                self.state = "none"
+                self.since = self.alert_id = None
+
         alert = {"state": self.state, "alert_id": self.alert_id,
-                 "since": self.since.isoformat() if self.since else None,
-                 "suppressed_until": self.suppressed_until.isoformat() if self.suppressed_until and self.state != "none" else None,
+                 "since": self.since.isoformat() + "Z" if self.since else None,
+                 "suppressed_until": self.suppressed_until.isoformat() + "Z" if self.suppressed_until and self.state != "none" else None,
                  "message_key": f"alert.spike.{self.state}" if self.state != "none" else None}
         return alert, event
 
@@ -942,6 +965,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     @app.get("/v1/subjects/{subject_id}/stream", dependencies=[Depends(auth)])
     async def stream(subject_id: uuid.UUID, as_of: Optional[dt.datetime] = None, speed: float = 300.0,
                      max_events: int = 0, last_event_id: Optional[str] = Header(default=None),
+                     include: list[IncludeKey] = Query(default=["drivers", "twin_state"]),
                      c: ServiceContext = Depends(ctx)):
         """Replay: one forecast per 5-min reading from as_of, paced at `speed` x real time
         (300 -> one reading per second). Resumes after Last-Event-ID when given."""
@@ -957,12 +981,12 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
         async def events():
             machine, sent, quality = AlertMachine(), 0, None
             for idx in range(t, pc.ps.n):
-                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id)
+                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=include)
                 body = await run_in_threadpool(build_forecast, c, req, idx)
                 stamp = dt.datetime.fromisoformat(body["as_of"])
                 if body["spike_risk"] is not None:
-                    p50_max = max(pt["p50"] for pt in body["forecast"]["points"])
-                    body["alert"], alert_event = machine.step(body["spike_risk"]["probability_120m"], p50_max,
+                    in_progress = body["spike_risk"]["spike_in_progress"]
+                    body["alert"], alert_event = machine.step(body["spike_risk"]["probability_120m"], in_progress,
                                                               subject_id, stamp)
                 else:
                     alert_event = None
@@ -992,8 +1016,9 @@ def main() -> None:
     import uvicorn
 
     ap = argparse.ArgumentParser(description="PR-TFT inference service (Blueprint Section 9).")
-    ap.add_argument("--run-dir", type=Path, default=Path("runs/pr_tft_demo"))
-    ap.add_argument("--data-dir", type=Path, default=None, help="override the data dir in the run's config.json")
+    ap.add_argument("--run-dir", type=Path, required=True, help="a run directory written by train_pr_tft.py")
+    ap.add_argument("--data-dir", type=Path, default=None,
+                    help="data location if it moved; the files must match the hashes the run recorded")
     ap.add_argument("--simulator-seed", type=int, default=101)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8001)
