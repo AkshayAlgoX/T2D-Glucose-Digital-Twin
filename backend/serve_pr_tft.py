@@ -461,6 +461,31 @@ class ServiceContext:
         # The run's patients, through the same firewall and per-patient meal-log seed as training.
         split = json.loads((run_dir / "split.json").read_text())
         series = T.load_data(self.cfg, patient_ids=[p for ids in split.values() for p in ids])
+        
+        canonical_file = run_dir / "canonical_meal_log.npz"
+        if canonical_file.exists():
+            canonical_meals = np.load(canonical_file, allow_pickle=False)
+            if len(canonical_meals.keys()) != len(series) * 2:
+                raise ValueError(f"Canonical artifact contains {len(canonical_meals.keys())} arrays, expected {len(series) * 2}")
+            for pid, ps in series.items():
+                min_key, carbs_key = f"{pid}_min", f"{pid}_carbs"
+                if min_key not in canonical_meals or carbs_key not in canonical_meals:
+                    raise KeyError(f"Canonical meal artifact missing keys for {pid}")
+                
+                c_min, c_carbs = canonical_meals[min_key], canonical_meals[carbs_key]
+                
+                if c_min.dtype != np.float64 or c_carbs.dtype != np.float64:
+                    raise TypeError("Canonical artifact arrays must be float64")
+                if c_min.ndim != 1 or c_carbs.ndim != 1:
+                    raise ValueError("Canonical artifact arrays must be 1-D")
+                if len(c_min) != len(ps.meal_min) or len(c_carbs) != len(ps.meal_carbs):
+                    raise ValueError(f"Canonical array length mismatch for {pid}")
+                if not c_min.flags.c_contiguous or not c_carbs.flags.c_contiguous:
+                    raise ValueError(f"Canonical artifact arrays for {pid} must be C-contiguous")
+                
+                ps.meal_min = c_min
+                ps.meal_carbs = c_carbs
+        
         if T.meal_log_sha256(series) != manifest["meal_log_sha256"]:
             raise ValueError("meal logs differ from the ones the run was trained on")
         self.split_of = {pid: name for name, ids in split.items() for pid in ids}
