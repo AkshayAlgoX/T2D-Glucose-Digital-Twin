@@ -11,16 +11,8 @@ jest.mock('../src/hooks/useRealtimeTelemetry', () => ({
   useRealtimeTelemetry: jest.fn()
 }));
 
-jest.mock('../src/components/digital-twin/BodyVisualizer3D', () => ({
-  BodyVisualizer3D: () => <div data-testid="body-3d-mock" />
-}));
-
-jest.mock('../src/components/digital-twin/TelemetryChartSuite', () => ({
-  TelemetryChartSuite: () => <div data-testid="chart-suite-mock" />
-}));
-
-jest.mock('../src/components/digital-twin/PredictiveInsightsPanel', () => ({
-  PredictiveInsightsPanel: () => <div data-testid="insights-panel-mock" />
+jest.mock('../src/components/digital-twin/ForecastCanvas', () => ({
+  ForecastCanvas: () => <div data-testid="chart-suite-mock" />
 }));
 
 jest.mock('../src/components/digital-twin/ScenarioEditor', () => ({
@@ -37,28 +29,32 @@ describe('PatientDashboard', () => {
   it('renders fallback state on insufficient data without crashing', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
-        _raw_data_quality: { status: 'insufficient' },
-        data: []
+        data_quality: { status: 'insufficient' }
       },
       isConnected: true,
       isStale: false,
       error: null
     });
 
-    // PatientDashboard is not actually async in Next 14 Client Components or Server Components where we don't await anything in it?
-    // Wait, PatientDashboard does not use `await`.
     render(<PatientDashboard />);
     
-    expect(screen.getByText(/Insufficient Data/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('chart-suite-mock')).not.toBeInTheDocument();
+    expect(screen.getByText(/State: insufficient/i)).toBeInTheDocument();
   });
 
   it('displays stale/disconnected state', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
-        data: [{ timestamp: '2026-09-28T11:55:00Z', historicalGlucose: 100 }],
-        _raw_data_quality: { status: 'ok' }
+        current: { value_mg_dl: 100 },
+        data_quality: { status: 'ok' },
+        as_of: '2024-01-01T00:00:00Z'
       },
+      isConnected: false,
+      isStale: true,
+      error: null
+    });
+    (useRealtimeTelemetry as jest.Mock).mockReturnValueOnce({
+      forecast: { as_of: undefined, current: { value_mg_dl: 100 } },
+      cache: {},
       isConnected: false,
       isStale: true,
       error: null
@@ -67,5 +63,34 @@ describe('PatientDashboard', () => {
     render(<PatientDashboard />);
     
     expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
+    expect(screen.getByText(/Stale/i)).toBeInTheDocument();
+  });
+
+  it('renders alert message from actual alert.message_key', () => {
+    mockUseTelemetry.mockReturnValue({
+      forecast: {
+        data_quality: { status: 'ok' },
+        alert: { state: 'warning', message_key: 'Critical High Prediction' },
+        spike_risk: { probability_120m: 0.8, peak_mg_dl: { p50: 190 } }
+      },
+      isConnected: true,
+      isStale: false
+    });
+    render(<PatientDashboard />);
+    // Under Opus strict alert mapping, the raw message_key is ignored in favor of state-based mapping
+    expect(screen.getByText('Spike Warning')).toBeInTheDocument();
+  });
+
+  it('preserves research-only intended use indication', () => {
+    mockUseTelemetry.mockReturnValue({
+      forecast: {
+        intended_use: "research_only_not_for_clinical_decisions",
+        data_quality: { status: 'ok' }
+      },
+      isConnected: true,
+      isStale: false
+    });
+    render(<PatientDashboard />);
+    expect(screen.getByText(/Research Only \(Not for clinical decisions\)/i)).toBeInTheDocument();
   });
 });

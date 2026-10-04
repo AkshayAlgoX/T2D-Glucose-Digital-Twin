@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.glucose-twin.dev/v1/stream-event.json",
+  "title": "StreamEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "event_id", "subject_id", "emitted_at", "payload"],
+  "properties": {
+    "event": { "enum": ["forecast.updated", "alert.raised", "alert.cleared", "data_quality.changed", "twin.recalibrated"] },
+    "event_id": { "type": "string" },
+    "subject_id": { "type": "string", "format": "uuid" },
+    "emitted_at": { "type": "string", "format": "date-time" },
+    "payload": { "type": "object" }
+  }
+}

@@ -11,4 +11,7 @@ backend/runs/*
 # Node / Next.js build outputs
 node_modules/
 .next/
-tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Environment config
+.env*
