@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { createSafeSSETransformStream } from '@/lib/sse-parser';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,29 +8,41 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: patientId } = await params;
-  const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8001';
+  const backendUrl = process.env.BACKEND_URL;
+  const token = process.env.PR_TFT_SERVICE_TOKEN;
+
+  if (!backendUrl) {
+    return new Response('BACKEND_URL environment variable is missing.', { status: 500 });
+  }
   
   const searchParams = request.nextUrl.searchParams;
   const asOf = searchParams.get('as_of');
+  const speed = searchParams.get('speed') || '60';
   
-  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=10`; // speed up for testing
+  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}`;
   if (asOf) {
     url += `&as_of=${encodeURIComponent(asOf)}`;
   }
 
   try {
-    const backendResponse = await fetch(url, {
-      headers: {
-        'Accept': 'text/event-stream',
-      },
-      signal: request.signal,
-    });
+    const headers: Record<string, string> = { 'Accept': 'text/event-stream' };
+    const lastEventId = request.headers.get('Last-Event-ID');
+    if (lastEventId) {
+      headers['Last-Event-ID'] = lastEventId;
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const backendResponse = await fetch(url, { headers, signal: request.signal });
 
     if (!backendResponse.ok || !backendResponse.body) {
       return new Response('Backend error or no body', { status: backendResponse.status || 500 });
     }
 
-    return new Response(backendResponse.body, {
+    const transformedStream = backendResponse.body.pipeThrough(createSafeSSETransformStream());
+
+    return new Response(transformedStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',

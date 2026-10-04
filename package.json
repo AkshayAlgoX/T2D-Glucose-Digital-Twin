@@ -6,7 +6,9 @@
   "scripts": {
     "test": "jest",
     "dev": "next dev",
-    "build": "next build"
+    "build": "npm run check-contracts && next build",
+    "prebuild": "mkdir -p src/contracts/v1 && cp -r ../T2D-Glucose-Digital-Twin/backend/contracts/v1/*.json src/contracts/v1/ && npx json2ts src/contracts/v1/forecast-response.json > src/types/forecast-response.d.ts && npx json2ts src/contracts/v1/forecast-request.json > src/types/forecast-request.d.ts && npx json2ts src/contracts/v1/stream-event.json > src/types/stream-event.d.ts && npx json2ts src/contracts/v1/twin-card.json > src/types/twin-card.d.ts",
+    "check-contracts": "npm run prebuild && git diff --exit-code src/contracts/v1 src/types/ || (echo 'Contracts out of sync, run npm run prebuild and commit' && exit 1)"
   },
   "repository": {
     "type": "git",
@@ -20,32 +22,43 @@
   },
   "homepage": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.#readme",
   "dependencies": {
-    "@radix-ui/react-slider": "^1.4.7",
-    "@react-three/drei": "^10.7.9",
-    "@react-three/fiber": "^9.8.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "d3-array": "^3.2.4",
+    "d3-interpolate": "^3.0.1",
+    "d3-scale": "^4.0.2",
+    "d3-shape": "^3.2.0",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.49.0",
     "next": "^16.3.7",
     "postcss": "^8.5.28",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "recharts": "^3.10.1",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3",
-    "three": "^0.186.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
+    "@types/d3-array": "^3.2.2",
+    "@types/d3-interpolate": "^3.0.4",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-shape": "^3.2.0",
     "@types/jest": "^30.0.0",
+    "@types/jest-axe": "^3.5.9",
+    "fast-check": "^4.10.2",
     "jest": "^30.5.2",
-    "jest-environment-jsdom": "^30.5.2"
+    "jest-axe": "^11.0.0",
+    "jest-environment-jsdom": "^30.5.2",
+    "json-schema-to-typescript": "^16.0.0"
   }
 }

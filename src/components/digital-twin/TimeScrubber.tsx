@@ -1,223 +1,195 @@
-'use client';
+import React, { useRef, useState, useEffect } from 'react';
+import * as d3Scale from 'd3-scale';
+import * as d3Shape from 'd3-shape';
+import { useTime } from './TimeContext';
+import { formatDateTime, formatDate } from '@/lib/formatters/date';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import * as SliderPrimitive from '@radix-ui/react-slider';
-import { Play, Pause, FastForward, RotateCcw, Clock } from 'lucide-react';
-import { format, addSeconds, subHours, addHours } from 'date-fns';
+import { SubjectStore } from "@/lib/types";
 
-// -----------------------------------------------------------------------------
-// Constants & Types
-// -----------------------------------------------------------------------------
-
-const RANGE_PAST_HOURS = 24;
-const RANGE_FUTURE_HOURS = 2;
-
-// Calculate in seconds relative to "NOW" (0)
-const MIN_SEC = -1 * RANGE_PAST_HOURS * 3600;
-const MAX_SEC = RANGE_FUTURE_HOURS * 3600;
-const TOTAL_SEC = MAX_SEC - MIN_SEC;
-
-export interface TimeScrubberProps {
-  onTimeChange: (isoTimestamp: string) => void;
-  anchorTime?: string;
-  className?: string;
-}
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
-
-export function TimeScrubber({ onTimeChange, anchorTime, className = '' }: TimeScrubberProps) {
-  const [offsetSec, setOffsetSec] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(10);
-
-  const requestRef = useRef<number | undefined>(undefined);
-  const previousTimeRef = useRef<number | undefined>(undefined);
-  
-  const anchorDate = useMemo(() => anchorTime ? new Date(anchorTime) : new Date(), [anchorTime]);
-
-  // ---------------------------------------------------------------------------
-  // State Syncing
-  // ---------------------------------------------------------------------------
-  
-  const broadcastTime = useCallback((currentOffset: number) => {
-    const targetDate = addSeconds(anchorDate, currentOffset);
-    onTimeChange(targetDate.toISOString());
-  }, [onTimeChange, anchorDate]);
-
-  const handleSliderChange = (value: number[]) => {
-    const newOffset = value[0];
-    setOffsetSec(newOffset);
-    // When dragging manually, broadcast immediately (parent should debounce if needed)
-    broadcastTime(newOffset);
-  };
-
-  // ---------------------------------------------------------------------------
-  // Playback Engine
-  // ---------------------------------------------------------------------------
-  
-  const animate = useCallback((time: number) => {
-    if (previousTimeRef.current !== undefined) {
-      const deltaTimeMs = time - previousTimeRef.current;
-      
-      setOffsetSec((prev) => {
-        // Calculate how many simulation seconds passed based on real MS + speed multiplier
-        const simulatedSecondsPassed = (deltaTimeMs / 1000) * playbackSpeed;
-        const nextOffset = prev + simulatedSecondsPassed;
-
-        // Auto-pause if we reach the end of the AI forecast
-        if (nextOffset >= MAX_SEC) {
-          setIsPlaying(false);
-          broadcastTime(MAX_SEC);
-          return MAX_SEC;
-        }
-
-        // Throttle React state broadcasts to roughly 10fps to save CPU 
-        // while the local slider handle moves at 60fps
-        if (Math.floor(nextOffset) % 5 === 0) {
-          broadcastTime(nextOffset);
-        }
-
-        return nextOffset;
-      });
-    }
-    
-    previousTimeRef.current = time;
-    if (isPlaying) {
-      requestRef.current = requestAnimationFrame(animate);
-    }
-  }, [isPlaying, playbackSpeed, broadcastTime]);
+export function TimeScrubber({ cache, asOf }: { cache: SubjectStore; asOf?: string }) {
+  const { asOf: contextAsOf, setAsOf } = useTime();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 800, height: 96 });
 
   useEffect(() => {
-    if (isPlaying) {
-      requestRef.current = requestAnimationFrame(animate);
-    } else {
-      // Reset previous time so it doesn't jump when resuming
-      previousTimeRef.current = undefined;
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    if (!containerRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      if (!entries[0]) return;
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) setSize({ width, height });
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const { width, height } = size;
+  const margin = { top: 12, right: 96, bottom: 20, left: 40 };
+
+  // P0-5: Remove 2024 Fallback Anchor
+  // If asOf is unavailable, we don't fabricate a timestamp.
+  const anchorTime = asOf ? new Date(asOf).getTime() : null;
+  const start = anchorTime ? anchorTime - 14 * 24 * 3600000 : 0;
+  const end   = anchorTime ? anchorTime : 0;
+
+  const xScale = d3Scale.scaleUtc()
+    .domain([start, end])
+    .range([margin.left, Math.max(margin.left, width - margin.right)]);
+
+  const yScale = d3Scale.scaleLinear()
+    .domain([40, 320])
+    .range([height - margin.bottom, margin.top]);
+
+  const historical = cache?.cgm || [];
+  const alerts = cache?.alerts || [];
+  const onsets = cache?.onsets || [];
+
+  const lineHistorical = d3Shape.line<any>()
+    .x(d => xScale(new Date(d.t).getTime()))
+    .y(d => yScale(d.value))
+    .defined(d => d.value != null)
+    .curve(d3Shape.curveLinear);
+
+  const activeTime = contextAsOf ? new Date(contextAsOf).getTime() : anchorTime;
+
+  const handleScrub = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!anchorTime || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < margin.left || x > width - margin.right) return;
+    const t = xScale.invert(x).getTime();
+    setAsOf(new Date(t).toISOString());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<SVGSVGElement>) => {
+    // P0-9: Shortcut Safety - Gate single-key shortcuts if focus is in input/textarea
+    const activeEl = document.activeElement;
+    if (activeEl) {
+      const tag = activeEl.tagName.toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (activeEl as HTMLElement).isContentEditable) {
+         return;
+      }
     }
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-  }, [isPlaying, animate]);
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-  
-  const togglePlay = () => setIsPlaying(!isPlaying);
-  
-  const cycleSpeed = () => {
-    setPlaybackSpeed(prev => prev === 1 ? 10 : prev === 10 ? 60 : prev === 60 ? 600 : 1);
+    if (!anchorTime || !activeTime) return;
+
+    const stepMin = 5 * 60000;
+    const stepHour = 3600000;
+    
+    let handled = true;
+    if (e.key === 'ArrowLeft') {
+      const step = e.shiftKey ? stepHour : stepMin;
+      setAsOf(new Date(Math.max(start, activeTime - step)).toISOString());
+    } else if (e.key === 'ArrowRight') {
+      const step = e.shiftKey ? stepHour : stepMin;
+      setAsOf(new Date(Math.min(end, activeTime + step)).toISOString());
+    } else if (e.key === 'l' || e.key === 'L') {
+      setAsOf(new Date(anchorTime).toISOString());
+    } else if (e.key === '[') {
+      const prev = alerts.slice().reverse().find((a: {t: string, state: string}) => new Date(a.t).getTime() < activeTime);
+      if (prev) setAsOf(prev.t);
+    } else if (e.key === ']') {
+      const next = alerts.find((a: {t: string, state: string}) => new Date(a.t).getTime() > activeTime);
+      if (next) setAsOf(next.t);
+    } else if (e.key === ',') {
+      const prev = onsets.slice().reverse().find((o: {t: string}) => new Date(o.t).getTime() < activeTime);
+      if (prev) setAsOf(prev.t);
+    } else if (e.key === '.') {
+      const next = onsets.find((o: {t: string}) => new Date(o.t).getTime() > activeTime);
+      if (next) setAsOf(next.t);
+    } else if (e.key === ' ') {
+       // Space play/pause placeholder
+    } else {
+      handled = false;
+    }
+    
+    if (handled) {
+      e.preventDefault();
+    }
   };
 
-  const resetToNow = () => {
-    setIsPlaying(false);
-    setOffsetSec(0);
-    broadcastTime(0);
-  };
+  if (!anchorTime) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-ink-3 bg-surface italic text-[12px]">
+        Timeline unavailable
+      </div>
+    );
+  }
 
-  // Formatting for the UI display
-  const currentDate = addSeconds(anchorDate, offsetSec);
-  const isFuture = offsetSec > 0;
-  
-  // Calculate percentage for gradient background
-  const percentage = ((offsetSec - MIN_SEC) / TOTAL_SEC) * 100;
+  const accessibleTimeLabel = formatDateTime(activeTime!);
+  const xTicks = xScale.ticks(14); 
 
   return (
-    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl z-50 ${className}`}>
-      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-2xl flex flex-col gap-3">
+    <div ref={containerRef} className="w-full h-full flex flex-col items-center justify-center text-ink bg-surface overflow-hidden relative">
+      <svg
+        className="w-full h-full cursor-pointer focus:outline-none focus:ring-1 focus:ring-inset focus:ring-line-control"
+        onClick={handleScrub}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="slider"
+        aria-valuemin={start}
+        aria-valuemax={end}
+        aria-valuenow={activeTime}
+        aria-valuetext={accessibleTimeLabel}
+        aria-label="14-Day Timeline Scrubber"
+      >
+        <rect
+          x={margin.left}
+          y={margin.top}
+          width={Math.max(0, width - margin.right - margin.left)}
+          height={Math.max(0, height - margin.top - margin.bottom)}
+          fill="var(--color-surface-2)"
+        />
         
-        {/* Top Row: Info & Controls */}
-        <div className="flex items-center justify-between px-2">
-          
-          {/* Time Display */}
-          <div className="flex flex-col w-32">
-            <span className={`text-[10px] uppercase font-bold tracking-wider ${isFuture ? 'text-indigo-400' : 'text-slate-400'}`}>
-              {isFuture ? 'AI Forecast' : 'Historical'}
-            </span>
-            <span className="text-white font-mono font-medium tracking-tight">
-              {format(currentDate, "MMM dd, HH:mm:ss")}
-            </span>
-          </div>
+        {/* Day separators */}
+        {xTicks.map(tick => (
+           <g key={tick.getTime()}>
+             <line x1={xScale(tick)} x2={xScale(tick)} y1={margin.top} y2={height - margin.bottom} stroke="var(--color-line)" strokeDasharray="2 2" />
+             <text x={xScale(tick)} y={height - margin.bottom + 12} textAnchor="middle" className="text-[10px] fill-ink-3 tabular-nums">
+               {formatDate(tick.getTime()).split(' ')[0]}
+             </text>
+           </g>
+        ))}
 
-          {/* Media Controls */}
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={resetToNow}
-              className="text-slate-400 hover:text-white transition-colors"
-              title="Reset to Now"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-            
-            <button 
-              onClick={togglePlay}
-              className="bg-white text-slate-900 p-2 rounded-full hover:bg-slate-200 transition-transform active:scale-95"
-            >
-              {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-[1px]" />}
-            </button>
+        {/* CGM Path */}
+        {historical.length > 0 && (
+          <path d={lineHistorical(historical) || ''} fill="none" stroke="var(--color-ink-3)" strokeWidth={1} />
+        )}
 
-            <button 
-              onClick={cycleSpeed}
-              className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors text-xs font-bold font-mono w-12"
-              title="Playback Speed"
-            >
-              <FastForward className="w-4 h-4" />
-              {playbackSpeed}x
-            </button>
-          </div>
+        {/* Detail Window Brush */}
+        {activeTime && (
+           <rect 
+             x={xScale(activeTime - 6 * 3600000)}
+             y={margin.top}
+             width={Math.max(0, xScale(activeTime + 2 * 3600000) - xScale(activeTime - 6 * 3600000))}
+             height={Math.max(0, height - margin.top - margin.bottom)}
+             fill="var(--color-ink)"
+             opacity={0.05}
+             className="pointer-events-none"
+           />
+        )}
 
-          {/* Spacer to balance the flex layout */}
-          <div className="w-32 flex justify-end">
-             {offsetSec === 0 && (
-                <span className="flex items-center text-xs font-medium text-emerald-400">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-2" /> Live
-                </span>
-             )}
-          </div>
-        </div>
-
-        {/* Bottom Row: The Slider Timeline */}
-        <div className="px-2 pt-2 pb-1 relative">
-          {/* Tick Marks (Now line) */}
-          <div 
-             className="absolute top-0 bottom-0 w-px bg-indigo-500/50 z-0 pointer-events-none" 
-             style={{ left: `${(Math.abs(MIN_SEC) / TOTAL_SEC) * 100}%` }}
+        {/* Playhead */}
+        {activeTime && (
+          <line
+            x1={xScale(activeTime)} x2={xScale(activeTime)}
+            y1={margin.top - 4} y2={height - margin.bottom + 4}
+            stroke="var(--color-ink)" strokeWidth={1.5}
           />
-          <div 
-             className="absolute -top-3 text-[9px] text-indigo-400 font-bold z-0 pointer-events-none" 
-             style={{ left: `calc(${(Math.abs(MIN_SEC) / TOTAL_SEC) * 100}% - 12px)` }}
-          >
-            NOW
-          </div>
-
-          <SliderPrimitive.Root
-            className="relative flex items-center select-none touch-none w-full h-5 group cursor-pointer"
-            value={[offsetSec]}
-            min={MIN_SEC}
-            max={MAX_SEC}
-            step={1}
-            onValueChange={handleSliderChange}
-          >
-            <SliderPrimitive.Track className="bg-slate-700/50 relative grow rounded-full h-2 overflow-hidden">
-              <SliderPrimitive.Range 
-                className="absolute bg-indigo-500 rounded-full h-full" 
-              />
-            </SliderPrimitive.Track>
-            <SliderPrimitive.Thumb 
-              className="block w-4 h-4 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] rounded-full border-2 border-indigo-500 transition-transform focus:outline-none focus:ring-4 focus:ring-indigo-500/30 group-hover:scale-125" 
+        )}
+        
+        {/* Alert markers */}
+        {alerts.map((a: {t: string, state: string}, i: number) => {
+          const cx = xScale(new Date(a.t).getTime());
+          if (cx < margin.left || cx > width - margin.right) return null;
+          return (
+            <polygon
+              key={i}
+              points={`${cx-4},${height-margin.bottom} ${cx+4},${height-margin.bottom} ${cx},${height-margin.bottom-6}`}
+              fill="var(--color-amber)"
             />
-          </SliderPrimitive.Root>
-          
-          <div className="flex justify-between mt-1 px-1">
-            <span className="text-[10px] text-slate-500 font-medium">-24h</span>
-            <span className="text-[10px] text-slate-500 font-medium">+2h</span>
-          </div>
-        </div>
-
-      </div>
+          );
+        })}
+      </svg>
     </div>
   );
 }
