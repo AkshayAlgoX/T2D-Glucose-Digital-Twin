@@ -179,3 +179,41 @@ export const StreamEventSchema = z.object({
   emitted_at: z.string().datetime(),
   payload: z.any()
 }).strict();
+
+export const ForecastRequestSchema = z.object({
+  schema_version: z.literal('1.0.0'),
+  request_id: z.string().uuid(),
+  subject_id: z.string().uuid(),
+  as_of: z.string().datetime().optional(),
+  include: z.array(z.enum(['drivers', 'scenarios', 'twin_state', 'ehr_context', 'twin_overlay'])).optional(),
+  scenarios: z.array(z.object({
+    scenario_id: z.string().regex(/^[a-z0-9_-]{1,32}$/),
+    label: z.string().max(60).optional(),
+    inputs: z.array(z.any()).min(1).max(6) // ScenarioInput is complex, any for now
+  })).max(4).optional(),
+  alert_policy_version: z.string().optional()
+}).strict();
+
+export const TwinCardSchema = z.object({
+  schema_version: z.literal('1.0.0'),
+  subject_id: z.string().uuid(),
+  synthetic: z.literal(true),
+  calibrated_at: z.string().datetime(),
+  calibration_stage: z.enum(['ehr_prior', 'nightly_map', 'adapter_finetuned']),
+  parameters: z.array(z.object({
+    key: z.enum(['insulin_sensitivity_rel', 'beta_cell_rel', 'first_phase_rel', 'egp_basal_mg_per_min', 't_max_min', 'tau_isf_min', 'dawn_amplitude']),
+    value: z.number(),
+    unit: z.string(),
+    ci80: z.tuple([z.number(), z.number()]),
+    prior_value: z.number()
+  }).strict()).min(1),
+  history: z.array(z.object({
+    date: z.string(),
+    insulin_sensitivity_rel: z.number(),
+    beta_cell_rel: z.number()
+  }).strict()).max(180).optional(),
+  fit_quality: z.object({
+    rmse_60m_14d_mg_dl: z.number().optional(),
+    coverage_80_pct_14d: z.number().min(0).max(100).optional()
+  }).strict().optional()
+}).strict();

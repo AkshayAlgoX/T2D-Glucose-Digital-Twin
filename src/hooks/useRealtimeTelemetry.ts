@@ -127,9 +127,9 @@ export function useRealtimeTelemetry(patientId: string) {
               
               try {
                 const parsedEvent = StreamEventSchema.parse(JSON.parse(eventData.trim()));
-                const raw = parsedEvent.event === 'forecast.updated' 
+                const raw = (parsedEvent.event === 'forecast.updated' 
                    ? ForecastResponseSchema.parse(parsedEvent.payload)
-                   : parsedEvent.payload as ForecastResponse; // other events
+                   : parsedEvent.payload) as any as ForecastResponse; // other events
 
                 if (raw?.subject?.subject_id !== patientId) {
                    continue; // discard mismatched
