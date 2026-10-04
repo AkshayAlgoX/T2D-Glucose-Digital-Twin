@@ -492,12 +492,36 @@ class ServiceContext:
         self.pop = T.population_habit([series[p] for p in split["train"]])
         self.patients: dict[uuid.UUID, PatientCache] = {}
         self.by_pid: dict[str, uuid.UUID] = {}
+        
+        ukf_file = run_dir / "canonical_ukf_state.npz"
+        ukf_data = None
+        if ukf_file.exists():
+            ukf_prov = json.loads((run_dir / "canonical_ukf_provenance.json").read_text())
+            if ukf_prov["canonical_ukf_state_sha256"] != hashlib.sha256(ukf_file.read_bytes()).hexdigest():
+                raise ValueError("Canonical UKF artifact SHA256 mismatch")
+            ukf_data = np.load(ukf_file, allow_pickle=False)
+
         for pid, ps in series.items():
             sid = uuid.uuid5(SUBJECT_NAMESPACE, pid)
-            effect = self.twin.meal_effect_series(ps)
+            if ukf_data is not None:
+                effect = ukf_data[f"{pid}_meal_effect"]
+                feats = {
+                    "ukf_insulin_action": ukf_data[f"{pid}_ukf_insulin_action"],
+                    "ukf_plasma_insulin": ukf_data[f"{pid}_ukf_plasma_insulin"],
+                    "ukf_gut_glucose": ukf_data[f"{pid}_ukf_gut_glucose"],
+                    "ukf_sensitivity_boost": ukf_data[f"{pid}_ukf_sensitivity_boost"],
+                    "ukf_theta_si": ukf_data[f"{pid}_ukf_theta_si"],
+                    "ukf_theta_egp": ukf_data[f"{pid}_ukf_theta_egp"],
+                    "ukf_innovation_z": ukf_data[f"{pid}_ukf_innovation_z"],
+                    "ukf_unlogged_carbs": ukf_data[f"{pid}_ukf_unlogged_carbs"],
+                }
+            else:
+                effect = self.twin.meal_effect_series(ps)
+                feats = self.twin.state_features(ps)
+                
             static = np.array([(ps.static_raw[c] - self.norm.static_mean[c]) / self.norm.static_std[c]
                                for c in self.static_features], dtype=np.float32)
-            self.patients[sid] = PatientCache(ps, sid, T.past_matrix(ps, self.norm, effect, self.twin.state_features(ps)),
+            self.patients[sid] = PatientCache(ps, sid, T.past_matrix(ps, self.norm, effect, feats),
                                               T._carbs_on_board(ps), effect, static)
             self.by_pid[pid] = sid
         self.ood_ref = float(np.sqrt(np.mean(np.stack([p.static[:len(T.STATIC_CONTINUOUS)] ** 2
