@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { validateStreamEvent, validateForecastResponse } from '@/lib/schema-validator';
+import { createSafeSSETransformStream } from '@/lib/sse-parser';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,64 +40,9 @@ export async function GET(
       return new Response('Backend error or no body', { status: backendResponse.status || 500 });
     }
 
-    const reader = backendResponse.body.getReader();
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
+    const transformedStream = backendResponse.body.pipeThrough(createSafeSSETransformStream());
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        let buffer = '';
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            buffer += decoder.decode(value, { stream: true });
-            
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            
-            let currentEventData = '';
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                currentEventData += line.slice(6);
-              } else if (line.trim() === '' && currentEventData) {
-                try {
-                  const parsed = JSON.parse(currentEventData);
-                  if (validateStreamEvent(parsed)) {
-                    let isPayloadValid = true;
-                    const validParsed = parsed as any;
-                    if (validParsed.event === 'forecast.updated' && !validateForecastResponse(validParsed.payload)) {
-                      isPayloadValid = false;
-                      console.error("Invalid forecast payload inside stream", validateForecastResponse.errors);
-                    }
-                    if (isPayloadValid) {
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
-                    } else {
-                      controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema in payload" })}\n\n`));
-                    }
-                  } else {
-                    console.error("Invalid stream event envelope", validateStreamEvent.errors);
-                    controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid contract schema envelope" })}\n\n`));
-                  }
-                } catch (e) {
-                  controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: "Invalid JSON" })}\n\n`));
-                }
-                currentEventData = '';
-              } else {
-                 controller.enqueue(encoder.encode(`${line}\n`));
-              }
-            }
-          }
-        } catch (err) {
-          controller.error(err);
-        } finally {
-          controller.close();
-        }
-      }
-    });
-
-    return new Response(stream, {
+    return new Response(transformedStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
