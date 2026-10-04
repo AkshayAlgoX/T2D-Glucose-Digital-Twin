@@ -38,15 +38,23 @@ describe('PatientDashboard', () => {
 
     render(<PatientDashboard />);
     
-    expect(screen.getByText(/No forecast/i)).toBeInTheDocument();
+    expect(screen.getByText(/State: insufficient/i)).toBeInTheDocument();
   });
 
   it('displays stale/disconnected state', () => {
     mockUseTelemetry.mockReturnValue({
       forecast: {
         current: { value_mg_dl: 100 },
-        data_quality: { status: 'ok' }
+        data_quality: { status: 'ok' },
+        as_of: '2024-01-01T00:00:00Z'
       },
+      isConnected: false,
+      isStale: true,
+      error: null
+    });
+    (useRealtimeTelemetry as jest.Mock).mockReturnValueOnce({
+      forecast: { as_of: undefined, current: { value_mg_dl: 100 } },
+      cache: {},
       isConnected: false,
       isStale: true,
       error: null
@@ -69,7 +77,8 @@ describe('PatientDashboard', () => {
       isStale: false
     });
     render(<PatientDashboard />);
-    expect(screen.getByText('Critical High Prediction')).toBeInTheDocument();
+    // Under Opus strict alert mapping, the raw message_key is ignored in favor of state-based mapping
+    expect(screen.getByText('Spike Warning')).toBeInTheDocument();
   });
 
   it('preserves research-only intended use indication', () => {
@@ -82,6 +91,6 @@ describe('PatientDashboard', () => {
       isStale: false
     });
     render(<PatientDashboard />);
-    expect(screen.getByText(/research_only_not_for_clinical_decisions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Research Only \(Not for clinical decisions\)/i)).toBeInTheDocument();
   });
 });

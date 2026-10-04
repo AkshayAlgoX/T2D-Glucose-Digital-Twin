@@ -1,131 +1,85 @@
 import React, { useState } from 'react';
 
-export function ScenarioEditor({ patientId, currentForecast, pinnedAsOf }: any) {
+import { ForecastResponse } from "@/types/forecast-response";
+
+export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast: ForecastResponse | null }) {
   const [kind, setKind] = useState<'meal' | 'activity'>('meal');
-  const [amount, setAmount] = useState<number>(30); // carbs or duration
-  const [offset, setOffset] = useState<number>(0);
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [amount, setAmount] = useState<number>(30);
 
-  const runSimulation = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const input = kind === 'meal' 
-        ? { kind: 'meal', carbs_g: amount, offset_min: offset }
-        : { kind: 'activity', duration_min: amount, intensity: 'moderate', offset_min: offset };
-
-      const res = await fetch('/api/forecast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patientId,
-          pinned_as_of: pinnedAsOf,
-          scenarios: [{
-             scenario_id: 'scen-1',
-             inputs: [input]
-          }]
-        })
-      });
-      if (res.ok) {
-        setResult(await res.json());
-      } else {
-        setError(`Failed: ${res.statusText}`);
-      }
-    } catch (e: any) {
-      setError(e.message);
-    }
-    setLoading(false);
-  };
-
-  const reset = () => {
-    setResult(null);
-    setError(null);
-  };
+  const scenario = currentForecast?.scenarios?.[0];
+  const disabled = true; // Scenario service not connected
 
   return (
-    <div className="p-4 border-b border-line">
-      <h3 className="text-[13px] font-semibold text-ink mb-2">What-If Projections</h3>
-      <div className="text-xs text-ink-2 mb-4 bg-surface-2 p-2 rounded">
-        <strong>Simulation Only:</strong> This is an isolated mathematical projection under model assumptions, not observed clinical data.
+    <section className="p-4 bg-surface flex flex-col flex-1 border-t border-line">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-[13px] font-semibold text-ink-2">Simulation</h2>
+      </div>
+
+      <div className="text-[11px] text-ink-3 mb-4 leading-snug">
+        Projection under model assumptions &mdash; direction checked, size not validated
       </div>
       
-      <div className="space-y-3 mb-4">
-         <div className="flex flex-col gap-1">
-           <label htmlFor="scenario-kind" className="text-xs text-ink-2 font-medium">Intervention Type</label>
+      <div className="space-y-4 mb-6">
+         <div className="flex flex-col gap-1.5">
+           <label htmlFor="scenario-kind" className="text-[11px] text-ink-2 font-medium">Intervention</label>
            <select 
              id="scenario-kind"
-             className="border border-line rounded px-2 py-1.5 bg-surface text-ink text-xs w-full"
+             className="border border-line rounded-sm px-2 py-1.5 bg-surface-2 text-ink text-[12px] w-full focus:outline-none focus:border-ink-2 focus:ring-0 opacity-75"
              value={kind}
              onChange={(e) => setKind(e.target.value as 'meal' | 'activity')}
+             disabled={disabled}
            >
-             <option value="meal">Meal (Carbohydrates)</option>
-             <option value="activity">Activity (Moderate)</option>
+             <option value="meal">Carbohydrate Ingestion (Meal)</option>
+             <option value="activity" disabled>Moderate Activity (Not modelled)</option>
+             <option value="medication" disabled>Medication (Not modelled)</option>
            </select>
          </div>
 
-         <div className="flex flex-col gap-1">
-           <label htmlFor="scenario-amount" className="text-xs text-ink-2 font-medium">
-             {kind === 'meal' ? 'Carbs (g)' : 'Duration (min)'}
+         <div className="flex flex-col gap-1.5">
+           <label htmlFor="scenario-amount" className="text-[11px] text-ink-2 font-medium">
+             {kind === 'meal' ? 'Magnitude (g)' : 'Duration (min)'}
            </label>
            <input 
              id="scenario-amount"
              type="number" 
-             className="border border-line rounded px-2 py-1.5 bg-surface text-ink text-xs w-full tabular-nums"
+             className="border border-line rounded-sm px-2 py-1.5 bg-surface-2 text-ink text-[12px] w-full tabular-nums focus:outline-none focus:border-ink-2 focus:ring-0 opacity-75"
              value={amount}
              min="0"
              onChange={(e) => setAmount(Number(e.target.value))}
+             disabled={disabled}
            />
-         </div>
-
-         <div className="flex gap-2 pt-2">
-           <button 
-             onClick={runSimulation} 
-             disabled={loading || !pinnedAsOf} 
-             className="flex-1 px-3 py-1.5 bg-ink text-surface rounded font-medium text-xs disabled:opacity-50 transition-opacity"
-           >
-             {loading ? 'Simulating...' : 'Run Scenario'}
-           </button>
-           {result && (
-             <button 
-               onClick={reset} 
-               className="px-3 py-1.5 bg-surface-2 text-ink rounded font-medium text-xs hover:bg-line-control transition-colors"
-             >
-               Clear
-             </button>
-           )}
          </div>
       </div>
 
-      {error && (
-        <div className="text-xs text-danger mb-4 p-2 bg-red-50 border border-red-100 rounded">
-          {error}
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-4 p-3 bg-forecast/10 border border-forecast/20 rounded">
-           <div className="text-xs font-semibold text-forecast mb-2">Simulated Outcome</div>
-           
-           <div className="text-xs text-ink-2 mb-1">Peak Shift (p50)</div>
-           <div className="text-sm font-medium tabular-nums mb-3">
-             {result.metrics.baseline_peak_mg_dl.toFixed(0)} &rarr; {result.metrics.new_peak_mg_dl.toFixed(0)} 
-             <span className="text-ink-3 ml-1 text-xs">mg/dL</span>
-             <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${result.metrics.delta_peak_mg_dl > 0 ? 'bg-danger/10 text-danger' : 'bg-physics/10 text-physics'}`}>
-               {result.metrics.delta_peak_mg_dl > 0 ? '+' : ''}{result.metrics.delta_peak_mg_dl.toFixed(0)} mg/dL
-             </span>
-           </div>
-           
-           <div className="text-xs text-ink-2 mb-1">Risk Shift (120m)</div>
-           <div className="text-sm font-medium tabular-nums">
-             {(result.metrics.baseline_probability * 100).toFixed(0)}% &rarr; {(result.metrics.new_probability * 100).toFixed(0)}%
-             <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${result.metrics.delta_probability > 0 ? 'bg-danger/10 text-danger' : 'bg-physics/10 text-physics'}`}>
-               {result.metrics.delta_probability > 0 ? '+' : ''}{(result.metrics.delta_probability * 100).toFixed(0)}%
-             </span>
-           </div>
-        </div>
-      )}
-    </div>
+      <div className="mt-auto flex flex-col gap-3">
+         {scenario && (
+            <div className="border border-line p-3 bg-white rounded-sm shadow-sm">
+              <div className="text-[12px] font-semibold text-ink-3 mb-2">Simulation Result</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[11px] text-ink-2 mb-0.5">Peak shift</div>
+                  <div className="text-[13px] font-medium tabular-nums text-ink">
+                     {scenario.delta_peak_mg_dl > 0 ? '+' : ''}{scenario.delta_peak_mg_dl} mg/dL
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-ink-2 mb-0.5">Risk shift</div>
+                  <div className="text-[13px] font-medium tabular-nums text-ink">
+                     {scenario.delta_probability > 0 ? '+' : ''}{(scenario.delta_probability * 100).toFixed(0)}% pt
+                  </div>
+                </div>
+              </div>
+            </div>
+         )}
+      
+         <button 
+           className="w-full bg-surface-2 text-ink-3 border border-line py-2 text-[12px] font-semibold rounded-sm cursor-not-allowed"
+           disabled={disabled}
+           title="Scenario service not connected"
+         >
+           Scenario service not connected
+         </button>
+      </div>
+    </section>
   );
 }
