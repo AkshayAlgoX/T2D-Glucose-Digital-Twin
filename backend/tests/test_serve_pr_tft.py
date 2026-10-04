@@ -3,7 +3,11 @@
 Every response is validated against the JSON Schemas in contracts/v1/, the same files the
 Next.js side generates its types and Zod validators from.
 
-    RUN_DIR=runs/pr_tft_demo pytest -q tests/test_serve_pr_tft.py
+    RUN_DIR=runs/pr_tft_final_smoke pytest -q tests/test_serve_pr_tft.py
+
+RUN_DIR must name a run directory written by train_pr_tft.py (the UKF/S3 smoke run is
+enough). Without it the module is skipped with that reason; it is never pointed at an
+archived or hand-made run.
 """
 
 from __future__ import annotations
@@ -23,11 +27,14 @@ from referencing import Registry, Resource
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+if not os.environ.get("RUN_DIR"):
+    pytest.skip("RUN_DIR not set: point it at a run written by train_pr_tft.py (e.g. the --smoke-test run)",
+                allow_module_level=True)
 import serve_pr_tft as S  # noqa: E402
 import train_pr_tft as T  # noqa: E402
 
 CONTRACTS = ROOT / "contracts" / "v1"
-RUN_DIR = Path(os.environ.get("RUN_DIR", ROOT / "runs" / "pr_tft_demo"))
+RUN_DIR = Path(os.environ["RUN_DIR"]).resolve()
 
 
 def _validators() -> dict[str, Draft202012Validator]:
@@ -47,8 +54,8 @@ def assert_valid(schema: str, instance) -> None:
 
 @pytest.fixture(scope="module")
 def client():
-    os.chdir(ROOT)  # config.json holds a relative data_dir
-    with TestClient(S.create_app(RUN_DIR, data_dir=Path(os.environ.get("DATA_DIR", "data_test")))) as c:
+    data_dir = Path(os.environ["DATA_DIR"]) if os.environ.get("DATA_DIR") else None
+    with TestClient(S.create_app(RUN_DIR, data_dir=data_dir)) as c:
         yield c
 
 

@@ -33,39 +33,43 @@ Loss (Blueprint 7.3)
         [+ peak pinball on windows that contain a spike]
 
 Protocol (Blueprint 8.1 - 8.5)
-    Patient-level 70/15/15 split stratified by diabetes status; optional stage-1
-    pretraining on noise-free interstitial glucose (--pretrain-truth); training with
-    AdamW + cosine decay, gradient clipping and early stopping; stage-3 calibration on the
-    validation patients (conformal widening of the 80 % interval, isotonic hazard); a test
-    report with RMSE / MARD at 30-60-120 min, Clarke error-grid zones, interval coverage,
-    hazard AUROC / AUPRC / Brier / ECE, alert sensitivity and precision at the blueprint
-    thresholds, subgroup RMSE and persistence / twin-only baselines.
+    Frozen patient-level split (split_293.json, verified against data_manifest.json);
+    optional stage-1 pretraining on noise-free interstitial glucose (pretrain_truth);
+    training with AdamW + cosine decay, gradient clipping and early stopping; stage-3
+    calibration on the validation patients (conformal widening of the 80 % interval,
+    isotonic hazard). This script never touches the test patients' outcomes: the test
+    report is produced only by evaluate_run.py, under the locked model-selection rule.
 
-Honest limits of this script
-    * The twin prior is a linearized stand-in for the full UKF + ODE rollout of Blueprint
-      7.2; the class TwinPrior is the plug-in point for the full model.
-    * The generator exports true carbohydrates. By default this script corrupts them into
-      a realistic meal *log* (missed logs, under-estimation, logging delay; Blueprint 3.4)
-      so the model never trains on perfect meal knowledge. Disable with --no-log-corruption.
-    * Calibrated twin parameters are read from the generator's EHR output; in production
-      they come from the nightly MAP fit (Blueprint 7.5).
+Inputs and causality (input_contract.py)
+    * Realistic modes (s2, s3) read only observable EHR columns; oracle mode adds the
+      simulator latents and is a reference arm. There is no default mode and no fallback.
+    * Meals become known at ceil(log minute / 5); resting HR uses the first day only and no
+      anchor precedes step 287; the at-risk flag uses CGM up to the decision time only.
+    * The generator exports true carbohydrates; they are corrupted into a realistic meal *log*
+      (missed logs, under-estimation, logging delay; Blueprint 3.4) with a per-patient
+      random stream, so a patient's log never depends on which other patients are loaded.
 
-Quick start (from the directory holding the generator output)
-    python train_pr_tft.py --data-dir synthetic_v2_300 --out-dir runs/pr_tft
-    python train_pr_tft.py --data-dir synthetic_v2_300 --smoke-test        # 2-minute check
+Usage (run from backend/; the config pins every hyperparameter and every input hash)
+    python train_pr_tft.py --config final_config.json --check-only    # all pre-training checks
+    python train_pr_tft.py --config final_config.json --smoke-test    # UKF/S3 smoke, 24 patients
+    python train_pr_tft.py --config final_config.json                 # the full run
+    python evaluate_run.py --run-dir runs/pr_tft_final                # authoritative test report
 
-Requires: torch, lightning, numpy, pandas, scipy, scikit-learn.
+Requires: torch, lightning, numpy, pandas, scipy, scikit-learn, jax (UKF twin).
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import logging
 import math
+import os
 import time
 import warnings
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -84,6 +88,10 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 
+import provenance as prov
+from input_contract import (HR_REST_STEPS, ORACLE_LATENT_COLUMNS, REALISTIC_EHR_COLUMNS, STEP_MIN, TWIN_MODES,
+                            check_twin_mode, meal_step_index)
+
 LOG = logging.getLogger("train_pr_tft")
 warnings.filterwarnings("ignore", message=".*does not have many workers.*")
 warnings.filterwarnings("ignore", message=".*LeafSpec.*")
@@ -92,8 +100,8 @@ warnings.filterwarnings("ignore", message=".*LeafSpec.*")
 # Constants
 # --------------------------------------------------------------------------- #
 
-STEP_MIN = 5  # CGM sampling interval
 PAST_STEPS = 144  # 12 h encoder window (Blueprint 6)
+FIRST_ANCHOR = max(PAST_STEPS, HR_REST_STEPS) - 1  # first step with a full window and a known resting HR
 HORIZON = 24  # 120 min forecast (Blueprint 1)
 QUANTILES = (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
 MEDIAN_IDX = QUANTILES.index(0.50)
@@ -119,10 +127,19 @@ FUTURE_FEATURES = (
 STATUS_LEVELS = ("Healthy", "Prediabetes", "Type 1", "Type 2")
 MED_CLASSES = ("metformin", "sglt2i", "glp1_ra", "dpp4i", "sulfonylurea", "basal_insulin",
                "prandial_insulin")
-STATIC_CONTINUOUS = ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg",
-                     "basal_glucose", "insulin_sensitivity_rel", "tmax0_min")
-STATIC_FEATURES = (STATIC_CONTINUOUS + ("sex_male",) + tuple(f"status_{s}" for s in STATUS_LEVELS)
-                   + tuple(f"med_{m}" for m in MED_CLASSES))
+STATIC_CONTINUOUS = ("age", "bmi", "hba1c", "egfr", "diabetes_duration_years", "weight_kg")
+STATIC_FEATURES_REALISTIC = (STATIC_CONTINUOUS + ("sex_male",) + tuple(f"status_{s}" for s in STATUS_LEVELS)
+                             + tuple(f"med_{m}" for m in MED_CLASSES))  # 18 observable features
+STATIC_LATENT = ("basal_glucose", "insulin_sensitivity_rel", "tmax0_min")
+STATIC_FEATURES_ORACLE = STATIC_FEATURES_REALISTIC + STATIC_LATENT  # 21: privileged reference arm
+
+
+def get_static_features(cfg_or_mode) -> tuple[str, ...]:
+    """Model static inputs for a twin mode: 18 observable features, or 21 in oracle mode."""
+    mode = check_twin_mode(getattr(cfg_or_mode, "twin_mode", cfg_or_mode))
+    return STATIC_FEATURES_ORACLE if mode == "oracle" else STATIC_FEATURES_REALISTIC
+
+
 # z-scored past features; the rest are binary or already bounded.
 ZSCORE_PAST = ("cgm_roc", "heart_rate", "hrv", "step_count", "carbs_logged", "carbs_on_board",
                "twin_meal_effect")
@@ -130,20 +147,21 @@ ZSCORE_PAST = ("cgm_roc", "heart_rate", "hrv", "step_count", "carbs_logged", "ca
 
 @dataclass
 class TrainConfig:
-    """Everything a run needs. Every field is a CLI flag (underscores -> dashes)."""
+    """Hyperparameters of a run. A run config file (final_config.json) must list every field;
+    the defaults here exist for tests and are never used silently by the trainer."""
 
-    data_dir: str = "synthetic_v2_300"
-    out_dir: str = "runs/pr_tft"
-    pretrain_truth: str = ""  # patient_cgm_truth.csv for stage-1 clean pretraining
-    pretrain_epochs: int = 3
+    data_dir: str = ""
+    out_dir: str = ""
+    pretrain_truth: str = ""  # patient_cgm_truth.csv for stage-1 clean pretraining ("" = none)
+    pretrain_epochs: int = 0  # must be > 0 exactly when pretrain_truth is set
     seed: int = 20260930
     stride_steps: int = 3  # anchor every 15 min (Blueprint 6.3)
     min_past_coverage: float = 0.70
     min_target_coverage: float = 0.50
     log_corruption: bool = True
     twin_base: str = "habit"  # forecast base scenario: "habit" or "no_meal"
-    twin: str = "linear"  # twin prior: "linear" (TwinPrior) or "ukf" (ukf_twin.UKFTwinPrior)
-    limit_patients: int = 0  # 0 = all
+    twin: str = ""  # twin prior: "linear" (TwinPrior) or "ukf" (ukf_twin.UKFTwinPrior); no default
+    twin_mode: str = ""  # "s2" / "s3" (observable EHR) or "oracle" (simulator latents); no default
     # Model (Blueprint 7.2)
     d_model: int = 96
     n_heads: int = 4
@@ -202,27 +220,42 @@ def kovatchev_risk(g: torch.Tensor) -> torch.Tensor:
 def detect_spike_onsets(cgm: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Blueprint Section 1 spike onsets on a CGM series (NaN = missing).
 
-    Returns (onset, armed): onset[k] marks a spike onset; armed[k] is False while an
-    event is in progress (the refractory period), when a new onset cannot occur."""
+    A spike onset at step k: CGM[k] >= 180 mg/dL, a rise of >= 50 mg/dL over the preceding
+    60 min, and CGM stays >= 180 for 15 min (k, k+1, k+2). After an onset no new onset can
+    occur until CGM has been < 160 mg/dL for 30 consecutive minutes (refractory), so one
+    physiological spike yields exactly one onset.
+
+    Returns (onset, at_risk):
+        onset[k]    label; it uses CGM up to k + 2 (the persistence window) and is only ever
+                    used as a target, never as an input.
+        at_risk[k]  what a real-time system knows at step k: False from the step at which an
+                    onset is confirmed (k_onset + 2) until the refractory condition re-arms.
+                    It uses CGM[: k + 1] only, so it may mask losses and select alert times.
+    """
     n = cgm.size
     onset = np.zeros(n, dtype=bool)
-    armed_out = np.ones(n, dtype=bool)
-    armed, below = True, 0
+    at_risk = np.ones(n, dtype=bool)
+    armed = True  # labelling state: may a new onset start at the current step?
+    causal_armed = True  # at-risk state as seen in real time
+    below = 0
     for k in range(n):
-        v = cgm[k]
-        if not np.isnan(v):
-            below = below + 1 if v < REFRACTORY_LEVEL else 0
+        vk = cgm[k]
+        if not np.isnan(vk):
+            below = below + 1 if vk < REFRACTORY_LEVEL else 0
             if below >= REFRACTORY_STEPS:
-                armed = True
-            if armed and v >= SPIKE_LEVEL and k >= RISE_STEPS:
-                prior = cgm[k - RISE_STEPS:k]
-                persist = cgm[k:k + PERSIST_STEPS]
-                if (np.isfinite(prior).any() and v - np.nanmin(prior) >= SPIKE_RISE
-                        and persist.size == PERSIST_STEPS and np.all(persist >= SPIKE_LEVEL)):
-                    onset[k] = True
-                    armed = False
-        armed_out[k] = armed
-    return onset, armed_out
+                armed = causal_armed = True
+        confirmed = k - (PERSIST_STEPS - 1)  # an onset at k-2 becomes known at k
+        if confirmed >= 0 and onset[confirmed]:
+            causal_armed = False
+        at_risk[k] = causal_armed
+        if armed and not np.isnan(vk) and vk >= SPIKE_LEVEL and k >= RISE_STEPS:
+            prior = cgm[k - RISE_STEPS:k]
+            persist = cgm[k:k + PERSIST_STEPS]
+            if (np.isfinite(prior).any() and vk - np.nanmin(prior) >= SPIKE_RISE
+                    and persist.size == PERSIST_STEPS and np.all(persist >= SPIKE_LEVEL)):
+                onset[k] = True
+                armed = False
+    return onset, at_risk
 
 
 # --------------------------------------------------------------------------- #
@@ -273,7 +306,40 @@ def corrupt_meal_log(minutes: np.ndarray, carbs: np.ndarray,
     return (minutes + shift)[order], carbs[order]
 
 
-def static_vector(row: pd.Series) -> dict[str, float]:
+def patient_rng(seed: int, pid: str) -> np.random.Generator:
+    """Random stream for one patient, a function of (seed, patient id) only: the corrupted meal
+    log is identical whether a patient is loaded with the full cohort, a validation subset or
+    a smoke subset, and in every pipeline (training, S2/S3 selection, evaluation, serving)."""
+    return np.random.default_rng(np.random.SeedSequence([seed, zlib.crc32(pid.encode())]))
+
+
+def observed_meal_log(pid: str, meal_event: np.ndarray, carbs_g: np.ndarray, seed: int,
+                      log_corruption: bool) -> tuple[np.ndarray, np.ndarray]:
+    """(minutes from series start, grams) of the meal log the model sees for one patient."""
+    carbs = np.nan_to_num(np.asarray(carbs_g, dtype=float), nan=0.0)
+    idx = np.flatnonzero((np.nan_to_num(np.asarray(meal_event, dtype=float), nan=0.0) > 0) & (carbs > 0))
+    minutes, grams = idx * float(STEP_MIN), carbs[idx]
+    if log_corruption:
+        minutes, grams = corrupt_meal_log(minutes, grams, patient_rng(seed, pid))
+    return minutes, grams
+
+
+def meal_log_sha256(series: dict[str, "PatientSeries"]) -> str:
+    """Fingerprint of the meal logs of a set of patients (proves two pipelines saw the same logs)."""
+    h = hashlib.sha256()
+    for pid in sorted(series):
+        ps = series[pid]
+        h.update(pid.encode())
+        h.update(np.asarray(ps.meal_min, dtype=np.float64).tobytes())
+        h.update(np.asarray(ps.meal_carbs, dtype=np.float64).tobytes())
+    return h.hexdigest()
+
+
+def static_vector(row: pd.Series, mode: str) -> dict[str, float]:
+    """Raw static values for one patient. Realistic modes return exactly the 18 observable
+    features. Oracle mode adds the 3 latent static features and tau_isf_min (the latter feeds
+    the oracle UKF only, it is not a model input); a missing latent raises KeyError."""
+    mode = check_twin_mode(mode)
     meds = set(str(row.get("med_classes", "")).split(";")) - {"", "nan"}
     out = {c: float(row[c]) for c in STATIC_CONTINUOUS}
     out["sex_male"] = float(row["gender"] == "M")
@@ -281,30 +347,42 @@ def static_vector(row: pd.Series) -> dict[str, float]:
         out[f"status_{s}"] = float(row["diabetes_status"] == s)
     for m in MED_CLASSES:
         out[f"med_{m}"] = float(m in meds)
+    if mode == "oracle":
+        missing = [c for c in ORACLE_LATENT_COLUMNS if c not in row.index or not np.isfinite(float(row[c]))]
+        if missing:
+            raise KeyError(f"oracle mode requires latent fields {missing}")
+        for c in ORACLE_LATENT_COLUMNS:
+            out[c] = float(row[c])
     return out
 
 
-def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfig,
-                     rng: np.random.Generator) -> dict[str, PatientSeries]:
+def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfig) -> dict[str, PatientSeries]:
     """Align each patient to a regular 5-min grid and derive the twin parameters."""
     ehr = ehr.set_index("patient_id")
     series: dict[str, PatientSeries] = {}
     for pid, g in telemetry.groupby("patient_id", sort=True):
         if pid not in ehr.index:
-            LOG.warning("patient %s has telemetry but no EHR row; skipped", pid)
-            continue
+            raise KeyError(f"patient {pid} has telemetry but no EHR row")
         g = g.set_index("timestamp").sort_index()
         grid = pd.date_range(g.index[0], g.index[-1], freq=f"{STEP_MIN}min")
         g = g[~g.index.duplicated()].reindex(grid)
         cgm = g["glucose_level"].to_numpy(dtype=float)
-        carbs = g["carbs_g"].fillna(0.0).to_numpy(dtype=float)
-        meal_idx = np.flatnonzero((g["meal_event"].fillna(0).to_numpy() > 0) & (carbs > 0))
-        meal_min = meal_idx * float(STEP_MIN)
-        meal_carbs = carbs[meal_idx]
-        if cfg.log_corruption:
-            meal_min, meal_carbs = corrupt_meal_log(meal_min, meal_carbs, rng)
+        meal_min, meal_carbs = observed_meal_log(pid, g["meal_event"].to_numpy(), g["carbs_g"].to_numpy(),
+                                                 cfg.seed, cfg.log_corruption)
         row = ehr.loc[pid]
-        si_rel = float(row["insulin_sensitivity_rel"])
+
+        bmi = float(row["bmi"])
+        age = float(row["age"])
+        t2d = row["diabetes_status"] == "Type 2"
+        pre = row["diabetes_status"] == "Prediabetes"
+        meds = set(str(row.get("med_classes", "")).split(";")) - {"", "nan"}
+        ln_si = -0.035 * (bmi - 25) - 0.005 * (age - 45) - 0.40 * t2d - 0.20 * pre
+        si_rel = float(np.clip(math.exp(ln_si), 0.15, 1.2)) * (1.10 if "metformin" in meds else 1.0)
+        a1c = float(row["hba1c"])
+        mu = max(28.7 * a1c - 46.7, 75.0)
+        gb = 110.0 + 0.30 * (mu - 110.0) if mu > 110 else mu - 8.0
+        tmax0 = 38.0
+
         series[pid] = PatientSeries(
             pid=pid, group=str(row["diabetes_status"]), stamps=grid, cgm=cgm,
             cgm_ff=pd.Series(cgm).ffill(limit=3).to_numpy(),
@@ -312,10 +390,10 @@ def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfi
             hrv=g["hrv"].interpolate(limit_direction="both").to_numpy(dtype=float),
             steps=g["step_count"].fillna(0).to_numpy(dtype=float),
             asleep=(g["sleep_stage"].fillna("Awake") != "Awake").to_numpy(dtype=float),
-            meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row),
-            gb=float(row["basal_glucose"]),
+            meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row, cfg.twin_mode),
+            gb=gb,
             k_base=0.01 + 0.01 * si_rel,
-            tmax=1.3 * float(row["tmax0_min"]),  # average macronutrient slowing (Blueprint 3.3)
+            tmax=1.3 * tmax0,  # average macronutrient slowing (Blueprint 3.3)
             vg=VG_PER_KG * float(row["weight_kg"]),
         )
         series[pid].onset, series[pid].armed = detect_spike_onsets(cgm)
@@ -345,6 +423,10 @@ class TwinPrior:
 
     def describe(self) -> dict[str, Any]:
         return {"kind": "linear", "k_scale": self.k_scale, "gain": self.gain, "eq_quantile": self.eq_quantile}
+
+    def parameter_summary(self, ps: PatientSeries) -> dict[str, float]:
+        """Displayable twin parameters, derived from observable EHR (never simulator latents)."""
+        return {"insulin_sensitivity_rel": (ps.k_base - 0.01) / 0.01, "t_max_min": ps.tmax}
 
     def state_features(self, ps: PatientSeries) -> dict[str, np.ndarray]:
         return {}
@@ -462,7 +544,7 @@ def population_habit(series: list[PatientSeries]) -> tuple[np.ndarray, float]:
     counts = np.zeros(BINS_PER_DAY)
     days, carbs = 0.0, []
     for ps in series:
-        bins = (ps.meal_min // STEP_MIN).astype(int) % BINS_PER_DAY
+        bins = meal_step_index(ps.meal_min) % BINS_PER_DAY
         np.add.at(counts, bins, 1.0)
         days += ps.n / BINS_PER_DAY
         carbs.extend(ps.meal_carbs.tolist())
@@ -477,7 +559,7 @@ def habit_features(ps: PatientSeries, t_idx: np.ndarray,
     n_days = int(math.ceil(ps.n / BINS_PER_DAY))
     counts = np.zeros((n_days, BINS_PER_DAY))
     carb_sum = np.zeros(n_days)
-    meal_bins = (ps.meal_min // STEP_MIN).astype(int)
+    meal_bins = meal_step_index(ps.meal_min)
     valid = (meal_bins >= 0) & (meal_bins < ps.n)
     np.add.at(counts, (meal_bins[valid] // BINS_PER_DAY, meal_bins[valid] % BINS_PER_DAY), 1.0)
     np.add.at(carb_sum, meal_bins[valid] // BINS_PER_DAY, ps.meal_carbs[valid])
@@ -508,8 +590,9 @@ def habit_features(ps: PatientSeries, t_idx: np.ndarray,
 
 
 def eligible_anchors(ps: PatientSeries, cfg: TrainConfig) -> np.ndarray:
-    """Anchors with a current CGM value, enough past data and enough future targets."""
-    t = np.arange(PAST_STEPS - 1, ps.n - HORIZON, cfg.stride_steps)
+    """Training/forecast-scoring anchors: a current CGM value, enough past data and enough
+    future targets. Never earlier than FIRST_ANCHOR (resting HR needs the first full day)."""
+    t = np.arange(FIRST_ANCHOR, ps.n - HORIZON, cfg.stride_steps)
     finite = np.isfinite(ps.cgm).astype(float)
     csum = np.concatenate(([0.0], np.cumsum(finite)))
     past_cov = (csum[t + 1] - csum[t + 1 - PAST_STEPS]) / PAST_STEPS
@@ -532,7 +615,8 @@ class Normalizer:
 
     @classmethod
     def fit(cls, series: list[PatientSeries], meal_effect: dict[str, np.ndarray],
-            extras: dict[str, dict[str, np.ndarray]] | None = None) -> "Normalizer":
+            extras: dict[str, dict[str, np.ndarray]] | None, twin_mode: str) -> "Normalizer":
+        sf = get_static_features(twin_mode)
         cgm = np.concatenate([ps.cgm[np.isfinite(ps.cgm)] for ps in series])
         raw = {
             "cgm_roc": np.concatenate([np.diff(ps.cgm_ff, prepend=np.nan) for ps in series]),
@@ -548,9 +632,9 @@ class Normalizer:
         mean = {k: float(np.nanmean(v)) for k, v in raw.items()}
         std = {k: float(np.nanstd(v)) or 1.0 for k, v in raw.items()}
         static = pd.DataFrame([ps.static_raw for ps in series])
-        s_mean = {c: float(static[c].mean()) if c in STATIC_CONTINUOUS else 0.0 for c in STATIC_FEATURES}
-        s_std = {c: float(static[c].std(ddof=0)) or 1.0 if c in STATIC_CONTINUOUS else 1.0
-                 for c in STATIC_FEATURES}
+        continuous = STATIC_CONTINUOUS + STATIC_LATENT
+        s_mean = {c: float(static[c].mean()) if c in continuous else 0.0 for c in sf}
+        s_std = {c: float(static[c].std(ddof=0)) or 1.0 if c in continuous else 1.0 for c in sf}
         carbs = np.concatenate([ps.meal_carbs for ps in series])
         return cls(float(cgm.mean()), float(cgm.std()), mean, std, s_mean, s_std,
                    float(carbs.std()) if carbs.size else 30.0)
@@ -560,8 +644,9 @@ class Normalizer:
 
 
 def _logged_carbs_series(ps: PatientSeries) -> np.ndarray:
+    """Logged carbs (g) placed on the step at which each log becomes known (causal)."""
     out = np.zeros(ps.n)
-    bins = (ps.meal_min // STEP_MIN).astype(int)
+    bins = meal_step_index(ps.meal_min)
     ok = (bins >= 0) & (bins < ps.n)
     np.add.at(out, bins[ok], ps.meal_carbs[ok])
     return out
@@ -572,11 +657,14 @@ def _carbs_on_board(ps: PatientSeries) -> np.ndarray:
     out = np.zeros(ps.n)
     t = np.arange(ps.n) * float(STEP_MIN)
     for m, c in zip(ps.meal_min, ps.meal_carbs):
-        k0 = max(0, int(math.ceil(m / STEP_MIN)))
+        k0 = max(0, int(meal_step_index(m)))
         k1 = min(ps.n, k0 + GUT_KERNEL_MIN // STEP_MIN)
         if k0 < k1:
             out[k0:k1] += c * (1.0 - gamma2_absorbed(t[k0:k1] - m, ps.tmax))
     return out
+
+
+TWIN_KINDS = ("linear", "ukf")
 
 
 def past_feature_names(cfg: TrainConfig) -> tuple[str, ...]:
@@ -584,14 +672,19 @@ def past_feature_names(cfg: TrainConfig) -> tuple[str, ...]:
     if cfg.twin == "ukf":
         from ukf_twin import UKF_PAST_FEATURES
         return PAST_FEATURES + UKF_PAST_FEATURES
-    return PAST_FEATURES
+    if cfg.twin == "linear":
+        return PAST_FEATURES
+    raise ValueError(f"twin must be one of {TWIN_KINDS}, got {cfg.twin!r}")
 
 
 def make_twin(cfg: TrainConfig):
+    check_twin_mode(cfg.twin_mode)
     if cfg.twin == "ukf":
         from ukf_twin import UKFTwinPrior
-        return UKFTwinPrior()
-    return TwinPrior()
+        return UKFTwinPrior(mode=cfg.twin_mode)
+    if cfg.twin == "linear":
+        return TwinPrior()
+    raise ValueError(f"twin must be one of {TWIN_KINDS}, got {cfg.twin!r}")
 
 
 def past_matrix(ps: PatientSeries, norm: Normalizer, meal_effect: np.ndarray,
@@ -658,7 +751,7 @@ def build_split(series: list[PatientSeries], anchors: dict[str, np.ndarray], twi
         past.append(torch.from_numpy(past_matrix(ps, norm, effect, twin.state_features(ps))))
         time_feats.append(torch.from_numpy(time_matrix(ps)))
         targets.append(torch.from_numpy(ps.cgm.astype(np.float32)))
-        static.append([(ps.static_raw[c] - norm.static_mean[c]) / norm.static_std[c] for c in STATIC_FEATURES])
+        static.append([(ps.static_raw[c] - norm.static_mean[c]) / norm.static_std[c] for c in get_static_features(cfg)])
         t = anchors[ps.pid]
         if t.size == 0:
             continue
@@ -1025,7 +1118,8 @@ def collect(out: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> dic
 # --------------------------------------------------------------------------- #
 
 
-def _masked(pred: np.ndarray, y: np.ndarray, mask: np.ndarray, k: int):
+def _masked(pred: np.ndarray, y: np.ndarray, mask: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    """(prediction, reference) at horizon index k where the target exists -- in that order."""
     ok = mask[:, k] > 0
     return pred[ok, k], y[ok, k]
 
@@ -1048,13 +1142,20 @@ def trajectory_metrics(agg: dict[str, np.ndarray], q: np.ndarray | None = None) 
 
 
 def point_metrics(pred: np.ndarray, agg: dict[str, np.ndarray]) -> dict[str, float]:
-    """RMSE at 30/60/120 min for a point forecast (baselines)."""
+    """RMSE / MAE at 30/60/120 min for a point forecast (baselines)."""
     out = {}
     for minutes in (30, 60, 120):
         k = minutes // STEP_MIN - 1
         p, y = _masked(pred, agg["y"], agg["y_mask"], k)
         out[f"rmse_{minutes}"] = float(np.sqrt(np.mean((p - y) ** 2)))
+        out[f"mae_{minutes}"] = float(np.mean(np.abs(p - y)))
     return out
+
+
+def clarke_at(point_forecast: np.ndarray, agg: dict[str, np.ndarray], minutes: int) -> dict[str, float]:
+    """Clarke zones of a point forecast at one horizon, with the measured CGM as reference."""
+    pred, ref = _masked(point_forecast, agg["y"], agg["y_mask"], minutes // STEP_MIN - 1)
+    return clarke_zones(ref=ref, pred=pred)
 
 
 def clarke_zones(ref: np.ndarray, pred: np.ndarray) -> dict[str, float]:
@@ -1084,16 +1185,14 @@ def expected_calibration_error(p: np.ndarray, y: np.ndarray, bins: int = 10) -> 
                      for b in range(bins) if (idx == b).any()))
 
 
-def hazard_metrics(p: np.ndarray, y: np.ndarray, thresholds: tuple[float, ...]) -> dict[str, float]:
-    out = {"prevalence": float(y.mean()), "brier": float(np.mean((p - y) ** 2)),
+def hazard_discrimination(p: np.ndarray, y: np.ndarray) -> dict[str, float]:
+    """Anchor-level discrimination/calibration of P(onset within 120 min). Alert precision and
+    sensitivity are event-level quantities and are reported only by evaluate_run.py."""
+    out = {"n": int(y.size), "prevalence": float(y.mean()), "brier": float(np.mean((p - y) ** 2)),
            "ece": expected_calibration_error(p, y)}
     if y.min() != y.max():
         out["auroc"] = float(roc_auc_score(y, p))
         out["auprc"] = float(average_precision_score(y, p))
-    for th in thresholds:
-        flag = p >= th
-        out[f"sensitivity@{th:g}"] = float(flag[y > 0].mean()) if (y > 0).any() else float("nan")
-        out[f"precision@{th:g}"] = float(y[flag].mean()) if flag.any() else float("nan")
     return out
 
 
@@ -1129,33 +1228,6 @@ class Calibrators:
         return np.interp(p, self.iso_x, self.iso_y)
 
 
-def evaluate(agg: dict[str, np.ndarray], calib: Calibrators, split: SplitTensors,
-             cfg: TrainConfig) -> dict[str, Any]:
-    report: dict[str, Any] = {"n_anchors": int(agg["y"].shape[0]),
-                              "n_patients": int(np.unique(agg["patient"]).size)}
-    report["pr_tft"] = trajectory_metrics(agg)
-    report["pr_tft_conformal"] = trajectory_metrics(agg, calib.apply_interval(agg["q"]))
-    k60, k120 = 60 // STEP_MIN - 1, 120 // STEP_MIN - 1
-    ref, pred = _masked(agg["q"][..., MEDIAN_IDX], agg["y"], agg["y_mask"], k60)
-    report["clarke_60"] = clarke_zones(ref, pred)
-    ref, pred = _masked(agg["q"][..., MEDIAN_IDX], agg["y"], agg["y_mask"], k120)
-    report["clarke_120"] = clarke_zones(ref, pred)
-    persistence = np.repeat(agg["g0"][:, None], HORIZON, axis=1)
-    report["baseline_persistence"] = point_metrics(persistence, agg)
-    report["baseline_twin_only"] = point_metrics(agg["twin"], agg)
-    risk = agg["at_risk"] > 0
-    report["hazard_raw"] = hazard_metrics(agg["p_cum"][risk], agg["onset_any"][risk], cfg.alert_thresholds)
-    report["hazard_calibrated"] = hazard_metrics(calib.apply_hazard(agg["p_cum"][risk]), agg["onset_any"][risk],
-                                                 cfg.alert_thresholds)
-    groups = np.array(split.groups)[agg["patient"]]
-    report["subgroup_rmse_60"] = {}
-    for g in sorted(set(groups)):
-        sel = groups == g
-        sub = {k: v[sel] for k, v in agg.items()}
-        report["subgroup_rmse_60"][g] = trajectory_metrics(sub)["rmse_60"]
-    return report
-
-
 def predict(trainer: pl.Trainer, module: PRTFTModule, loader: DataLoader) -> dict[str, np.ndarray]:
     parts = trainer.predict(module, loader)
     return {k: torch.cat([p[k] for p in parts]).numpy() for k in parts[0]}
@@ -1181,19 +1253,47 @@ def split_patients(series: dict[str, PatientSeries], seed: int) -> dict[str, lis
     return {"train": sorted(train), "val": sorted(val), "test": sorted(test)}
 
 
-def load_data(cfg: TrainConfig, rng: np.random.Generator, glucose_override: pd.DataFrame | None = None):
+TELEMETRY_COLUMNS = ("patient_id", "timestamp", "glucose_level", "heart_rate", "hrv", "sleep_stage", "step_count",
+                     "meal_event", "carbs_g")  # never the generator's label columns (e.g. future_spike_2h)
+
+
+def load_data(cfg: TrainConfig, patient_ids: list[str] | set[str] | None = None,
+              glucose_override: pd.DataFrame | None = None) -> dict[str, PatientSeries]:
+    """Load the active cohort through the latent firewall.
+
+    Realistic modes read REALISTIC_EHR_COLUMNS only; oracle mode also reads
+    ORACLE_LATENT_COLUMNS and fails if any is missing. Type 1 patients are excluded (no
+    bolus-insulin log; outside the target population). `patient_ids` restricts the cohort
+    without changing any patient's data. A missing directory or file raises; there is no
+    fallback dataset."""
+    mode = check_twin_mode(cfg.twin_mode)
     data_dir = Path(cfg.data_dir)
-    telemetry = pd.read_csv(data_dir / "patient_cgm_telemetry.csv", parse_dates=["timestamp"])
+    for name in ("patients_ehr.csv", "patient_cgm_telemetry.csv"):
+        if not (data_dir / name).is_file():
+            raise FileNotFoundError(f"{data_dir / name} is missing; data_dir must point at the locked dataset")
     ehr = pd.read_csv(data_dir / "patients_ehr.csv")
-    missing = {"meal_event", "carbs_g"} - set(telemetry.columns)
+    columns = REALISTIC_EHR_COLUMNS + (ORACLE_LATENT_COLUMNS if mode == "oracle" else ())
+    missing = [c for c in columns if c not in ehr.columns]
     if missing:
-        raise SystemExit(f"telemetry lacks {sorted(missing)}; regenerate with generate_health_data_v2.py")
-    if cfg.limit_patients:
-        keep = sorted(telemetry["patient_id"].unique())[: cfg.limit_patients]
-        telemetry = telemetry[telemetry["patient_id"].isin(keep)]
+        raise KeyError(f"patients_ehr.csv lacks {missing}, required in twin_mode={mode!r}")
+    ehr = ehr[list(columns)]
+    t1 = set(ehr.loc[ehr["diabetes_status"] == "Type 1", "patient_id"])
+    ehr = ehr[~ehr["patient_id"].isin(t1)]
+    keep = set(ehr["patient_id"]) if patient_ids is None else set(patient_ids)
+    unknown = keep - set(ehr["patient_id"])
+    if unknown:
+        raise KeyError(f"requested patients are not in the active cohort: {sorted(unknown)[:5]}")
+    telemetry = pd.read_csv(data_dir / "patient_cgm_telemetry.csv", parse_dates=["timestamp"],
+                            usecols=list(TELEMETRY_COLUMNS))
+    telemetry = telemetry[telemetry["patient_id"].isin(keep)]
     if glucose_override is not None:
         telemetry = telemetry.drop(columns="glucose_level").merge(glucose_override, on=["patient_id", "timestamp"])
-    return prepare_patients(telemetry, ehr, cfg, rng)
+    return prepare_patients(telemetry, ehr[ehr["patient_id"].isin(keep)], cfg)
+
+
+def excluded_type1_pids(data_dir: str | Path) -> list[str]:
+    ehr = pd.read_csv(Path(data_dir) / "patients_ehr.csv", usecols=["patient_id", "diabetes_status"])
+    return sorted(ehr.loc[ehr["diabetes_status"] == "Type 1", "patient_id"])
 
 
 def build_datamodule(series: dict[str, PatientSeries], split_ids: dict[str, list[str]], cfg: TrainConfig,
@@ -1206,7 +1306,7 @@ def build_datamodule(series: dict[str, PatientSeries], split_ids: dict[str, list
         twin.fit(train_series, anchors, rng)
     if norm is None:
         norm = Normalizer.fit(train_series, {ps.pid: twin.meal_effect_series(ps) for ps in train_series},
-                              {ps.pid: twin.state_features(ps) for ps in train_series})
+                              {ps.pid: twin.state_features(ps) for ps in train_series}, cfg.twin_mode)
     if pop is None:
         pop = population_habit(train_series)
     splits = {name: build_split([series[p] for p in ids], anchors, twin, norm, pop, cfg) for name, ids in split_ids.items()}
@@ -1231,80 +1331,292 @@ def make_trainer(cfg: TrainConfig, out_dir: Path, max_epochs: int, name: str) ->
     )
 
 
-def print_report(report: dict[str, Any]) -> None:
-    r, b, t = report["pr_tft"], report["baseline_persistence"], report["baseline_twin_only"]
-    c = report["pr_tft_conformal"]
-    hz, hc = report["hazard_raw"], report["hazard_calibrated"]
-    lines = [
-        f"Test set: {report['n_patients']} patients, {report['n_anchors']:,} anchors",
-        "",
-        "RMSE (mg/dL)        30 min   60 min  120 min",
-        f"  PR-TFT p50      {r['rmse_30']:7.1f}  {r['rmse_60']:7.1f}  {r['rmse_120']:7.1f}",
-        f"  twin only       {t['rmse_30']:7.1f}  {t['rmse_60']:7.1f}  {t['rmse_120']:7.1f}",
-        f"  persistence     {b['rmse_30']:7.1f}  {b['rmse_60']:7.1f}  {b['rmse_120']:7.1f}",
-        f"MARD 60 min {r['mard_60']:.1f}% | 80% interval coverage raw {r['coverage_80']:.1%}, "
-        f"conformal {c['coverage_80']:.1%} (width {c['width_80_mg_dl']:.0f} mg/dL)",
-        f"Clarke 60 min A+B {report['clarke_60']['A'] + report['clarke_60']['B']:.1%} | "
-        f"Clarke 120 min D+E {report['clarke_120']['D'] + report['clarke_120']['E']:.2%}",
-        f"Spike onset <= 120 min (prevalence {hz['prevalence']:.1%}): AUROC {hz.get('auroc', float('nan')):.3f}, "
-        f"AUPRC {hz.get('auprc', float('nan')):.3f}, ECE raw {hz['ece']:.3f} -> calibrated {hc['ece']:.3f}",
-        "  " + ", ".join(f"{k} {v:.2f}" for k, v in hc.items() if "@" in k),
-        "Subgroup RMSE 60 min: " + ", ".join(f"{g} {v:.1f}" for g, v in report["subgroup_rmse_60"].items()),
-    ]
-    print("\n".join(lines))
+# --------------------------------------------------------------------------- #
+# Run configuration and pre-training checks
+# --------------------------------------------------------------------------- #
+
+RUN_CONFIG_SCHEMA = "pr_tft_run_config/v1"
+RUN_MANIFEST_SCHEMA = "pr_tft_run_manifest/v1"
+EXPECT_KEYS = ("n_static", "n_past", "n_future", "active_patients", "split_counts", "type1_excluded_pids")
+INPUT_FILE_KEYS = ("data_manifest", "split_file", "model_selection_rule", "model_selection_rule_md")
+INPUT_KEYS = INPUT_FILE_KEYS + ("model_selection_rule_sha256", "model_selection_rule_md_sha256")
+SMOKE_PATIENTS = {"train": 16, "val": 4, "test": 4}
 
 
-def parse_args() -> TrainConfig:
-    ap = argparse.ArgumentParser(description="Train the PR-TFT (Blueprint Sections 7 & 8).",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    for f in dataclasses.fields(TrainConfig):
-        flag = "--" + f.name.replace("_", "-")
-        default = f.default
-        if isinstance(default, bool):
-            ap.add_argument(flag, action=argparse.BooleanOptionalAction, default=default)
-        elif isinstance(default, tuple):
-            ap.add_argument(flag, type=float, nargs="+", default=list(default))
-        else:
-            ap.add_argument(flag, type=type(default), default=default)
-    ap.add_argument("--smoke-test", action="store_true",
-                    help="tiny end-to-end run: 24 patients, 2 epochs, 20 batches per epoch")
-    args = ap.parse_args()
-    values = {f.name: getattr(args, f.name) for f in dataclasses.fields(TrainConfig)}
-    values["alert_thresholds"] = tuple(values["alert_thresholds"])
-    cfg = TrainConfig(**values)
-    if args.smoke_test:
-        cfg = dataclasses.replace(cfg, limit_patients=24, max_epochs=2, pretrain_epochs=1, batch_size=128,
-                                  limit_train_batches=20, limit_val_batches=10, d_model=32,
-                                  out_dir=str(Path(cfg.out_dir) / "smoke"))
+@dataclass
+class RunConfig:
+    """A parsed run config file: hyperparameters, the expectations they must meet, and the
+    locked inputs (paths resolved relative to the config file)."""
+
+    path: Path
+    sha256: str
+    cfg: TrainConfig
+    expect: dict[str, Any]
+    inputs: dict[str, Any]
+    data_dir_overridden: bool
+
+
+def validate_train_config(cfg: TrainConfig) -> TrainConfig:
+    """Reject configurations that are inconsistent or unsafe; return cfg unchanged."""
+    err = []
+    if cfg.twin not in TWIN_KINDS:
+        err.append(f"twin must be one of {TWIN_KINDS}")
+    if cfg.twin_mode not in TWIN_MODES:
+        err.append(f"twin_mode must be one of {TWIN_MODES}")
+    if cfg.twin == "ukf" and cfg.num_workers != 0:
+        err.append("num_workers must be 0 with the UKF twin (JAX is not fork-safe in DataLoader workers)")
+    if not isinstance(cfg.num_workers, int) or cfg.num_workers < 0:
+        err.append("num_workers must be a non-negative integer")
+    if not isinstance(cfg.stride_steps, int) or not 1 <= cfg.stride_steps <= 12:
+        err.append("stride_steps must be an integer in [1, 12] (5-60 min between anchors)")
+    for name in ("min_past_coverage", "min_target_coverage"):
+        if not 0.0 < getattr(cfg, name) <= 1.0:
+            err.append(f"{name} must be in (0, 1]")
+    if cfg.twin_base not in ("habit", "no_meal"):
+        err.append("twin_base must be 'habit' or 'no_meal'")
+    if (cfg.pretrain_epochs > 0) != bool(cfg.pretrain_truth):
+        err.append("pretraining must be explicit: pretrain_epochs > 0 exactly when pretrain_truth is set")
+    if cfg.pretrain_truth and not Path(cfg.pretrain_truth).is_file():
+        err.append(f"pretrain_truth {cfg.pretrain_truth} does not exist")
+    if not cfg.data_dir or not cfg.out_dir:
+        err.append("data_dir and out_dir must be set")
+    for name in ("max_epochs", "patience", "batch_size", "d_model", "n_heads", "lstm_layers"):
+        if not isinstance(getattr(cfg, name), int) or getattr(cfg, name) < 1:
+            err.append(f"{name} must be a positive integer")
+    if isinstance(cfg.d_model, int) and isinstance(cfg.n_heads, int) and cfg.n_heads > 0 and cfg.d_model % cfg.n_heads:
+        err.append("d_model must be divisible by n_heads")
+    if not 0.0 <= cfg.dropout < 1.0:
+        err.append("dropout must be in [0, 1)")
+    if cfg.lr <= 0 or cfg.weight_decay < 0 or cfg.grad_clip <= 0:
+        err.append("lr and grad_clip must be > 0, weight_decay >= 0")
+    if not 0.0 < cfg.interval_level < 1.0:
+        err.append("interval_level must be in (0, 1)")
+    th = list(cfg.alert_thresholds)
+    if not th or any(not 0.0 < x < 1.0 for x in th) or th != sorted(set(th)):
+        err.append("alert_thresholds must be strictly increasing values in (0, 1)")
+    if cfg.accelerator not in ("auto", "cpu", "gpu", "cuda", "mps"):
+        err.append("accelerator must be auto/cpu/gpu/cuda/mps")
+    if cfg.precision not in ("32-true", "64-true", "16-mixed", "bf16-mixed"):
+        err.append("precision must be 32-true/64-true/16-mixed/bf16-mixed")
+    if err:
+        raise ValueError("invalid training config: " + "; ".join(err))
     return cfg
 
 
+def load_run_config(path: str | Path, data_dir: str | Path | None = None) -> RunConfig:
+    """Parse a run config. Every TrainConfig field must be present (no silent defaults) and no
+    unknown key is accepted. `data_dir` overrides train.data_dir; the directory is still
+    identified by its hashes in preflight(), so an override can never switch datasets."""
+    path = Path(path).resolve()
+    text = path.read_text()
+    raw = json.loads(text)
+    if set(raw) != {"schema", "train", "expect", "inputs"}:
+        raise ValueError(f"{path}: top-level keys must be schema/train/expect/inputs, got {sorted(raw)}")
+    if raw["schema"] != RUN_CONFIG_SCHEMA:
+        raise ValueError(f"{path}: schema must be {RUN_CONFIG_SCHEMA!r}")
+    fields = {f.name: f for f in dataclasses.fields(TrainConfig)}
+    train = dict(raw["train"])
+    missing, unknown = sorted(set(fields) - set(train)), sorted(set(train) - set(fields))
+    if missing or unknown:
+        raise ValueError(f"{path}: train section must list every TrainConfig field exactly; "
+                         f"missing {missing}, unknown {unknown}")
+    for name, f in fields.items():
+        default, value = f.default, train[name]
+        if isinstance(default, bool):
+            ok = isinstance(value, bool)
+        elif isinstance(default, int):
+            ok = isinstance(value, int) and not isinstance(value, bool)
+        elif isinstance(default, float):
+            ok = isinstance(value, (int, float)) and not isinstance(value, bool)
+        elif isinstance(default, tuple):
+            ok = isinstance(value, list) and all(isinstance(v, (int, float)) for v in value)
+        else:
+            ok = isinstance(value, type(default))
+        if not ok:
+            raise ValueError(f"{path}: train.{name}={value!r} has the wrong type (expected {type(default).__name__})")
+    train["alert_thresholds"] = tuple(float(v) for v in train["alert_thresholds"])
+    for name, f in fields.items():
+        if isinstance(f.default, float):
+            train[name] = float(train[name])
+    cfg = TrainConfig(**train)
+    if data_dir is not None:
+        cfg = dataclasses.replace(cfg, data_dir=str(Path(data_dir).resolve()))
+    validate_train_config(cfg)
+    if set(raw["expect"]) != set(EXPECT_KEYS):
+        raise ValueError(f"{path}: expect keys must be {sorted(EXPECT_KEYS)}")
+    if set(raw["inputs"]) != set(INPUT_KEYS):
+        raise ValueError(f"{path}: inputs keys must be {sorted(INPUT_KEYS)}")
+    inputs = dict(raw["inputs"])
+    for key in INPUT_FILE_KEYS:
+        inputs[key] = (path.parent / inputs[key]).resolve()
+    return RunConfig(path=path, sha256=hashlib.sha256(text.encode()).hexdigest(), cfg=cfg, expect=dict(raw["expect"]),
+                     inputs=inputs, data_dir_overridden=data_dir is not None)
+
+
+def model_dims(cfg: TrainConfig) -> dict[str, int]:
+    return {"n_static": len(get_static_features(cfg)), "n_past": len(past_feature_names(cfg)),
+            "n_future": len(FUTURE_FEATURES)}
+
+
+def preflight(run: RunConfig, allow_dirty: bool) -> tuple[dict[str, Any], dict[str, list[str]]]:
+    """Every check that must pass before data is used: clean source tree, data and split hashes,
+    rule lock, and the config's expectations. Returns (record, frozen split)."""
+    git = prov.require_clean(prov.git_state(), allow_dirty)
+    manifest_path = run.inputs["data_manifest"]
+    manifest = prov.load_json(manifest_path)
+    data = prov.verify_data(run.cfg.data_dir, manifest)
+    if run.cfg.pretrain_truth:
+        got = prov.sha256_file(run.cfg.pretrain_truth)
+        if got != manifest["files"].get(prov.TRUTH_FILE):
+            raise prov.DataIntegrityError(f"pretrain_truth {run.cfg.pretrain_truth} does not match the data manifest")
+        data[prov.TRUTH_FILE] = got
+    split = prov.verify_split(run.inputs["split_file"], manifest)
+    rule = prov.verify_rule(run.inputs["model_selection_rule"], run.inputs["model_selection_rule_md"],
+                            run.inputs["model_selection_rule_sha256"], run.inputs["model_selection_rule_md_sha256"])
+    exp, err = run.expect, []
+    dims = model_dims(run.cfg)
+    for k, v in dims.items():
+        if exp[k] != v:
+            err.append(f"{k}: config produces {v}, expected {exp[k]}")
+    if exp["active_patients"] != manifest["active_patients"]:
+        err.append(f"active_patients: manifest {manifest['active_patients']}, expected {exp['active_patients']}")
+    if exp["split_counts"] != manifest["split_counts"]:
+        err.append(f"split_counts: manifest {manifest['split_counts']}, expected {exp['split_counts']}")
+    if sorted(exp["type1_excluded_pids"]) != sorted(manifest["type1_excluded_pids"]):
+        err.append("type1_excluded_pids differ from the data manifest")
+    rule_thresholds = prov.load_json(run.inputs["model_selection_rule"])["alerting"]["thresholds"]
+    if [float(x) for x in rule_thresholds] != list(run.cfg.alert_thresholds):
+        err.append(f"alert_thresholds {list(run.cfg.alert_thresholds)} != rule thresholds {rule_thresholds}")
+    if err:
+        raise ValueError("run config expectations not met: " + "; ".join(err))
+    record = {
+        "git": git,
+        "config_file": run.path.name, "config_sha256": run.sha256,
+        "data_dir": run.cfg.data_dir, "data_dir_overridden": run.data_dir_overridden,
+        "data_manifest_sha256": prov.sha256_file(manifest_path), "data_sha256": data,
+        "split_file": run.inputs["split_file"].name, "split_sha256": manifest["split_sha256"],
+        **rule,
+        "source_sha256": prov.source_hashes(),
+        "expect": exp, "dims": dims,
+    }
+    return record, split
+
+
+def check_cohort(series: dict[str, PatientSeries], split: dict[str, list[str]], run: RunConfig) -> dict[str, Any]:
+    """The loaded cohort must be exactly the locked one, and the frozen split must be the one
+    split_patients() derives from it with the configured seed."""
+    err = []
+    union = set().union(*map(set, split.values()))
+    if set(series) != union:
+        err.append(f"loaded patients != split patients ({len(series)} vs {len(union)})")
+    if len(series) != run.expect["active_patients"]:
+        err.append(f"{len(series)} active patients, expected {run.expect['active_patients']}")
+    t1 = excluded_type1_pids(run.cfg.data_dir)
+    if t1 != sorted(run.expect["type1_excluded_pids"]):
+        err.append(f"Type 1 exclusions in the data {t1} != expected")
+    recomputed = split_patients(series, run.cfg.seed)
+    if recomputed != {k: sorted(v) for k, v in split.items()}:
+        err.append("split_patients(seed) does not reproduce the frozen split")
+    if err:
+        raise ValueError("cohort check failed: " + "; ".join(err))
+    return {"active_patients": len(series), "type1_excluded_pids": t1, "split_reproduces_from_seed": True,
+            "onsets_total": int(sum(int(ps.onset.sum()) for ps in series.values()))}
+
+
+def smoke_split(split: dict[str, list[str]]) -> dict[str, list[str]]:
+    return {k: sorted(v)[:SMOKE_PATIENTS[k]] for k, v in split.items()}
+
+
+def smoke_config(cfg: TrainConfig) -> TrainConfig:
+    """Same architecture and inputs, tiny budget: proves the full pipeline end to end."""
+    return dataclasses.replace(cfg, max_epochs=2, patience=2, batch_size=128, limit_train_batches=20,
+                               limit_val_batches=10, pretrain_epochs=0, pretrain_truth="",
+                               out_dir=cfg.out_dir.rstrip("/") + "_smoke")
+
+
+def environment() -> dict[str, str]:
+    import platform
+    import sklearn
+
+    env = {"python": platform.python_version(), "platform": platform.platform(), "torch": torch.__version__,
+           "lightning": pl.__version__, "numpy": np.__version__, "pandas": pd.__version__, "sklearn": sklearn.__version__}
+    try:
+        import jax
+
+        env["jax"] = jax.__version__
+    except ImportError:
+        pass
+    return env
+
+
+def write_json(path: Path, obj: Any) -> str:
+    path.write_text(json.dumps(obj, indent=2) + "\n")
+    return prov.sha256_file(path)
+
+
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description="Train the PR-TFT (Blueprint Sections 7 & 8).")
+    ap.add_argument("--config", type=Path, required=True, help="run config (e.g. final_config.json)")
+    ap.add_argument("--data-dir", type=Path, default=None,
+                    help="read the data from here instead of train.data_dir; the files must still match data_manifest.json")
+    ap.add_argument("--smoke-test", action="store_true",
+                    help=f"same model and inputs on {sum(SMOKE_PATIENTS.values())} frozen-split patients, 2 short epochs")
+    ap.add_argument("--check-only", action="store_true",
+                    help="run every pre-training check, build the datamodule and one forward pass, then exit")
+    ap.add_argument("--allow-dirty", action="store_true",
+                    help="permit an uncommitted working tree (recorded as dirty in the run manifest)")
+    return ap.parse_args()
+
+
 def main() -> None:
-    cfg = parse_args()
+    args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
+    started = time.perf_counter()
+    run = load_run_config(args.config, data_dir=args.data_dir)
+    record, split = preflight(run, allow_dirty=args.allow_dirty)
+    series = load_data(run.cfg)
+    cohort = check_cohort(series, split, run)
+    cfg = run.cfg
+    kind = "smoke" if args.smoke_test else "full"
+    if args.smoke_test:
+        split, cfg = smoke_split(split), smoke_config(cfg)
+        series = {p: series[p] for ids in split.values() for p in ids}
+    out_dir = Path(cfg.out_dir)
+    if not args.check_only and out_dir.exists() and any(out_dir.iterdir()):
+        raise FileExistsError(f"{out_dir} is not empty; every run gets a fresh directory")
+    LOG.info("preflight passed: git %s (dirty=%s), data/split/rule hashes verified, %d active patients, %d onsets",
+             record["git"]["git_sha"][:12], record["git"]["dirty"], cohort["active_patients"], cohort["onsets_total"])
+
     pl.seed_everything(cfg.seed, workers=True)
     rng = np.random.default_rng(cfg.seed)
     if torch.cuda.is_available():
         torch.set_float32_matmul_precision("medium")
-    out_dir = Path(cfg.out_dir)
+    dm, twin, norm, pop = build_datamodule(series, split, cfg, rng)
+    dims = model_dims(cfg)
+    module = PRTFTModule(dataclasses.asdict(cfg), dims["n_static"], dims["n_past"], dims["n_future"], norm.glu_std)
+    LOG.info("PR-TFT: %.2fM parameters; twin %s", sum(p.numel() for p in module.parameters()) / 1e6, twin.describe())
+
+    if args.check_only:
+        batch = next(iter(dm.train_dataloader()))
+        with torch.no_grad():
+            out = module.eval()(batch)
+        shapes = {"past": list(batch["past"].shape), "future": list(batch["future"].shape),
+                  "static": list(batch["static"].shape), "quantiles": list(out["quantiles"].shape)}
+        if (shapes["past"][-1], shapes["future"][-1], shapes["static"][-1]) != (dims["n_past"], dims["n_future"], dims["n_static"]):
+            raise RuntimeError(f"batch shapes {shapes} do not match model dims {dims}")
+        print(json.dumps({"check": "passed", "preflight": record, "cohort": cohort, "twin": twin.describe(),
+                          "anchors": {k: int(s.anchor_t.numel()) for k, s in dm.splits.items()},
+                          "batch_shapes": shapes}, indent=2))
+        return
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    started = time.perf_counter()
-
-    series = load_data(cfg, rng)
-    split_ids = split_patients(series, cfg.seed)
-    (out_dir / "split.json").write_text(json.dumps(split_ids, indent=2))
-    dm, twin, norm, pop = build_datamodule(series, split_ids, cfg, rng)
-    module = PRTFTModule(dataclasses.asdict(cfg), len(STATIC_FEATURES), len(past_feature_names(cfg)),
-                         len(FUTURE_FEATURES), norm.glu_std)
-    LOG.info("PR-TFT: %.2fM parameters", sum(p.numel() for p in module.parameters()) / 1e6)
-
-    # Stage 1 (optional): clean pretraining on noise-free interstitial glucose (Blueprint 8.1).
-    if cfg.pretrain_truth:
+    # Stage 1 (optional, explicit in the config): clean pretraining on noise-free interstitial glucose.
+    if cfg.pretrain_epochs > 0:
         truth = pd.read_csv(cfg.pretrain_truth, parse_dates=["timestamp"])
         truth = truth.rename(columns={"interstitial_glucose": "glucose_level"})[["patient_id", "timestamp", "glucose_level"]]
         clean_cfg = dataclasses.replace(cfg, log_corruption=False)
-        clean_series = load_data(clean_cfg, np.random.default_rng(cfg.seed), glucose_override=truth)
-        clean_dm, *_ = build_datamodule(clean_series, split_ids, clean_cfg, rng, twin, norm, pop)
+        clean_series = load_data(clean_cfg, patient_ids=list(series), glucose_override=truth)
+        clean_dm, *_ = build_datamodule(clean_series, split, clean_cfg, rng, twin, norm, pop)
         LOG.info("stage 1: clean pretraining for %d epochs", cfg.pretrain_epochs)
         make_trainer(cfg, out_dir, cfg.pretrain_epochs, "stage1_clean").fit(module, clean_dm)
 
@@ -1312,23 +1624,47 @@ def main() -> None:
     trainer = make_trainer(cfg, out_dir, cfg.max_epochs, "stage2_observed")
     trainer.fit(module, dm)
     best_path = trainer.checkpoint_callback.best_model_path
-    best = PRTFTModule.load_from_checkpoint(best_path) if best_path else module
-    LOG.info("best checkpoint: %s", best_path or "(last weights)")
+    if not best_path:
+        raise RuntimeError("no checkpoint was saved")
+    best = PRTFTModule.load_from_checkpoint(best_path, map_location="cpu")
+    LOG.info("best checkpoint: %s", best_path)
 
-    # Stage 3: calibration on validation patients, then the test report.
+    # Stage 3: calibration on validation patients. The test split is not scored here.
     eval_trainer = pl.Trainer(accelerator=cfg.accelerator, devices=1, logger=False, enable_progress_bar=False)
-    calib = Calibrators.fit(predict(eval_trainer, best, dm.val_dataloader()), cfg.interval_level)
-    report = evaluate(predict(eval_trainer, best, dm.test_dataloader()), calib, dm.splits["test"], cfg)
-    report["runtime_s"] = round(time.perf_counter() - started, 1)
-    report["best_checkpoint"] = best_path
-    report["twin_prior"] = twin.describe()
+    val = predict(eval_trainer, best, dm.val_dataloader())
+    calib = Calibrators.fit(val, cfg.interval_level)
+    risk = val["at_risk"] > 0
+    validation = {"trajectory_raw": trajectory_metrics(val),
+                  "trajectory_conformal": trajectory_metrics(val, calib.apply_interval(val["q"])),
+                  "hazard_raw": hazard_discrimination(val["p_cum"][risk], val["onset_any"][risk]),
+                  "hazard_calibrated": hazard_discrimination(calib.apply_hazard(val["p_cum"][risk]), val["onset_any"][risk]),
+                  "max_calibrated_probability": float(max(calib.iso_y)) if calib.iso_y else 0.0}
 
-    (out_dir / "calibration.json").write_text(json.dumps(dataclasses.asdict(calib), indent=2))
-    (out_dir / "normalization.json").write_text(json.dumps(dataclasses.asdict(norm), indent=2))
-    (out_dir / "config.json").write_text(json.dumps(dataclasses.asdict(cfg), indent=2))
-    (out_dir / "metrics_test.json").write_text(json.dumps(report, indent=2))
-    print_report(report)
-    LOG.info("artifacts in %s (%.0f s)", out_dir, report["runtime_s"])
+    files = {
+        "split.json": write_json(out_dir / "split.json", split),
+        "config.json": write_json(out_dir / "config.json", dataclasses.asdict(cfg)),
+        "normalization.json": write_json(out_dir / "normalization.json", dataclasses.asdict(norm)),
+        "calibration.json": write_json(out_dir / "calibration.json", dataclasses.asdict(calib)),
+    }
+    ckpt = Path(best_path)
+    manifest = {
+        "schema": RUN_MANIFEST_SCHEMA, "run_kind": kind,
+        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "runtime_s": round(time.perf_counter() - started, 1),
+        "preflight": record, "cohort": cohort,
+        "split_effective_sha256": prov.sha256_json(split),
+        "meal_log_sha256": meal_log_sha256(series),
+        "population_habit_sha256": prov.sha256_json([np.round(pop[0], 12).tolist(), round(pop[1], 9)]),
+        "twin": twin.describe(), "dims": dims, "files": files,
+        "checkpoint": {"path": os.path.relpath(os.path.realpath(ckpt), os.path.realpath(out_dir)),
+                       "sha256": prov.sha256_file(ckpt),
+                       "best_val_loss": float(trainer.checkpoint_callback.best_model_score)},
+        "validation": validation,
+        "environment": environment(),
+    }
+    write_json(out_dir / "run_manifest.json", manifest)
+    LOG.info("run artifacts in %s (%.0f s); evaluate with: python evaluate_run.py --run-dir %s",
+             out_dir, manifest["runtime_s"], out_dir)
 
 
 if __name__ == "__main__":
