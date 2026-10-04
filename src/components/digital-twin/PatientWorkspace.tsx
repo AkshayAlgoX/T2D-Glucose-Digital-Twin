@@ -167,7 +167,6 @@ export function PatientWorkspace({ patientId, forecast, cache, isConnected, isSt
               </div>
             )}
             
-            <NowBar forecast={forecast} isConnected={isConnected} isStale={isStale} />
 
             <NowBar forecast={forecast} isConnected={isConnected} isStale={isStale} />
             

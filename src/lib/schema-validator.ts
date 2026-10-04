@@ -1,6 +1,12 @@
+import { z } from 'zod';
 import { ForecastResponseSchema, StreamEventSchema } from './zod-schemas';
 
-export const validateForecastResponse = (data: any) => {
+interface ValidatorFn {
+  (data: unknown): boolean;
+  errors: any[] | null;
+}
+
+export const validateForecastResponse: ValidatorFn = (data: unknown) => {
   try {
     ForecastResponseSchema.parse(data);
     return true;
@@ -9,9 +15,9 @@ export const validateForecastResponse = (data: any) => {
     return false;
   }
 };
-validateForecastResponse.errors = null as any;
+validateForecastResponse.errors = null;
 
-export const validateStreamEvent = (data: any) => {
+export const validateStreamEvent: ValidatorFn = (data: unknown) => {
   try {
     StreamEventSchema.parse(data);
     return true;
@@ -20,9 +26,9 @@ export const validateStreamEvent = (data: any) => {
     return false;
   }
 };
-validateStreamEvent.errors = null as any;
+validateStreamEvent.errors = null;
 
-export const validateForecastRequest = (data: any) => {
+export const validateForecastRequest: ValidatorFn = (data: unknown) => {
   try {
     const { ForecastRequestSchema } = require('./zod-schemas');
     ForecastRequestSchema.parse(data);
@@ -32,9 +38,9 @@ export const validateForecastRequest = (data: any) => {
     return false;
   }
 };
-validateForecastRequest.errors = null as any;
+validateForecastRequest.errors = null;
 
-export const validateTwinCard = (data: any) => {
+export const validateTwinCard: ValidatorFn = (data: unknown) => {
   try {
     const { TwinCardSchema } = require('./zod-schemas');
     TwinCardSchema.parse(data);
@@ -44,4 +50,4 @@ export const validateTwinCard = (data: any) => {
     return false;
   }
 };
-validateTwinCard.errors = null as any;
+validateTwinCard.errors = null;
