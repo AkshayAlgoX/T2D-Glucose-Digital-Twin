@@ -60,7 +60,7 @@ from typing import Annotated, Any, Literal, Optional, Union
 
 import numpy as np
 import torch
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -73,12 +73,16 @@ LOG = logging.getLogger("serve_pr_tft")
 
 SERVICE_VERSION = "0.1.0"
 CONTRACT_VERSION = "1.0.0"
-ALERT_POLICY_VERSION = "ap-1.0"
+ALERT_POLICY_VERSION = "ap-1.1-service"
 SIMULATOR_VERSION = "generate_health_data_v2"
 SUBJECT_NAMESPACE = uuid.UUID("6f0c3a52-9d1e-4c57-8a2b-3e41d7b9c0aa")
 INTENDED_USE = "research_only_not_for_clinical_decisions"
 
-# Alert policy (Blueprint 8.5)
+# Alert policy (Service logic: differs from evaluator in evaluate_run.py)
+# - Evaluator uses a single threshold with a 120-min cooldown and a causal filter.
+# - Service uses a tiered approach (watch/warning/clear) with a 60-min warning cooldown,
+#   and checks p50 >= 180 without the causal filter.
+# Policy version bumped to ap-1.1-service to prevent presenting evaluator metrics as service metrics.
 WATCH_P, WARNING_P, CLEAR_P = 0.35, 0.60, 0.25
 SUPPRESS_MIN = 60
 # Exercise uptake for activity scenarios: U = ALPHA_EX * dHR * G * V_G (generator constants).
@@ -538,7 +542,9 @@ class ServiceContext:
         with torch.inference_mode():
             out = self.module.model(batch)
         q = out["quantiles"][0].numpy()
-        return {"q": self.calib.apply_interval(q[None])[0], "q_raw": q,
+        calibrated_q = self.calib.apply_interval(q[None])[0]
+        calibrated_q = np.sort(calibrated_q, axis=-1)
+        return {"q": calibrated_q, "q_raw": q,
                 "p_bin": torch.sigmoid(out["hazard_logits"][0]).numpy(), "peak": out["peak"][0].numpy()}
 
     def twin_only(self, twin_base: np.ndarray) -> dict[str, np.ndarray]:
@@ -958,6 +964,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     @app.get("/v1/subjects/{subject_id}/stream", dependencies=[Depends(auth)])
     async def stream(subject_id: uuid.UUID, as_of: Optional[dt.datetime] = None, speed: float = 300.0,
                      max_events: int = 0, last_event_id: Optional[str] = Header(default=None),
+                     include: list[IncludeKey] = Query(default=["drivers", "twin_state"]),
                      c: ServiceContext = Depends(ctx)):
         """Replay: one forecast per 5-min reading from as_of, paced at `speed` x real time
         (300 -> one reading per second). Resumes after Last-Event-ID when given."""
@@ -973,7 +980,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
         async def events():
             machine, sent, quality = AlertMachine(), 0, None
             for idx in range(t, pc.ps.n):
-                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id)
+                req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=include)
                 body = await run_in_threadpool(build_forecast, c, req, idx)
                 stamp = dt.datetime.fromisoformat(body["as_of"])
                 if body["spike_risk"] is not None:
