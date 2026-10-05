@@ -417,6 +417,7 @@ class PatientCache:
     cob: np.ndarray  # carbs on board, g
     meal_effect: np.ndarray  # twin meal effect, mg/dL
     static: np.ndarray  # (S,) normalised
+    ukf_mean: np.ndarray | None = None
 
 
 class ServiceContext:
@@ -503,6 +504,7 @@ class ServiceContext:
 
         for pid, ps in series.items():
             sid = uuid.uuid5(SUBJECT_NAMESPACE, pid)
+            ukf_mean = None
             if ukf_data is not None:
                 effect = ukf_data[f"{pid}_meal_effect"]
                 feats = {
@@ -515,6 +517,7 @@ class ServiceContext:
                     "ukf_innovation_z": ukf_data[f"{pid}_ukf_innovation_z"],
                     "ukf_unlogged_carbs": ukf_data[f"{pid}_ukf_unlogged_carbs"],
                 }
+                ukf_mean = ukf_data.get(f"{pid}_ukf_mean")
             else:
                 effect = self.twin.meal_effect_series(ps)
                 feats = self.twin.state_features(ps)
@@ -522,7 +525,7 @@ class ServiceContext:
             static = np.array([(ps.static_raw[c] - self.norm.static_mean[c]) / self.norm.static_std[c]
                                for c in self.static_features], dtype=np.float32)
             self.patients[sid] = PatientCache(ps, sid, T.past_matrix(ps, self.norm, effect, feats),
-                                              T._carbs_on_board(ps), effect, static)
+                                              T._carbs_on_board(ps), effect, static, ukf_mean)
             self.by_pid[pid] = sid
         self.ood_ref = float(np.sqrt(np.mean(np.stack([p.static[:len(T.STATIC_CONTINUOUS)] ** 2
                                                         for p in self.patients.values()]))))
@@ -560,8 +563,8 @@ class ServiceContext:
         if extra_carbs is not None:
             carbs = carbs + extra_carbs
             prob = np.maximum(prob, (extra_carbs > 0).astype(float))
-        nomeal = self.twin.forecast(ps, idx, extra_flux=extra_flux)
-        habit = self.twin.forecast(ps, idx, carbs, extra_flux=extra_flux)
+        nomeal = self.twin.forecast(ps, idx, extra_flux=extra_flux, cached_mean=pc.ukf_mean)
+        habit = self.twin.forecast(ps, idx, carbs, extra_flux=extra_flux, cached_mean=pc.ukf_mean)
         base = habit if self.cfg.twin_base == "habit" else nomeal
         stamp = ps.stamps[t]
         future = [stamp + dt.timedelta(minutes=T.STEP_MIN * k) for k in range(1, T.HORIZON + 1)]
@@ -783,7 +786,7 @@ def drivers(ctx: ServiceContext, pc: PatientCache, t: int, base: np.ndarray, nom
     """Additive decomposition of the p50 forecast at its peak into physics terms and the
     learned correction. Each impact is in mg/dL at the forecast peak."""
     ps = pc.ps
-    no_meals_at_all = ctx.twin.forecast_without_gut(ps, np.array([t]))[0]
+    no_meals_at_all = ctx.twin.forecast_without_gut(ps, np.array([t]), cached_mean=pc.ukf_mean)[0]
     terms = [
         ("logged_meals_absorbing", "driver.recent_meal", "twin", nomeal[peak_idx] - no_meals_at_all[peak_idx]),
         ("expected_habitual_meal", "driver.expected_meal", "twin",
