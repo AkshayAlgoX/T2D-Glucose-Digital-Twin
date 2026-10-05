@@ -7,7 +7,7 @@
     "test": "jest",
     "dev": "next dev",
     "build": "npm run check-contracts && next build",
-    "prebuild": "mkdir -p src/contracts/v1 && cp -r ../T2D-Glucose-Digital-Twin/backend/contracts/v1/*.json src/contracts/v1/ && npx json2ts src/contracts/v1/forecast-response.json > src/types/forecast-response.d.ts && npx json2ts src/contracts/v1/forecast-request.json > src/types/forecast-request.d.ts && npx json2ts src/contracts/v1/stream-event.json > src/types/stream-event.d.ts && npx json2ts src/contracts/v1/twin-card.json > src/types/twin-card.d.ts",
+    "prebuild": "mkdir -p src/contracts/v1 && cp -r backend/contracts/v1/*.json src/contracts/v1/ && npx json2ts src/contracts/v1/forecast-response.json > src/types/forecast-response.d.ts && npx json2ts src/contracts/v1/forecast-request.json > src/types/forecast-request.d.ts && npx json2ts src/contracts/v1/stream-event.json > src/types/stream-event.d.ts && npx json2ts src/contracts/v1/twin-card.json > src/types/twin-card.d.ts",
     "check-contracts": "npm run prebuild && git diff --exit-code src/contracts/v1 src/types/ || (echo 'Contracts out of sync, run npm run prebuild and commit' && exit 1)"
   },
   "repository": {
