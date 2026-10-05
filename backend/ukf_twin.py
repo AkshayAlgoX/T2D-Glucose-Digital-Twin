@@ -811,7 +811,7 @@ class UKFTwinPrior:
 
     def parameter_summary(self, ps) -> dict[str, float]:
         """Displayable twin parameters (from the mode's own derivation, never read off the EHR)."""
-        p = self._run(ps)["params"]
+        p = self._prepare(ps)[0]
         return {"insulin_sensitivity_rel": float(p.si / gen.SI_REF), "t_max_min": float(p.tmax)}
 
     def meal_effect_series(self, ps) -> np.ndarray:
@@ -820,8 +820,12 @@ class UKFTwinPrior:
         return gen.F_BIO * (r["mean"][:, Q1] + r["mean"][:, Q2]) / r["params"].vg
 
     def forecast(self, ps, t_idx: np.ndarray, habit_carbs: np.ndarray | None = None,
-                 extra_flux: np.ndarray | None = None) -> np.ndarray:
-        r = self._run(ps)
+                 extra_flux: np.ndarray | None = None, cached_mean: np.ndarray | None = None) -> np.ndarray:
+        if cached_mean is not None:
+            params, obs = self._prepare(ps)
+            r = {"obs": obs, "params": params, "mean": cached_mean[:ps.n]}
+        else:
+            r = self._run(ps)
         obs, p = r["obs"], r["params"]
         futs = []
         for a, t in enumerate(t_idx):
@@ -834,11 +838,15 @@ class UKFTwinPrior:
         cgm = paths[:, :, GISF] + paths[:, :, BIAS] + paths[:, :, V1]
         return np.clip(cgm, 40.0, 400.0)
 
-    def forecast_without_gut(self, ps, t_idx: np.ndarray) -> np.ndarray:
+    def forecast_without_gut(self, ps, t_idx: np.ndarray, cached_mean: np.ndarray | None = None) -> np.ndarray:
         """Counterfactual for the 'meals still absorbing' driver: the same filtered state at
         each anchor with the gut emptied (Q1 = Q2 = 0), rolled out with no new meals.
         Re-filtering without the meal log would rewrite the whole state history instead."""
-        r = self._run(ps)
+        if cached_mean is not None:
+            params, obs = self._prepare(ps)
+            r = {"obs": obs, "params": params, "mean": cached_mean[:ps.n]}
+        else:
+            r = self._run(ps)
         obs, p = r["obs"], r["params"]
         x0 = r["mean"][t_idx].copy()
         x0[:, [Q1, Q2]] = 0.0
