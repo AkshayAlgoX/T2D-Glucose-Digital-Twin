@@ -1,0 +1,177 @@
+{
+  "schema": "pr_tft_run_manifest/v1",
+  "run_kind": "full",
+  "created_utc": "2026-10-03T15:04:21Z",
+  "runtime_s": 11053.3,
+  "preflight": {
+    "git": {
+      "git_sha": "bf34aca4772d51d748c95edd7e83c8e47444c5ad",
+      "dirty": true,
+      "dirty_paths": [
+        "backend/train_pr_tft.py",
+        "backend/ablation_twins.py",
+        "backend/benchmark_results.json",
+        "backend/config_ablation_arm_a.json",
+        "backend/config_ablation_arm_b.json",
+        "backend/config_ablation_arm_d.json",
+        "backend/scripts/benchmark_throughput.py",
+        "backend/scripts/fast_mps_benchmark.py",
+        "backend/scripts/run_phase10a1.py",
+        "backend/scripts/run_phase10a2.py",
+        "backend/scripts/run_phase10c_orchestrator.py"
+      ],
+      "n_dirty_paths": 11,
+      "allow_dirty": true
+    },
+    "config_file": "config_ablation_arm_d.json",
+    "config_sha256": "87c9b3af0fc72e66b42cf2ea3b75328405586e3d563077986cd4124080cb460e",
+    "data_dir": "backend/synthetic_v2",
+    "data_dir_overridden": false,
+    "data_manifest_sha256": "ddb0f21c6748b264bab86e11abd173c9736cfe956c7df6f152d4d52c98b534f5",
+    "data_sha256": {
+      "patients_ehr.csv": "c9c3d3d3e4d8b0dc77732715cb4f8d90e48920162a4538103377cb4f68ae8254",
+      "patient_cgm_telemetry.csv": "d4585ae39009da43d95f8560409fc1ede5e2e3eeb57eee4fd6519df4c3e3544f"
+    },
+    "split_file": "split_293.json",
+    "split_sha256": "950bbdce192f389a9404d91d05b3346537507a3cbdcb9f954774d35b5f882587",
+    "model_selection_rule_json_sha256": "0313a9123290aded2d2b2590d48c5d1e2fb6315fe57e37941a1d20556068b6f8",
+    "model_selection_rule_md_sha256": "ebfe3d2c3a8d7bf1c4b9ac3cc0afe8fca31f106f843ff42121c37c0022b12528",
+    "source_sha256": {
+      "input_contract.py": "5d4a078bc837b463d7aa8ba4eabc18dabbaae875c3d1e9ed33c86e76cf7da302",
+      "provenance.py": "6a35cb078e18b1e77e3c68c1d19c8804979f37b1236d64c090a02a63f885c97c",
+      "train_pr_tft.py": "60e3edab4e39cb50a46c991f7347eed16db7d4f8265ea9ccf9744cfdb059e3ad",
+      "ukf_twin.py": "00df6335e4bb3b0fbfd64b59ba7b3eefd313322e1ead71f72ca8a5c017b29f70",
+      "generate_health_data_v2.py": "830fd86ba1a327ff81749730fe2f97d44f637a87da33ed34f3cff5db75021f7a",
+      "evaluate_run.py": "7231978604e6d47f5317e127b6a95f21138be348d2a628b7925a7ced2c57c7aa",
+      "twin_mode_selection.py": "fd12b3536f7dc08ea5d82f8e027f65ca93a4211ebb97ca9ba2aee6f7b28c7a9f"
+    },
+    "expect": {
+      "n_static": 18,
+      "n_past": 20,
+      "n_future": 8,
+      "active_patients": 293,
+      "split_counts": {
+        "train": 205,
+        "val": 44,
+        "test": 44
+      },
+      "type1_excluded_pids": [
+        "P0024",
+        "P0033",
+        "P0087",
+        "P0109",
+        "P0117",
+        "P0170",
+        "P0267"
+      ]
+    },
+    "dims": {
+      "n_static": 18,
+      "n_past": 20,
+      "n_future": 8
+    }
+  },
+  "cohort": {
+    "active_patients": 293,
+    "type1_excluded_pids": [
+      "P0024",
+      "P0033",
+      "P0087",
+      "P0109",
+      "P0117",
+      "P0170",
+      "P0267"
+    ],
+    "split_reproduces_from_seed": true,
+    "onsets_total": 5996
+  },
+  "split_effective_sha256": "be3f53099da2fc238a106bb70fb42120c58c0bf594a7bc218644dc8852a1cc40",
+  "meal_log_sha256": "42c5c7b587c448ac275bd8af2a6d38882356225dc449b8342a40f48c42afec01",
+  "population_habit_sha256": "d91fd57a08a3ebc46df62f853ac14a74f8a4424927cb3fca7352fda7a05a4734",
+  "twin": {
+    "kind": "ukf",
+    "mode": "s3",
+    "alpha": 1.0,
+    "beta": 2.0,
+    "kappa": 0.0,
+    "r_white": 1.5,
+    "nis_gate": 15.13,
+    "max_rejects": 6,
+    "cusum_k": 0.5,
+    "cusum_h": 5.0,
+    "corr_floor": 1e-09,
+    "gut_adapt_gain": 0.25,
+    "gut_adapt_cap": 8.0
+  },
+  "dims": {
+    "n_static": 18,
+    "n_past": 20,
+    "n_future": 8
+  },
+  "files": {
+    "split.json": "8ae37fa2efdc00592a4351190e0451eb733850bbe4eeb6feafadd8b4259854b2",
+    "config.json": "2d079da3cc30827e0f60fb9e7ec0257519d6bb9d93cc6736dc434b74c49d493b",
+    "normalization.json": "a8ac91c81ee48cce047ac529b385a4cd15ffe88e27f902c62f4d1fb7cf441eaf",
+    "calibration.json": "9ae8ab2c61ced19b29220f731c3ad12502848af2a71ea659e6bf7212e0c600d4"
+  },
+  "checkpoint": {
+    "path": "checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt",
+    "sha256": "fb49cadfafdab18bbb582855c8d9814e8dc29b0b09842f0de0a3fe178f09a0c0",
+    "best_val_loss": 0.22548808157444
+  },
+  "validation": {
+    "trajectory_raw": {
+      "rmse_30": 12.363661766052246,
+      "mae_30": 8.427875518798828,
+      "mard_30": 7.218383312225342,
+      "rmse_60": 19.52711296081543,
+      "mae_60": 12.43389892578125,
+      "mard_60": 10.156166076660156,
+      "rmse_120": 25.031965255737305,
+      "mae_120": 16.75727653503418,
+      "mard_120": 13.66412353515625,
+      "coverage_80": 0.7815528164904533,
+      "width_80_mg_dl": 36.023651123046875
+    },
+    "trajectory_conformal": {
+      "rmse_30": 12.363661766052246,
+      "mae_30": 8.427875518798828,
+      "mard_30": 7.218383312225342,
+      "rmse_60": 19.52711296081543,
+      "mae_60": 12.43389892578125,
+      "mard_60": 10.156166076660156,
+      "rmse_120": 25.031965255737305,
+      "mae_120": 16.75727653503418,
+      "mard_120": 13.66412353515625,
+      "coverage_80": 0.8000202505659724,
+      "width_80_mg_dl": 37.302650451660156
+    },
+    "hazard_raw": {
+      "n": 47629,
+      "prevalence": 0.13220937550067902,
+      "brier": 0.16500459611415863,
+      "ece": 0.18110912811986335,
+      "auroc": 0.9220612796666005,
+      "auprc": 0.6387910589660569
+    },
+    "hazard_calibrated": {
+      "n": 47629,
+      "prevalence": 0.13220937550067902,
+      "brier": 0.07030759332796378,
+      "ece": 9.39627770104291e-05,
+      "auroc": 0.9226164870676722,
+      "auprc": 0.6314089233854392
+    },
+    "max_calibrated_probability": 1.0
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "torch": "2.14.0",
+    "lightning": "2.6.6",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "sklearn": "1.9.1",
+    "jax": "0.10.2"
+  }
+}
