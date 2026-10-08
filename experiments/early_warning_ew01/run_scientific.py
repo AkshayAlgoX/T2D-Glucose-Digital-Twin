@@ -58,6 +58,9 @@ def main(manifest_path, output_dir):
     
     attempt_id = f"EW01-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
     ledger_path = out_path / "attempt_ledger.json"
+    global_ledger_dir = Path("runs/global_ledger")
+    global_ledger_dir.mkdir(parents=True, exist_ok=True)
+    global_ledger_file = global_ledger_dir / "ew01_scientific_ledger.json"
     
     ledger = {
         "attempt_id": attempt_id,
@@ -67,10 +70,18 @@ def main(manifest_path, output_dir):
         "timestamp": datetime.utcnow().isoformat()
     }
     
+    try:
+        fd = os.open(global_ledger_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with os.fdopen(fd, 'w') as f:
+            json.dump(ledger, f, indent=2)
+    except FileExistsError:
+        print("FATAL: A scientific run has already been attempted globally.", file=sys.stderr)
+        sys.exit(1)
+        
     with open(ledger_path, "w") as f:
         json.dump(ledger, f, indent=2)
         
-    print(f"Attempt reserved: {attempt_id}")
+    print(f"Attempt reserved globally: {attempt_id}")
     
     try:
         if sha256_file("experiments/protocol_amendments/EW01_AMENDMENT_002_BOOLEAN_PREDICATE.md") != manifest["protocol_amendment_sha256"]:
@@ -81,6 +92,22 @@ def main(manifest_path, output_dir):
         cfg = T.validate_train_config(E._cfg_from_dict(cfg_dict))
         
         cohort_dir = Path("experiments/early_warning_ew01/scientific_cohort")
+        
+        # Verify cohort hash recursively
+        import hashlib
+        combined_hash_obj = hashlib.sha256()
+        for fpath in sorted(cohort_dir.glob("*")):
+            if fpath.is_file():
+                combined_hash_obj.update(fpath.name.encode())
+                combined_hash_obj.update(b":")
+                combined_hash_obj.update(sha256_file(fpath).encode())
+                combined_hash_obj.update(b"\n")
+        
+        if combined_hash_obj.hexdigest() != manifest["cohort"]["cohort_artifact_sha256"]:
+            raise ValueError("Cohort artifact hash mismatch.")
+            
+        cfg = dataclasses.replace(cfg, data_dir=str(cohort_dir))
+        
         cohort_ids = sorted(prov.load_json(cohort_dir / "cohort_ids.json"))
         
         candidate_inputs = load_cohort_explicit_canonical(cfg, cohort_ids, cohort_dir / "scientific_meal_log.npz")
@@ -116,9 +143,58 @@ def main(manifest_path, output_dir):
         # B1 conditional
         pass_b7_vs_b1 = False
         if pass_b7_vs_b9:
-            b7_vs_b1 = primary_pop["paired_differences"]["pr_tft_minus_persistence"]
-            # B1 rule
-            b7_b1_rmse_ub = b7_vs_b1["rmse_60"]["ci_high"]
+            from experiments.baselines.point import linear_trend
+            
+            # Construct B1 anchors
+            a_t = trace.split_test.anchor_t.numpy()
+            a_p = trace.split_test.anchor_patient.numpy()
+            grid = np.zeros(a_t.size, dtype=bool)
+            for i, ps in enumerate(candidate_inputs):
+                sel = a_p == i
+                grid[sel] = np.isin(a_t[sel], T.eligible_anchors(ps, cfg))
+            
+            eligible_t = a_t[grid]
+            eligible_p = a_p[grid]
+            
+            series_dict = {ps.pid: ps for ps in candidate_inputs}
+            patient_ids = [ps.pid for ps in candidate_inputs]
+            
+            b1_anchors = {
+                "patient_ids": patient_ids,
+                "t": eligible_t,
+                "patient": eligible_p,
+                "g0": np.array([candidate_inputs[p].cgm[t] for p, t in zip(eligible_p, eligible_t)])
+            }
+            
+            # Run baseline
+            b1_preds = linear_trend(b1_anchors, series_dict)
+            
+            # Compute stats
+            fc = {k: v[grid] for k, v in trace.agg.items()}
+            n_patients = len(candidate_inputs)
+            b1_stats = {}
+            STEP_MIN = 5
+            for h in (30, 60, 120):
+                k = h // STEP_MIN - 1
+                ok = fc["y_mask"][:, k] > 0
+                err = (b1_preds[:, k] - fc["y"][:, k])[ok]
+                b1_stats[f"sse_{h}"] = np.bincount(fc["patient"][ok], err ** 2, n_patients)
+                b1_stats[f"ae_{h}"] = np.bincount(fc["patient"][ok], np.abs(err), n_patients)
+                b1_stats[f"n_{h}"] = np.bincount(fc["patient"][ok], None, n_patients).astype(float)
+            
+            primary_idx = np.flatnonzero(np.isin(np.array([ps.group for ps in candidate_inputs]), E.POPULATIONS["primary"]))
+            sub_b1 = {k: v[primary_idx] if isinstance(v, np.ndarray) else [v[i] for i in primary_idx] for k, v in b1_stats.items()}
+            w = trace.populations["primary"]["weights"]
+            ones = np.ones((1, len(primary_idx)))
+            point_b1 = E.metric_draws(sub_b1, ones)
+            draws_b1 = E.metric_draws(sub_b1, w)
+            
+            point_b7 = trace.populations["primary"]["point"]["pr_tft"]
+            draws_b7 = trace.populations["primary"]["draws"]["pr_tft"]
+            
+            diff_rmse_60 = E.summarize(point_b7["rmse_60"][0] - point_b1["rmse_60"][0], draws_b7["rmse_60"] - draws_b1["rmse_60"], rule["uncertainty"]["ci"])
+            
+            b7_b1_rmse_ub = diff_rmse_60["ci_high"]
             if b7_b1_rmse_ub is not None and b7_b1_rmse_ub < 0:
                 pass_b7_vs_b1 = True
                 

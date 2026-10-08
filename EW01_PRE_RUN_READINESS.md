@@ -43,4 +43,4 @@ The one-shot scientific score remains **BLOCKED** on:
 - Final owner approval and authorization of the manifest.
 
 ## FINAL STATUS
-**READY FOR T3 PRE-RUN AUDIT**
+**REMEDIATED — READY FOR T3 RE-AUDIT**
