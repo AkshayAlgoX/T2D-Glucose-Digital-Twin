@@ -25,12 +25,7 @@ import torch
 
 import provenance as prov
 import train_pr_tft as T
-from evaluate_run import (
-    IdentityError, causal_decision_mask, event_counts, raise_alerts,
-    forecast_meets_spike_rule, patient_stats, bootstrap_weights, POPULATIONS,
-    _predict, CALIBRATION_TOLERANCE, calibration_distance, _cfg_from_dict, _canon, HORIZON
-)
-from input_contract import STEP_MIN
+from evaluate_run import IdentityError, causal_decision_mask, event_counts, raise_alerts, _predict, CALIBRATION_TOLERANCE, calibration_distance, _cfg_from_dict, _canon, POPULATIONS, _ratio, weighted_median
 
 LOG = logging.getLogger("evaluate_h2b")
 H2B_EVAL_SCHEMA = "h2b_research_evaluation/v1"
@@ -42,24 +37,90 @@ def sha256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def deterministic_bootstrap_weights(groups: list[str], n_boot: int, seed_str: str) -> np.ndarray:
-    """Explicitly deterministic hash-based bootstrap resampling."""
-    groups = np.asarray(groups)
-    w = np.zeros((n_boot, groups.size))
-    for g in sorted(set(groups.tolist())):
-        idx = np.flatnonzero(groups == g)
-        if idx.size == 0:
-            continue
-        for b in range(n_boot):
-            for i in range(idx.size):
-                # Hash string includes seed, bootstrap iteration, group, and draw index
-                msg = f"{seed_str}|{b}|{g}|{i}".encode("utf-8")
-                h = hashlib.sha256(msg).digest()
-                # Use 8 bytes for a uniform integer
-                val = int.from_bytes(h[:8], byteorder="little")
-                chosen = idx[val % idx.size]
-                w[b, chosen] += 1
-    return w
+
+
+def _detect_spike_onsets_explicit(cgm: np.ndarray, spike_level: float, spike_rise: float) -> tuple[np.ndarray, np.ndarray]:
+    n = cgm.size
+    onset = np.zeros(n, dtype=bool)
+    at_risk = np.ones(n, dtype=bool)
+    # We must explicitly use the manifest's step parameters
+    # The H2B explicitly froze step_min=5, horizon_min=120, etc.
+    rise_steps = 12
+    persist_steps = 3
+    refractory_level = 160.0
+    refractory_steps = 6
+    
+    armed = True
+    for k in range(n):
+        vk = cgm[k]
+        if not armed and not np.isnan(vk) and vk < refractory_level:
+            recent = cgm[max(0, k - refractory_steps + 1):k + 1]
+            if recent.size == refractory_steps and np.all(recent < refractory_level):
+                armed = True
+        at_risk[k] = armed
+        if armed and not np.isnan(vk) and vk >= spike_level and k >= rise_steps:
+            prior = cgm[k - rise_steps:k]
+            persist = cgm[k:k + persist_steps]
+            if (np.isfinite(prior).any() and vk - np.nanmin(prior) >= spike_rise
+                    and persist.size == persist_steps and np.all(persist >= spike_level)):
+                onset[k] = True
+                armed = False
+    return onset, at_risk
+
+def _forecast_meets_spike_rule(history: np.ndarray, forecast: np.ndarray, spike_level: float, spike_rise: float) -> bool:
+    seq = np.concatenate([history, forecast])
+    onset, _ = _detect_spike_onsets_explicit(seq, spike_level, spike_rise)
+    return bool(onset[history.size:].any())
+
+def _patient_stats(agg: dict[str, np.ndarray], q_conf: np.ndarray, n_patients: int, horizon_min: int, step_min: int, req_metrics: list) -> dict:
+    preds = {"pr_tft": agg["q"][..., 3], "twin_only": agg["twin"],
+             "persistence": np.repeat(agg["g0"][:, None], horizon_min // step_min, axis=1)}
+    pat = agg["patient"]
+    out = {}
+    
+    eval_horizons = set()
+    for m in req_metrics:
+        if m.startswith("rmse_") or m.startswith("mae_"):
+            try:
+                eval_horizons.add(int(m.split("_")[1]))
+            except ValueError: pass
+    eval_horizons = list(eval_horizons)
+    
+    for name, pred in preds.items():
+        s = {}
+        for h in eval_horizons:
+            if h > horizon_min: continue
+            k = h // step_min - 1
+            ok = agg["y_mask"][:, k] > 0
+            err = (pred[:, k] - agg["y"][:, k])[ok]
+            s[f"sse_{h}"] = np.bincount(pat[ok], err ** 2, n_patients)
+            s[f"ae_{h}"] = np.bincount(pat[ok], np.abs(err), n_patients)
+            s[f"n_{h}"] = np.bincount(pat[ok], None, n_patients).astype(float)
+        out[name] = s
+    m = agg["y_mask"] > 0
+    y = agg["y"]
+    for key, q in (("raw", agg["q"]), ("conf", q_conf)):
+        inside = ((y >= q[..., 1]) & (y <= q[..., 5]) & m).sum(1)
+        out["pr_tft"][f"cov_in_{key}"] = np.bincount(pat, inside, n_patients)
+    out["pr_tft"]["cov_n"] = np.bincount(pat, m.sum(1), n_patients).astype(float)
+    return out
+
+def _metric_draws(stats: dict, w: np.ndarray, eval_horizons: list) -> dict:
+    out = {}
+    for h in eval_horizons:
+        if f"sse_{h}" in stats:
+            out[f"rmse_{h}"] = np.sqrt(_ratio(stats[f"sse_{h}"], stats[f"n_{h}"], w))
+            out[f"mae_{h}"] = _ratio(stats[f"ae_{h}"], stats[f"n_{h}"], w)
+    if "cov_in_raw" in stats and "cov_n" in stats:
+        out["coverage_80_raw"] = _ratio(stats["cov_in_raw"], stats["cov_n"], w)
+        out["coverage_80_conformal"] = _ratio(stats["cov_in_conf"], stats["cov_n"], w)
+    if "monitored_onsets" in stats:
+        out["event_sensitivity"] = _ratio(stats["detected_onsets"], stats["monitored_onsets"], w)
+        out["alert_precision"] = _ratio(stats["true_alerts"], stats["alerts_raised"], w)
+        out["alerts_per_patient_day"] = _ratio(stats["alerts_raised"], stats["patient_days"], w)
+        out["false_alerts_per_patient_day"] = _ratio(stats["false_alerts"], stats["patient_days"], w)
+        out["lead_time_median_min"] = weighted_median(stats["lead_times_min"], w)
+    return out
 
 def load_h2b_artifact(path: Path, expected_hash: str) -> dict[str, T.PatientSeries]:
     """Loads a sealed H2B artifact (.npz) containing precomputed PatientSeries data."""
@@ -122,16 +183,22 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
         raise IdentityError(f"Unsupported H2B protocol version: {manifest.get('h2b_protocol_version')}")
         
     metric_cfg = manifest.get("metric_config", {})
+    # Metric parameter pass-through: if H2B doesn't define it, we don't assume Family-A. We block.
+    # Currently we rely on Family-A functions that hardcode HORIZON=120, STEP_MIN=5, SPIKE_LEVEL=180.
+    # If the manifest doesn't exactly match the frozen logic, we must fail.
+    # Furthermore, if H2B DOES NOT explicitly authorize these parameters, we should block.
     if metric_cfg.get("horizon_min") != 120:
-        raise IdentityError(f"H2B protocol requires horizon_min=120 to match frozen evaluator. Got: {metric_cfg.get('horizon_min')}")
+        raise IdentityError("BLOCKED: H2B protocol missing or mismatched horizon_min. Cannot silently inherit Family-A 120min.")
     if metric_cfg.get("step_min") != 5:
-        raise IdentityError(f"H2B protocol requires step_min=5 to match frozen evaluator. Got: {metric_cfg.get('step_min')}")
+        raise IdentityError("BLOCKED: H2B protocol missing or mismatched step_min. Cannot silently inherit Family-A 5min.")
     if metric_cfg.get("spike_threshold_mg_dl") != 180.0:
-        raise IdentityError(f"H2B protocol requires spike_threshold_mg_dl=180.0 to match frozen evaluator. Got: {metric_cfg.get('spike_threshold_mg_dl')}")
-    
-    boot_cfg = metric_cfg.get("bootstrap_config", {})
-    if boot_cfg.get("method") != "sha256_hash":
-        raise IdentityError(f"H2B protocol requires explicit sha256_hash bootstrap method. Got: {boot_cfg.get('method')}")
+        raise IdentityError("BLOCKED: H2B protocol missing or mismatched spike_threshold. Cannot silently inherit Family-A 180.0mg/dL.")
+    if metric_cfg.get("spike_rise_mg_dl") != 50.0:
+        raise IdentityError("BLOCKED: H2B protocol missing or mismatched spike_rise_mg_dl. Cannot silently inherit Family-A 50.0mg/dL.")
+
+    if "bootstrap_schedule_npz" not in manifest.get("artifacts", {}):
+        raise IdentityError("BLOCKED: H2B protocol missing sealed bootstrap schedule artifact. Protocol amendment required.")
+
         
     run_dir = Path(manifest["run_dir"])
     if not run_dir.exists():
@@ -149,9 +216,17 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
     if actual_ckpt_hash != manifest["model"]["checkpoint_sha256"]:
         raise IdentityError("Checkpoint hash mismatch")
         
+    # Full Inference Contract Hashing
+    hashes = manifest.get("hashes", {})
+    for fname in ["config.json", "normalization.json", "calibration.json", "split.json"]:
+        fpath = run_dir / fname
+        if not fpath.exists():
+            raise IdentityError(f"Missing inference artifact: {fname}")
+        if sha256_file(fpath) != hashes.get(f"{fname}_sha256"):
+            raise IdentityError(f"Inference contract mismatch for {fname}")
+
     cfg_dict = prov.load_json(run_dir / "config.json")
     cfg = T.validate_train_config(_cfg_from_dict(cfg_dict))
-    
     norm_saved = prov.load_json(run_dir / "normalization.json")
     calib_saved = prov.load_json(run_dir / "calibration.json")
     split = prov.load_json(run_dir / "split.json")
@@ -193,13 +268,13 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
     # The population habit is saved as population_habit_sha256 in Family A, but the actual stats are not in config.json.
     # We will load the actual training habit from the run dir if available.
     pop_path = run_dir / "canonical_population_habit.npz"
-    if pop_path.exists():
-        pop_data = np.load(pop_path)
-        pop = (pop_data["profile"], float(pop_data["mean_carbs"]))
-    else:
-        # If missing, we fallback to a safe default that doesn't crash (since we can't load Family A)
-        LOG.warning("canonical_population_habit.npz missing, using flat default habit prior.")
-        pop = (np.ones(T.BINS_PER_DAY) / T.BINS_PER_DAY, 40.0)
+    if not pop_path.exists():
+        raise IdentityError("Missing inference artifact: canonical_population_habit.npz")
+    if sha256_file(pop_path) != hashes.get("canonical_population_habit.npz_sha256"):
+        raise IdentityError("Inference contract mismatch for canonical_population_habit.npz")
+        
+    pop_data = np.load(pop_path)
+    pop = (pop_data["profile"], float(pop_data["mean_carbs"]))
     
     # 5. Causal decisions and metric computation
     test_ids = expected_pids
@@ -224,13 +299,13 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
         
     fc = {k: v[grid] for k, v in agg.items()}
     q_conf = calib.apply_interval(fc["q"])
-    stats = patient_stats(fc, q_conf, n_pat)
+    stats = _patient_stats(fc, q_conf, n_pat, metric_cfg["horizon_min"], metric_cfg["step_min"], metric_cfg.get("metrics", []))
     
     # 6. Event Metrics
     # Note: Using thresholds configured in the H2B manifest if present, else fallback
     thresholds = manifest["metric_config"].get("thresholds", [0.35, 0.60])
     ev: dict[str, list[dict[str, Any]]] = {f"pr_tft@{th:g}": [] for th in thresholds} | {"twin_only": []}
-    hist_len = T.RISE_STEPS + 1
+    hist_len = 12 + 1  # 60 min at 5 min step + 1
     for i, ps in enumerate(test_series):
         _, first, last = decisions[ps.pid]
         sel = np.flatnonzero(a_p == i)
@@ -243,9 +318,11 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
             ev[f"pr_tft@{th:g}"].append(event_counts(raise_alerts(trig, at_risk), ps.onset, first, last))
             
         trig = np.zeros(ps.n, dtype=bool)
+        spike_lvl = metric_cfg["spike_threshold_mg_dl"]
+        spike_rs = metric_cfg["spike_rise_mg_dl"]
         for j, t in zip(sel, ts):
-            if at_risk[t] and agg["twin"][j].max() >= T.SPIKE_LEVEL:
-                trig[t] = forecast_meets_spike_rule(ps.cgm[t - hist_len + 1:t + 1], agg["twin"][j])
+            if at_risk[t] and agg["twin"][j].max() >= spike_lvl:
+                trig[t] = _forecast_meets_spike_rule(ps.cgm[t - hist_len + 1:t + 1], agg["twin"][j], spike_lvl, spike_rs)
         ev["twin_only"].append(event_counts(raise_alerts(trig, at_risk), ps.onset, first, last))
         
     for m, rows in ev.items():
@@ -257,14 +334,20 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
     # 7. Populations (Mark UNKNOWN for primary/secondary logic if H2B doesn't use it, but compute for 'all')
     groups_all = np.array([ps.group for ps in test_series])
     
-    boot_cfg = manifest["metric_config"].get("bootstrap_config", {})
-    unc_resamples = boot_cfg.get("resamples", 200)
-    unc_ci = boot_cfg.get("ci", 0.8)
-    unc_seed = boot_cfg.get("seed", "H2B-Default-Seed")
+    unc_ci = manifest["metric_config"].get("bootstrap_ci", 0.8)
+    # Load sealed bootstrap schedule
+    boot_path = manifest_path.parent / manifest["artifacts"]["bootstrap_schedule_npz"]["path"]
+    if not boot_path.exists():
+        raise IdentityError(f"Missing bootstrap schedule artifact at {boot_path}")
+    if sha256_file(boot_path) != manifest["artifacts"]["bootstrap_schedule_npz"]["sha256"]:
+        raise IdentityError("Bootstrap schedule hash mismatch")
+    w_sealed = np.load(boot_path)["weights"]
     
-    # H2B defines populations via manifest, default to 'all'
+    # H2B MUST define populations explicitly. No Family-A fallbacks.
     populations = {}
-    h2b_pops = manifest["metric_config"].get("populations", {"all": ["Healthy", "Prediabetes", "Type 1", "Type 2"]})
+    h2b_pops = manifest["metric_config"].get("populations")
+    if not h2b_pops:
+        raise IdentityError("BLOCKED: H2B manifest must explicitly define populations. Family-A populations will not be silently inherited.")
     
     for pop_name, members in h2b_pops.items():
         idx = np.flatnonzero(np.isin(groups_all, members))
@@ -273,13 +356,23 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
             
         sub = {m: {k: (v[idx] if isinstance(v, np.ndarray) else [v[i] for i in idx]) for k, v in s.items()}
                for m, s in stats.items()}
-        w = deterministic_bootstrap_weights(groups_all[idx].tolist(), unc_resamples, unc_seed)
+        # H2B sealed bootstrap: must match exactly the patients and strata
+        if w_sealed.shape[1] != len(groups_all):
+             raise IdentityError("Bootstrap schedule shape mismatch against cohort size")
+        w = w_sealed[:, idx]
         ones = np.ones((1, idx.size))
         
-        # metric_draws is not in imports, we need to inline its usage or import it.
-        from evaluate_run import metric_draws, summarize
-        point = {m: metric_draws(s, ones) for m, s in sub.items()}
-        draws = {m: metric_draws(s, w) for m, s in sub.items()}
+        from evaluate_run import summarize
+        # Extract eval_horizons again for metric_draws
+        eval_horizons = set()
+        for metric_name in manifest["metric_config"].get("metrics", []):
+            if metric_name.startswith("rmse_") or metric_name.startswith("mae_"):
+                try: eval_horizons.add(int(metric_name.split("_")[1]))
+                except ValueError: pass
+        eval_horizons = list(eval_horizons)
+        
+        point = {m: _metric_draws(s, ones, eval_horizons) for m, s in sub.items()}
+        draws = {m: _metric_draws(s, w, eval_horizons) for m, s in sub.items()}
         models: dict[str, Any] = {}
         
         # Max calibrated prob reachable
@@ -297,12 +390,16 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
                 return {"estimate": None, "ci_low": None, "ci_high": None}
             return summarize(point[a][k][0] - point[b][k][0], draws[a][k] - draws[b][k], unc_ci)
 
-        vs_twin = {k: diff("pr_tft", "twin_only", k) for k in ("rmse_60", "rmse_120", "mae_60", "mae_120")}
-        alert_keys = ("event_sensitivity", "alert_precision", "alerts_per_patient_day", "false_alerts_per_patient_day")
-        # In H2B, we might not have a "primary" threshold. We compare the first one.
-        prim = f"pr_tft@{thresholds[0]:g}"
-        vs_twin.update({k: diff(prim, "twin_only", k) if reachable.get(f"{thresholds[0]:g}", False) else {"estimate": None, "ci_low": None, "ci_high": None} for k in alert_keys})
-        vs_pers = {k: diff("pr_tft", "persistence", k) for k in ("rmse_60", "rmse_120", "mae_60", "mae_120")}
+        # Only compute what H2B explicitly defines in its metric contract
+        req_metrics = manifest["metric_config"].get("metrics", [])
+        regression_metrics = [k for k in req_metrics if k.startswith("rmse_") or k.startswith("mae_")]
+        alert_keys = [k for k in req_metrics if k in ("event_sensitivity", "alert_precision", "alerts_per_patient_day", "false_alerts_per_patient_day")]
+        
+        vs_twin = {k: diff("pr_tft", "twin_only", k) for k in regression_metrics}
+        if thresholds and alert_keys:
+            prim = f"pr_tft@{thresholds[0]:g}"
+            vs_twin.update({k: diff(prim, "twin_only", k) if reachable.get(f"{thresholds[0]:g}", False) else {"estimate": None, "ci_low": None, "ci_high": None} for k in alert_keys})
+        vs_pers = {k: diff("pr_tft", "persistence", k) for k in regression_metrics}
         
         populations[pop_name] = {
             "patients": int(idx.size),

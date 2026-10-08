@@ -70,3 +70,11 @@ Commit: `4b3dd5b645a200ec36f90568b516847dd9645851` (Base Commit)
 ## 12. Classification
 From an infrastructure and tooling perspective, the scorer is:
 **READY**
+
+
+## Update: Principled Contract Enforcement (Iteration 2)
+Following a re-audit, several deeper structural remediations were applied:
+- **Bootstrap Protocol**: The custom SHA256 script was removed. H2B must supply a canonical, sealed `.npz` schedule matching the protocol's statistical semantics. If absent, the scorer is BLOCKED.
+- **Metric Bounds:** Explicit verification of `horizon_min`, `step_min`, `spike_threshold_mg_dl`, and `spike_rise_mg_dl`. All metrics are dynamically extracted from the `metric_config` list; any metric not requested is skipped.
+- **Subgroups**: The silent `Family-A` population fallback was deleted. Subgroups must be explicitly defined in the manifest.
+- **Inference Hashing**: Strict hash verification prior to loading was added for `config.json`, `normalization.json`, `calibration.json`, `split.json`, and `canonical_population_habit.npz`.

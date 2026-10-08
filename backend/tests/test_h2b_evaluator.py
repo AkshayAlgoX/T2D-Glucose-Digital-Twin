@@ -111,7 +111,12 @@ def h2b_setup():
         }))
         
         # mock population habit
-        np.savez(run_dir / "canonical_population_habit.npz", profile=np.ones(T.BINS_PER_DAY)/T.BINS_PER_DAY, mean_carbs=40.0)
+        pop_path = run_dir / "canonical_population_habit.npz"
+        np.savez(pop_path, profile=np.ones(T.BINS_PER_DAY)/T.BINS_PER_DAY, mean_carbs=40.0)
+
+        # Bootstrap schedule artifact
+        boot_path = tdp / "bootstrap.npz"
+        np.savez(boot_path, weights=np.ones((2, 1)))
 
         # Artifact
         artifact_path = tdp / "cohort.npz"
@@ -130,22 +135,30 @@ def h2b_setup():
                 "cohort_npz": {
                     "path": "cohort.npz",
                     "sha256": sha256_file(artifact_path)
+                },
+                "bootstrap_schedule_npz": {
+                    "path": "bootstrap.npz",
+                    "sha256": sha256_file(boot_path)
                 }
             },
             "hashes": {
-                "meal_log_sha256": meal_hash
+                "meal_log_sha256": meal_hash,
+                "config.json_sha256": sha256_file(run_dir / "config.json"),
+                "normalization.json_sha256": sha256_file(run_dir / "normalization.json"),
+                "calibration.json_sha256": sha256_file(run_dir / "calibration.json"),
+                "split.json_sha256": sha256_file(run_dir / "split.json"),
+                "canonical_population_habit.npz_sha256": sha256_file(run_dir / "canonical_population_habit.npz")
             },
             "patient_ordering": ["p1"],
             "metric_config": {
                 "thresholds": [0.35, 0.6],
+                "metrics": ["rmse_60"],
                 "horizon_min": 120,
                 "step_min": 5,
                 "spike_threshold_mg_dl": 180.0,
-                "bootstrap_config": {
-                    "method": "sha256_hash",
-                    "seed": "test-seed",
-                    "resamples": 10,
-                    "ci": 0.8
+                "spike_rise_mg_dl": 50.0,
+                "populations": {
+                    "all": ["Prediabetes"]
                 }
             }
         }
@@ -270,7 +283,7 @@ def test_h2b_wrong_horizon_fails(h2b_setup):
         evaluate_h2b(manifest_path, tdp / "out.json")
         assert False
     except IdentityError as e:
-        assert "H2B protocol requires horizon_min=120" in str(e)
+        assert "BLOCKED: H2B protocol missing or mismatched horizon_min" in str(e)
 
 def test_h2b_wrong_step_fails(h2b_setup):
     tdp, manifest_path, artifact_path, run_dir = h2b_setup
@@ -281,18 +294,29 @@ def test_h2b_wrong_step_fails(h2b_setup):
         evaluate_h2b(manifest_path, tdp / "out.json")
         assert False
     except IdentityError as e:
-        assert "H2B protocol requires step_min=5" in str(e)
+        assert "BLOCKED: H2B protocol missing or mismatched step_min" in str(e)
 
 def test_h2b_wrong_bootstrap_fails(h2b_setup):
     tdp, manifest_path, artifact_path, run_dir = h2b_setup
     man_data = json.loads(manifest_path.read_text())
-    man_data["metric_config"]["bootstrap_config"]["method"] = "np_random"
+    del man_data["artifacts"]["bootstrap_schedule_npz"]
     manifest_path.write_text(json.dumps(man_data))
     try:
         evaluate_h2b(manifest_path, tdp / "out.json")
         assert False
     except IdentityError as e:
-        assert "H2B protocol requires explicit sha256_hash bootstrap method" in str(e)
+        assert "BLOCKED: H2B protocol missing sealed bootstrap schedule artifact" in str(e)
+
+def test_h2b_inference_contract_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    config_path = run_dir / "config.json"
+    with open(config_path, "a") as f:
+        f.write(" ")
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "Inference contract mismatch for config.json" in str(e)
 
 if __name__ == "__main__":
     print("Running tests manually...")
@@ -387,6 +411,14 @@ if __name__ == "__main__":
         
         test_h2b_wrong_bootstrap_fails(setup_data)
         print("test_h2b_wrong_bootstrap_fails passed")
+        
+        # Restore manifest for next test
+        man_data = json.loads(setup_data[1].read_text())
+        man_data["artifacts"]["bootstrap_schedule_npz"] = {"path": "bootstrap.npz", "sha256": sha256_file(setup_data[0] / "bootstrap.npz")}
+        setup_data[1].write_text(json.dumps(man_data))
+        
+        test_h2b_inference_contract_fails(setup_data)
+        print("test_h2b_inference_contract_fails passed")
         
     finally:
         try:
