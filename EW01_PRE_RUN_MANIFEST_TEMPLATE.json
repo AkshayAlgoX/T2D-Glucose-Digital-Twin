@@ -1,0 +1,40 @@
+{
+  "schema": "ew01_approved_inputs/v1",
+  "approval": {
+    "status": "approved",
+    "authority": "T1-Antigravity",
+    "reference": "EW01_AMENDMENT_001"
+  },
+  "files": {
+    "experiments/protocol_amendments/EW01_AMENDMENT_001.md": "<INSERT_SHA256>",
+    "backend/model_selection_rule.json": "<INSERT_SHA256>",
+    "experiments/early_warning_ew01/harness.py": "<INSERT_SHA256>",
+    "backend/evaluate_run.py": "<INSERT_SHA256>",
+    "runs/pr_tft_ablation_arm_d/checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt": "<INSERT_SHA256>",
+    "runs/pr_tft_ablation_arm_d/calibration.json": "<INSERT_SHA256>",
+    "canonical_population_habit.npz": "<INSERT_SHA256>",
+    "data/ew_cohort/cohort_manifest.json": "<INSERT_SHA256>",
+    "data/ew_cohort/patient_cgm_telemetry.csv": "<INSERT_SHA256>",
+    "data/ew_cohort/patients_ehr.csv": "<INSERT_SHA256>"
+  },
+  "provenance": {
+    "code_commit": "<INSERT_CURRENT_COMMIT_SHA>",
+    "cohort_generation_commit": "<INSERT_COHORT_COMMIT_SHA>"
+  },
+  "cohort": {
+    "id_prefix": "EW-",
+    "primary_population": [
+      "Prediabetes",
+      "Type 2"
+    ],
+    "exclusions": [
+      "Type 1"
+    ]
+  },
+  "bootstrap": {
+    "method": "paired patient-level status-stratified",
+    "resamples": 2000,
+    "seed": 20260930,
+    "ci": 0.95
+  }
+}
