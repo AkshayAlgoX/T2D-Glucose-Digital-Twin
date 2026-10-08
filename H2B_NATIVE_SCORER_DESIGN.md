@@ -26,8 +26,10 @@ The `h2b_manifest.json` requires:
 - `run_dir`: Path to the trained model run (containing `config.json`, `split.json`, `normalization.json`, etc.).
 - `checkpoint_sha256`: Expected hash of the model checkpoint.
 - `patient_ordering`: Exact list of patient IDs expected in the artifact.
-- `horizon`: Forecast horizon.
-- `metric_config`: Dictionary specifying which metrics to compute (unsupported metrics are marked UNKNOWN/BLOCKED).
+- `horizon_min`: Forecast horizon (must be explicitly bound to 120 for current locked pipeline compatibility).
+- `step_min`: Timestep (must be bound to 5).
+- `spike_threshold_mg_dl`: Spike threshold (must be bound to 180.0).
+- `metric_config`: Dictionary specifying metrics to compute, thresholds, and importantly, `bootstrap_config`. The bootstrap method must be explicitly set to `sha256_hash` with a chosen seed to guarantee platform-independent determinism.
 
 ## 6. Hash/provenance rules
 - Every input file (manifest, data artifact, model checkpoint) is hashed from disk before any processing.
