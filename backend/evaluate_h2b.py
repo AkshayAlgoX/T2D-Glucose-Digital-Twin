@@ -42,6 +42,25 @@ def sha256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+def deterministic_bootstrap_weights(groups: list[str], n_boot: int, seed_str: str) -> np.ndarray:
+    """Explicitly deterministic hash-based bootstrap resampling."""
+    groups = np.asarray(groups)
+    w = np.zeros((n_boot, groups.size))
+    for g in sorted(set(groups.tolist())):
+        idx = np.flatnonzero(groups == g)
+        if idx.size == 0:
+            continue
+        for b in range(n_boot):
+            for i in range(idx.size):
+                # Hash string includes seed, bootstrap iteration, group, and draw index
+                msg = f"{seed_str}|{b}|{g}|{i}".encode("utf-8")
+                h = hashlib.sha256(msg).digest()
+                # Use 8 bytes for a uniform integer
+                val = int.from_bytes(h[:8], byteorder="little")
+                chosen = idx[val % idx.size]
+                w[b, chosen] += 1
+    return w
+
 def load_h2b_artifact(path: Path, expected_hash: str) -> dict[str, T.PatientSeries]:
     """Loads a sealed H2B artifact (.npz) containing precomputed PatientSeries data."""
     actual_hash = sha256_file(path)
@@ -55,9 +74,12 @@ def load_h2b_artifact(path: Path, expected_hash: str) -> dict[str, T.PatientSeri
         raise IdentityError("Invalid H2B artifact schema.")
     
     pids = data["pids"]
+    pids_list = [str(p) for p in pids]
+    if len(pids_list) != len(set(pids_list)):
+        raise IdentityError("Duplicate patient IDs in artifact")
+        
     series = {}
-    for pid in pids:
-        pid_str = str(pid)
+    for pid_str in pids_list:
         static_raw_json = str(data[f"{pid_str}/static_raw"])
         stamps_ns = data[f"{pid_str}/stamps"]
         
@@ -99,6 +121,18 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
     if manifest.get("h2b_protocol_version") not in ["v2.3", "v2.4"]:
         raise IdentityError(f"Unsupported H2B protocol version: {manifest.get('h2b_protocol_version')}")
         
+    metric_cfg = manifest.get("metric_config", {})
+    if metric_cfg.get("horizon_min") != 120:
+        raise IdentityError(f"H2B protocol requires horizon_min=120 to match frozen evaluator. Got: {metric_cfg.get('horizon_min')}")
+    if metric_cfg.get("step_min") != 5:
+        raise IdentityError(f"H2B protocol requires step_min=5 to match frozen evaluator. Got: {metric_cfg.get('step_min')}")
+    if metric_cfg.get("spike_threshold_mg_dl") != 180.0:
+        raise IdentityError(f"H2B protocol requires spike_threshold_mg_dl=180.0 to match frozen evaluator. Got: {metric_cfg.get('spike_threshold_mg_dl')}")
+    
+    boot_cfg = metric_cfg.get("bootstrap_config", {})
+    if boot_cfg.get("method") != "sha256_hash":
+        raise IdentityError(f"H2B protocol requires explicit sha256_hash bootstrap method. Got: {boot_cfg.get('method')}")
+        
     run_dir = Path(manifest["run_dir"])
     if not run_dir.exists():
         raise IdentityError(f"Missing run directory at {run_dir}")
@@ -131,6 +165,8 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
     
     # Verify patient ordering and presence
     expected_pids = manifest["patient_ordering"]
+    if len(expected_pids) != len(set(expected_pids)):
+        raise IdentityError("Duplicate patient IDs in manifest ordering")
     if sorted(list(series.keys())) != sorted(expected_pids):
         raise IdentityError("Patient IDs in artifact do not match manifest ordering")
     for expected, actual in zip(expected_pids, list(series.keys())):
@@ -220,9 +256,11 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
         
     # 7. Populations (Mark UNKNOWN for primary/secondary logic if H2B doesn't use it, but compute for 'all')
     groups_all = np.array([ps.group for ps in test_series])
-    unc_resamples = manifest["metric_config"].get("bootstrap_resamples", 200)
-    unc_ci = manifest["metric_config"].get("bootstrap_ci", 0.8)
-    unc_seed = manifest["metric_config"].get("bootstrap_seed", 42)
+    
+    boot_cfg = manifest["metric_config"].get("bootstrap_config", {})
+    unc_resamples = boot_cfg.get("resamples", 200)
+    unc_ci = boot_cfg.get("ci", 0.8)
+    unc_seed = boot_cfg.get("seed", "H2B-Default-Seed")
     
     # H2B defines populations via manifest, default to 'all'
     populations = {}
@@ -235,7 +273,7 @@ def evaluate_h2b(manifest_path: Path, out_path: Path) -> dict[str, Any]:
             
         sub = {m: {k: (v[idx] if isinstance(v, np.ndarray) else [v[i] for i in idx]) for k, v in s.items()}
                for m, s in stats.items()}
-        w = bootstrap_weights(groups_all[idx].tolist(), unc_resamples, unc_seed)
+        w = deterministic_bootstrap_weights(groups_all[idx].tolist(), unc_resamples, unc_seed)
         ones = np.ones((1, idx.size))
         
         # metric_draws is not in imports, we need to inline its usage or import it.

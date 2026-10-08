@@ -137,7 +137,16 @@ def h2b_setup():
             },
             "patient_ordering": ["p1"],
             "metric_config": {
-                "thresholds": [0.35, 0.6]
+                "thresholds": [0.35, 0.6],
+                "horizon_min": 120,
+                "step_min": 5,
+                "spike_threshold_mg_dl": 180.0,
+                "bootstrap_config": {
+                    "method": "sha256_hash",
+                    "seed": "test-seed",
+                    "resamples": 10,
+                    "ci": 0.8
+                }
             }
         }
         manifest_path.write_text(json.dumps(manifest_data))
@@ -224,6 +233,67 @@ def test_h2b_no_evaluator_modifications():
     src = inspect.getsource(ER.evaluate)
     assert "h2b" not in src.lower(), "evaluate_run.py should not contain H2B specific logic"
 
+
+def test_h2b_duplicate_patient_artifact_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    # Create artifact with duplicate pids
+    data = {"h2b_schema": "v1", "pids": np.array(["p1", "p1"])}
+    np.savez(artifact_path, **data)
+    
+    man_data = json.loads(manifest_path.read_text())
+    man_data["artifacts"]["cohort_npz"]["sha256"] = sha256_file(artifact_path)
+    manifest_path.write_text(json.dumps(man_data))
+    
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "Duplicate patient IDs in artifact" in str(e)
+
+def test_h2b_duplicate_patient_manifest_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    man_data = json.loads(manifest_path.read_text())
+    man_data["patient_ordering"] = ["p1", "p1"]
+    manifest_path.write_text(json.dumps(man_data))
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "Duplicate patient IDs in manifest ordering" in str(e)
+
+def test_h2b_wrong_horizon_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    man_data = json.loads(manifest_path.read_text())
+    man_data["metric_config"]["horizon_min"] = 60
+    manifest_path.write_text(json.dumps(man_data))
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "H2B protocol requires horizon_min=120" in str(e)
+
+def test_h2b_wrong_step_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    man_data = json.loads(manifest_path.read_text())
+    man_data["metric_config"]["step_min"] = 15
+    manifest_path.write_text(json.dumps(man_data))
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "H2B protocol requires step_min=5" in str(e)
+
+def test_h2b_wrong_bootstrap_fails(h2b_setup):
+    tdp, manifest_path, artifact_path, run_dir = h2b_setup
+    man_data = json.loads(manifest_path.read_text())
+    man_data["metric_config"]["bootstrap_config"]["method"] = "np_random"
+    manifest_path.write_text(json.dumps(man_data))
+    try:
+        evaluate_h2b(manifest_path, tdp / "out.json")
+        assert False
+    except IdentityError as e:
+        assert "H2B protocol requires explicit sha256_hash bootstrap method" in str(e)
+
 if __name__ == "__main__":
     print("Running tests manually...")
     
@@ -282,9 +352,46 @@ if __name__ == "__main__":
         test_h2b_no_evaluator_modifications()
         print("test_h2b_no_evaluator_modifications passed")
         
+        test_h2b_duplicate_patient_artifact_fails(setup_data)
+        print("test_h2b_duplicate_patient_artifact_fails passed")
+        
+        # Restore artifact for next tests
+        create_synthetic_artifact(setup_data[2], ["p1"])
+        man_data = json.loads(setup_data[1].read_text())
+        man_data["artifacts"]["cohort_npz"]["sha256"] = sha256_file(setup_data[2])
+        setup_data[1].write_text(json.dumps(man_data))
+        
+        test_h2b_duplicate_patient_manifest_fails(setup_data)
+        print("test_h2b_duplicate_patient_manifest_fails passed")
+        
+        # Restore manifest for next test
+        man_data = json.loads(setup_data[1].read_text())
+        man_data["patient_ordering"] = ["p1"]
+        setup_data[1].write_text(json.dumps(man_data))
+        
+        test_h2b_wrong_horizon_fails(setup_data)
+        print("test_h2b_wrong_horizon_fails passed")
+        
+        # Restore manifest for next test
+        man_data = json.loads(setup_data[1].read_text())
+        man_data["metric_config"]["horizon_min"] = 120
+        setup_data[1].write_text(json.dumps(man_data))
+        
+        test_h2b_wrong_step_fails(setup_data)
+        print("test_h2b_wrong_step_fails passed")
+        
+        # Restore manifest for next test
+        man_data = json.loads(setup_data[1].read_text())
+        man_data["metric_config"]["step_min"] = 5
+        setup_data[1].write_text(json.dumps(man_data))
+        
+        test_h2b_wrong_bootstrap_fails(setup_data)
+        print("test_h2b_wrong_bootstrap_fails passed")
+        
     finally:
         try:
             next(gen)
         except StopIteration:
             pass
     print("All manual tests passed!")
+
