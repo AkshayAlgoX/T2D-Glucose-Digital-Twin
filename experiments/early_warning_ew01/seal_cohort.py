@@ -29,11 +29,23 @@ def verify_and_seal(cohort_dir, split_json_path, manifest_path):
     if overlap:
         raise ValueError(f"Cohort IDs overlap with training IDs: {overlap}")
         
-    # Compute hashes
-    meal_hash = sha256_file(cohort_path / "scientific_meal_log.npz")
-    ids_hash = sha256_file(cohort_path / "cohort_ids.json")
-    
-    combined_hash = hashlib.sha256(f"{meal_hash}:{ids_hash}".encode()).hexdigest()
+    # Copy consumed inputs
+    import shutil
+    source_dir = Path("backend/synthetic_v2")
+    for fname in ["patients_ehr.csv", "patient_cgm_telemetry.csv"]:
+        shutil.copy2(source_dir / fname, cohort_path / fname)
+
+    # Compute deterministic recursive hash
+    import hashlib
+    combined_hash_obj = hashlib.sha256()
+    for fpath in sorted(cohort_path.glob("*")):
+        if fpath.is_file():
+            combined_hash_obj.update(fpath.name.encode())
+            combined_hash_obj.update(b":")
+            combined_hash_obj.update(sha256_file(fpath).encode())
+            combined_hash_obj.update(b"\n")
+            
+    combined_hash = combined_hash_obj.hexdigest()
     
     # Make read-only
     for f in cohort_path.glob("*"):

@@ -1,19 +1,15 @@
-# EW-01 Scientific Runner Test Report
+# EW-01 Scientific Runner Test Report (Remediated)
 
 ## Synthetic Integrity Tests
-The scientific runner and sealing logic were tested against synthetic fixtures and violations to ensure strict safety boundaries.
+The scientific runner and sealing logic were tested against synthetic fixtures and violations to ensure strict safety boundaries, remediating the 4 blockers identified in the T3 audit.
 
-| Test Case | Expected Behavior | Actual Outcome |
-|-----------|-------------------|----------------|
-| Dirty working tree | Runner exits immediately with FATAL error | PASSED |
-| Wrong commit | Runner exits due to HEAD vs manifest mismatch | PASSED |
-| Missing `SCIENTIFIC_EVALUATION=true` | Runner exits | PASSED |
-| Protocol amendment hash mismatch | Runner logs INVALID to ledger and exits | PASSED |
-| Existing output directory | Runner refuses to overwrite and exits | PASSED |
-| Cohort ID overlap with Training | Sealer throws `ValueError` | PASSED |
-| B1 Normal History | Valid slope calculated, expected extrapolation | PASSED (via `test_b1_baseline.py`) |
-| B1 Missing History | Slope 0 fallback to persistence | PASSED |
-| B1 Clipping | 40-400 mg/dL bounds enforced on large slopes | PASSED |
+| Test Case | Expected Behavior | Actual Outcome | Status |
+|-----------|-------------------|----------------|--------|
+| B1 Baseline Integrity | Runner correctly uses `linear_trend` instead of persistence, matching B1 protocol. | PASSED | REMEDIATED |
+| Recursive Hash Bypass | Runner verifies full sealed cohort hash and aborts on mismatch. | PASSED | REMEDIATED |
+| Data-Dir Redirection | Runner explicitly overrides `cfg.data_dir` to point to the sealed directory, preventing unverified access. | PASSED | REMEDIATED |
+| One-Shot Ledger Bypass | Runner fails on re-execution regardless of output dir via atomic global ledger. | PASSED | REMEDIATED |
+| Cohort Sealer Coverage | Sealer copies full source EHR/CGM files into cohort dir, computing exact recursive hash. | PASSED | REMEDIATED |
 
-## Summary
-The one-shot execution framework is robust and properly enforces all cryptographic, operational, and protocol safety rules.
+## Conclusion
+The runner successfully resolved all T3-blocked issues. The execution framework is now scientifically valid, cryptographically robust, and enforces a global one-shot guarantee.
