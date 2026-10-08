@@ -1,16 +1,31 @@
 import sys
+import dataclasses
+import numpy as np
 from pathlib import Path
 
-# Add project root to path so backend can be imported
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Fix 1: Import path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
-from backend import train_pr_tft as T
+import train_pr_tft as T
 
-def load_cohort(cfg: T.TrainConfig, patient_ids: list[str]) -> list[T.PatientSeries]:
+def load_cohort(cfg: T.TrainConfig, patient_ids: list[str], meal_log_path: Path) -> list[T.PatientSeries]:
     """
-    A minimal wrapper around the frozen load_data to satisfy EW-01 data loading contract.
-    Loads the cohort data for EW-01, applying the locked logic.
+    Loads the cohort data for EW-01, applying the frozen canonical meal log.
     """
     series_dict = T.load_data(cfg, patient_ids=patient_ids)
-    # Maintain the requested order and drop any missing patients silently (handled by caller if needed)
-    return [series_dict[p] for p in patient_ids if p in series_dict]
+    
+    # Fix 2: Canonical Meal Log
+    meal_log = np.load(meal_log_path)
+    
+    out = []
+    # Fix 3: Patient Order must be exactly sorted patient IDs
+    for p in sorted(patient_ids):
+        if p in series_dict:
+            ps = series_dict[p]
+            if f"{p}_min" in meal_log.files and f"{p}_carbs" in meal_log.files:
+                ps = dataclasses.replace(ps, 
+                    meal_min=meal_log[f"{p}_min"], 
+                    meal_carbs=meal_log[f"{p}_carbs"]
+                )
+            out.append(ps)
+    return out
