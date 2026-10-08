@@ -57,7 +57,7 @@ def assert_exact(a, b, msg=""):
         if a != b:
             raise AssertionError(f"{msg}: Val mismatch {a} vs {b}")
 
-def assert_trace_conformance(trace, val_ids, decision, expected_inputs, p_cal, q_conf, stats):
+def assert_trace_conformance(trace, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev=None):
     assert_exact(trace.p_cal, p_cal, "p_cal")
     assert_exact(trace.q_conf, q_conf, "q_conf")
     for k in stats:
@@ -66,18 +66,17 @@ def assert_trace_conformance(trace, val_ids, decision, expected_inputs, p_cal, q
     
     for i, p in enumerate(val_ids):
         assert_exact(trace.decisions[p], decision[p], f"decisions[{p}]")
-        for arm in trace.ev[p]:
-            trig_trace = trace.ev[p][arm]["trigger"]
-            at_risk_trace = trace.ev[p][arm]["at_risk"]
-            raised = E.raise_alerts(trig_trace, at_risk_trace, cooldown=24)
-            assert_exact(trace.ev[p][arm]["raised"], raised, f"raised[{p}][{arm}]")
-            counts = E.event_counts(raised, expected_inputs[p].onset, decision[p][1], decision[p][2])
-            assert_exact(trace.ev[p][arm]["counts"], counts, f"counts[{p}][{arm}]")
+        if expected_ev is not None:
+            for arm in trace.ev[p]:
+                assert_exact(trace.ev[p][arm]["at_risk"], expected_ev[p][arm]["at_risk"], f"at_risk[{p}][{arm}]")
+                assert_exact(trace.ev[p][arm]["trigger"], expected_ev[p][arm]["trigger"], f"trigger[{p}][{arm}]")
+                assert_exact(trace.ev[p][arm]["raised"], expected_ev[p][arm]["raised"], f"raised[{p}][{arm}]")
+                assert_exact(trace.ev[p][arm]["counts"], expected_ev[p][arm]["counts"], f"counts[{p}][{arm}]")
             
     for pop_name in trace.populations:
         w = trace.populations[pop_name]["weights"]
         sub = trace.populations[pop_name]["sub"]
-        ones = np.ones((1, w.size))
+        ones = np.ones((1, w.shape[1]))
         point = {m: E.metric_draws(s, ones) for m, s in sub.items()}
         draws = {m: E.metric_draws(s, w) for m, s in sub.items()}
         assert_exact(trace.populations[pop_name]["point"], point, f"populations[{pop_name}].point")
@@ -154,11 +153,34 @@ def run_q03_parity():
     q_conf = calib.apply_interval(fc["q"])
     stats = E.patient_stats(fc, q_conf, len(val_ids))
     
+
+    expected_ev = {p: {} for p in val_ids}
+    for i, p in enumerate(val_ids):
+        sel = a_p == i
+        ts = a_t[sel]
+        
+        at_risk = np.zeros(expected_inputs[p].cgm.size, dtype=bool)
+        at_risk[ts] = expected_inputs[p].armed[ts]
+        
+        for arm in ["pr_tft@0.35", "pr_tft@0.6", "twin_only"]:
+            trig = np.zeros(expected_inputs[p].cgm.size, dtype=bool)
+            if "@" in arm:
+                th = float(arm.split("@")[1])
+                trig[ts] = p_cal[sel] >= th
+            elif arm == "twin_only":
+                for j, t in zip(np.flatnonzero(sel), ts):
+                    if at_risk[t] and agg_ref["twin"][j].max() >= T.SPIKE_LEVEL:
+                        trig[t] = E.forecast_meets_spike_rule(expected_inputs[p].cgm[t - 12:t + 1], agg_ref["twin"][j])
+                        
+            raised = E.raise_alerts(trig, at_risk, cooldown=24)
+            counts = E.event_counts(raised, expected_inputs[p].onset, decision[p][1], decision[p][2])
+            expected_ev[p][arm] = {"trigger": trig, "at_risk": at_risk, "raised": raised, "counts": counts}
+            
     print("Running candidate harness...", flush=True)
     result, trace = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
     
     print("Validating trace against original functions...", flush=True)
-    assert_trace_conformance(trace, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+    assert_trace_conformance(trace, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
     
     print("Max Absolute Difference: 0.0")
     print("Q0-03 Parity test PASSED.")
@@ -167,7 +189,7 @@ def run_q03_parity():
     print("Running negative control: permuted patient order...")
     try:
         _, trace_permuted = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True, patient_order=list(range(len(val_ids)))[::-1])
-        assert_trace_conformance(trace_permuted, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_permuted, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         print("Negative control FAILED: Parity was not rejected for permuted order.")
         sys.exit(1)
     except AssertionError:
@@ -176,7 +198,7 @@ def run_q03_parity():
     print("Running negative control: cooldown=23...")
     try:
         _, trace_cooldown = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True, cooldown=23)
-        assert_trace_conformance(trace_cooldown, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_cooldown, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         print("Negative control FAILED: Parity was not rejected for cooldown modification.")
         sys.exit(1)
     except AssertionError:
@@ -185,7 +207,7 @@ def run_q03_parity():
     print("Running negative control: threshold offset by +0.05...")
     try:
         _, trace_thresh = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True, threshold_op=lambda x, y: x >= y + 0.05)
-        assert_trace_conformance(trace_thresh, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_thresh, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         print("Negative control FAILED: Parity was not rejected for threshold modification.")
         sys.exit(1)
     except AssertionError:
@@ -197,7 +219,7 @@ def run_q03_parity():
     print("Running negative control: missing patient...")
     try:
         _, trace_missing = evaluate_locked_core(candidate_inputs[:-1], twin, module, cfg, norm, pop, calib, rule, trace=True)
-        assert_trace_conformance(trace_missing, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_missing, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         sys.exit(1)
     except AssertionError:
         print("Negative control PASSED: Parity is sensitive to missing patient.")
@@ -205,7 +227,7 @@ def run_q03_parity():
     print("Running negative control: duplicate patient...")
     try:
         _, trace_dup = evaluate_locked_core(candidate_inputs + [candidate_inputs[0]], twin, module, cfg, norm, pop, calib, rule, trace=True)
-        assert_trace_conformance(trace_dup, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_dup, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         sys.exit(1)
     except AssertionError:
         print("Negative control PASSED: Parity is sensitive to duplicate patient.")
@@ -215,7 +237,7 @@ def run_q03_parity():
         mutated_inputs = copy.deepcopy(candidate_inputs)
         mutated_inputs[0].cgm[100] = np.nan
         _, trace_nan = evaluate_locked_core(mutated_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
-        assert_trace_conformance(trace_nan, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_nan, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         sys.exit(1)
     except AssertionError:
         print("Negative control PASSED: Parity is sensitive to NaN-mask corruption.")
@@ -225,7 +247,7 @@ def run_q03_parity():
         mutated_inputs2 = copy.deepcopy(candidate_inputs)
         mutated_inputs2[0] = dataclasses.replace(mutated_inputs2[0], onset=mutated_inputs2[0].onset + 1)
         _, trace_off = evaluate_locked_core(mutated_inputs2, twin, module, cfg, norm, pop, calib, rule, trace=True)
-        assert_trace_conformance(trace_off, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_off, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         sys.exit(1)
     except AssertionError:
         print("Negative control PASSED: Parity is sensitive to off-by-one target mapping.")
@@ -234,7 +256,7 @@ def run_q03_parity():
     try:
         trace_macro = copy.deepcopy(trace)
         trace_macro.populations["primary"]["point"]["pr_tft"]["rmse_60"][0] += 1.0  # mutate aggregation
-        assert_trace_conformance(trace_macro, val_ids, decision, expected_inputs, p_cal, q_conf, stats)
+        assert_trace_conformance(trace_macro, val_ids, decision, expected_inputs, p_cal, q_conf, stats, expected_ev)
         sys.exit(1)
     except AssertionError:
         print("Negative control PASSED: Parity is sensitive to aggregation macro-average.")
