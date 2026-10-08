@@ -12,7 +12,7 @@ def sha256_file(path):
     return h.hexdigest()
 
 def verify_and_seal(cohort_dir, split_json_path, manifest_path):
-    cohort_path = Path(cohort_dir)
+    cohort_path = Path(cohort_dir).resolve()
     
     # Verify training-ID disjointness
     with open(split_json_path, "r") as f:
@@ -29,13 +29,13 @@ def verify_and_seal(cohort_dir, split_json_path, manifest_path):
     if overlap:
         raise ValueError(f"Cohort IDs overlap with training IDs: {overlap}")
         
-    # Copy consumed inputs
-    import shutil
-    source_dir = Path("backend/synthetic_v2")
-    for fname in ["patients_ehr.csv", "patient_cgm_telemetry.csv"]:
-        shutil.copy2(source_dir / fname, cohort_path / fname)
+    # Verify expected files exist
+    expected_files = ["patients_ehr.csv", "patient_cgm_telemetry.csv", "scientific_meal_log.npz", "cohort_ids.json"]
+    for fname in expected_files:
+        if not (cohort_path / fname).exists():
+            raise FileNotFoundError(f"Missing required file: {fname}")
 
-    # Compute deterministic recursive hash
+    # Compute deterministic recursive hash over regular files
     import hashlib
     combined_hash_obj = hashlib.sha256()
     for fpath in sorted(cohort_path.glob("*")):

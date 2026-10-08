@@ -25,6 +25,7 @@ def test_t3_blocker3_oneshot_execution():
     # Verify global ledger exists
     with open("experiments/early_warning_ew01/run_scientific.py", "r") as f:
         content = f.read()
+    assert "/home/akshaya/t2d-execution-registry/EW-01/" in content
     assert "ew01_scientific_ledger.json" in content
     assert "os.O_EXCL" in content
 
@@ -34,7 +35,7 @@ def test_t3_blocker4_cohort_sealing():
         content = f.read()
     assert "patients_ehr.csv" in content
     assert "patient_cgm_telemetry.csv" in content
-    assert "shutil.copy2" in content
+    assert "expected_files" in content
     assert "combined_hash_obj.update(fpath.name.encode())" in content
 
 

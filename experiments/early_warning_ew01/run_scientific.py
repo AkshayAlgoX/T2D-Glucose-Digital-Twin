@@ -58,7 +58,7 @@ def main(manifest_path, output_dir):
     
     attempt_id = f"EW01-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
     ledger_path = out_path / "attempt_ledger.json"
-    global_ledger_dir = Path("runs/global_ledger")
+    global_ledger_dir = Path("/home/akshaya/t2d-execution-registry/EW-01/")
     global_ledger_dir.mkdir(parents=True, exist_ok=True)
     global_ledger_file = global_ledger_dir / "ew01_scientific_ledger.json"
     
@@ -110,17 +110,31 @@ def main(manifest_path, output_dir):
         
         cohort_ids = sorted(prov.load_json(cohort_dir / "cohort_ids.json"))
         
+        norm_path = run_dir / "normalization.json"
+        calib_path = run_dir / "calibration.json"
+        habit_path = Path("canonical_population_habit.npz")
+        ckpt_path = run_dir / "checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt"
+        
+        # Verify model artifact hashes
+        if sha256_file(norm_path) != manifest["model_artifacts"]["normalization_sha256"]:
+            raise ValueError("Normalization hash mismatch.")
+        if sha256_file(calib_path) != manifest["model_artifacts"]["calibration_sha256"]:
+            raise ValueError("Calibration hash mismatch.")
+        if sha256_file(habit_path) != manifest["model_artifacts"]["habit_sha256"]:
+            raise ValueError("Habit hash mismatch.")
+        if sha256_file(ckpt_path) != manifest["model_artifacts"]["checkpoint_sha256"]:
+            raise ValueError("Checkpoint hash mismatch.")
+            
         candidate_inputs = load_cohort_explicit_canonical(cfg, cohort_ids, cohort_dir / "scientific_meal_log.npz")
         
         twin = T.make_twin(cfg)
-        norm = T.Normalizer(**prov.load_json(run_dir / "normalization.json"))
-        pop_npz = np.load("canonical_population_habit.npz")
+        norm = T.Normalizer(**prov.load_json(norm_path))
+        pop_npz = np.load(habit_path)
         pop = (pop_npz["pop_counts"], float(pop_npz["pop_mean"]))
-        calib = T.Calibrators(**prov.load_json(run_dir / "calibration.json"))
+        calib = T.Calibrators(**prov.load_json(calib_path))
         rule = prov.load_json(prov.BACKEND_DIR / "model_selection_rule.json")
         
-        ckpt_path = str(run_dir / "checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt")
-        module = T.PRTFTModule.load_from_checkpoint(ckpt_path, map_location="cpu").eval()
+        module = T.PRTFTModule.load_from_checkpoint(str(ckpt_path), map_location="cpu").eval()
         
         result, trace = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
         
@@ -169,34 +183,54 @@ def main(manifest_path, output_dir):
             # Run baseline
             b1_preds = linear_trend(b1_anchors, series_dict)
             
-            # Compute stats
-            fc = {k: v[grid] for k, v in trace.agg.items()}
-            n_patients = len(candidate_inputs)
+            # Compute event stats for B1
+            b1_ev = []
+            cooldown = 24
+            hist_len = T.RISE_STEPS + 1
+            for i, ps in enumerate(candidate_inputs):
+                _, first, last = trace.decisions[ps.pid]
+                sel = np.flatnonzero(eligible_p == i)
+                ts = eligible_t[sel]
+                at_risk = np.zeros(ps.n, dtype=bool)
+                at_risk[ts] = ps.armed[ts]
+                
+                trig_b1 = np.zeros(ps.n, dtype=bool)
+                for j, t in zip(sel, ts):
+                    if at_risk[t] and b1_preds[j].max() >= T.SPIKE_LEVEL:
+                        trig_b1[t] = E.forecast_meets_spike_rule(ps.cgm[t - hist_len + 1:t + 1], b1_preds[j])
+                        
+                raised_b1 = E.raise_alerts(trig_b1, at_risk, cooldown=cooldown)
+                counts_b1 = E.event_counts(raised_b1, ps.onset, first, last)
+                b1_ev.append(counts_b1)
+                
             b1_stats = {}
-            STEP_MIN = 5
-            for h in (30, 60, 120):
-                k = h // STEP_MIN - 1
-                ok = fc["y_mask"][:, k] > 0
-                err = (b1_preds[:, k] - fc["y"][:, k])[ok]
-                b1_stats[f"sse_{h}"] = np.bincount(fc["patient"][ok], err ** 2, n_patients)
-                b1_stats[f"ae_{h}"] = np.bincount(fc["patient"][ok], np.abs(err), n_patients)
-                b1_stats[f"n_{h}"] = np.bincount(fc["patient"][ok], None, n_patients).astype(float)
+            for key in ("monitored_onsets", "detected_onsets", "alerts_raised", "true_alerts", "false_alerts", "patient_days"):
+                b1_stats[key] = np.array([r[key] for r in b1_ev], dtype=float)
+            b1_stats["lead_times_min"] = [r["lead_times_min"] for r in b1_ev]
             
             primary_idx = np.flatnonzero(np.isin(np.array([ps.group for ps in candidate_inputs]), E.POPULATIONS["primary"]))
             sub_b1 = {k: v[primary_idx] if isinstance(v, np.ndarray) else [v[i] for i in primary_idx] for k, v in b1_stats.items()}
             w = trace.populations["primary"]["weights"]
             ones = np.ones((1, len(primary_idx)))
-            point_b1 = E.metric_draws(sub_b1, ones)
-            draws_b1 = E.metric_draws(sub_b1, w)
+            point_b1 = E.metric_draws({"b1": sub_b1}, ones)["b1"]
+            draws_b1 = E.metric_draws({"b1": sub_b1}, w)["b1"]
             
-            point_b7 = trace.populations["primary"]["point"]["pr_tft"]
-            draws_b7 = trace.populations["primary"]["draws"]["pr_tft"]
+            point_b7 = trace.populations["primary"]["point"]["pr_tft@0.35"]
+            draws_b7 = trace.populations["primary"]["draws"]["pr_tft@0.35"]
             
-            diff_rmse_60 = E.summarize(point_b7["rmse_60"][0] - point_b1["rmse_60"][0], draws_b7["rmse_60"] - draws_b1["rmse_60"], rule["uncertainty"]["ci"])
+            diff_sens = E.summarize(point_b7["event_sensitivity"][0] - point_b1["event_sensitivity"][0], 
+                                    draws_b7["event_sensitivity"] - draws_b1["event_sensitivity"], 
+                                    rule["uncertainty"]["ci"])
+            diff_fa = E.summarize(point_b7["false_alerts_per_patient_day"][0] - point_b1["false_alerts_per_patient_day"][0], 
+                                  draws_b7["false_alerts_per_patient_day"] - draws_b1["false_alerts_per_patient_day"], 
+                                  rule["uncertainty"]["ci"])
             
-            b7_b1_rmse_ub = diff_rmse_60["ci_high"]
-            if b7_b1_rmse_ub is not None and b7_b1_rmse_ub < 0:
-                pass_b7_vs_b1 = True
+            if diff_sens["ci_low"] is not None and diff_fa["ci_high"] is not None:
+                pass_b7_vs_b1 = (diff_sens["ci_low"] > 0.02) and (diff_fa["ci_high"] < -0.10)
+            else:
+                pass_b7_vs_b1 = "NO_PASS_UNDEFINED"
+        else:
+            pass_b7_vs_b1 = "B1_NOT_EVALUATED_GATE_FAILED"
                 
         final_result = {
             "attempt_id": attempt_id,
