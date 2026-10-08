@@ -1,40 +1,25 @@
 {
-  "schema": "ew01_approved_inputs/v1",
-  "approval": {
-    "status": "approved",
-    "authority": "T1-Antigravity",
-    "reference": "EW01_AMENDMENT_001"
-  },
-  "files": {
-    "experiments/protocol_amendments/EW01_AMENDMENT_001.md": "<INSERT_SHA256>",
-    "backend/model_selection_rule.json": "<INSERT_SHA256>",
-    "experiments/early_warning_ew01/harness.py": "<INSERT_SHA256>",
-    "backend/evaluate_run.py": "<INSERT_SHA256>",
-    "runs/pr_tft_ablation_arm_d/checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt": "<INSERT_SHA256>",
-    "runs/pr_tft_ablation_arm_d/calibration.json": "<INSERT_SHA256>",
-    "canonical_population_habit.npz": "<INSERT_SHA256>",
-    "data/ew_cohort/cohort_manifest.json": "<INSERT_SHA256>",
-    "data/ew_cohort/patient_cgm_telemetry.csv": "<INSERT_SHA256>",
-    "data/ew_cohort/patients_ehr.csv": "<INSERT_SHA256>"
-  },
-  "provenance": {
-    "code_commit": "<INSERT_CURRENT_COMMIT_SHA>",
-    "cohort_generation_commit": "<INSERT_COHORT_COMMIT_SHA>"
-  },
-  "cohort": {
-    "id_prefix": "EW-",
-    "primary_population": [
-      "Prediabetes",
-      "Type 2"
-    ],
-    "exclusions": [
-      "Type 1"
-    ]
-  },
-  "bootstrap": {
-    "method": "paired patient-level status-stratified",
-    "resamples": 2000,
-    "seed": 20260930,
-    "ci": 0.95
-  }
+    "experiment_id": "EW-01",
+    "status": "PROPOSED",
+    "authorized_execution_commit": "PENDING_FINAL_FREEZE_SHA",
+    "protocol_amendment_sha256": "PENDING_FINAL_FREEZE_SHA",
+    "cohort": {
+        "n_patients": 300,
+        "days_per_patient": 14,
+        "generator_seed": 20261014,
+        "generator_commit": "1ab28f31fcc0954cf417bb10aafd4c785364e280",
+        "cohort_artifact_sha256": "PENDING_AFTER_SEAL"
+    },
+    "model_artifacts": {
+        "checkpoint_sha256": "fb49cadfafdab18bbb582855c8d9814e8dc29b0b09842f0de0a3fe178f09a0c0",
+        "normalization_sha256": "a8ac91c81ee48cce047ac529b385a4cd15ffe88e27f902c62f4d1fb7cf441eaf",
+        "calibration_sha256": "9ae8ab2c61ced19b29220f731c3ad12502848af2a71ea659e6bf7212e0c600d4",
+        "habit_sha256": "facc76172119955bf5d9c630f8edefc4620fd1b49b5cee8111278445ab51057b"
+    },
+    "decision_rule": {
+        "co_primary_sensitivity_lower_bound_gt": 0.02,
+        "co_primary_false_alerts_per_day_upper_bound_lt": -0.10,
+        "b1_gating": "conditional_on_first_comparison"
+    },
+    "q0_03_signoff_commit": "b6a936b13cf14a382c4ccff57bc5e3d1c1c385c6"
 }
