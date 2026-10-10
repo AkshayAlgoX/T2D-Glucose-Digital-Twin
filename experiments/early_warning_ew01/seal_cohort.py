@@ -1,7 +1,6 @@
 import sys
 import json
 import hashlib
-import numpy as np
 from pathlib import Path
 
 def sha256_file(path):
@@ -11,32 +10,44 @@ def sha256_file(path):
             h.update(chunk)
     return h.hexdigest()
 
-def verify_and_seal(cohort_dir, split_json_path, manifest_path):
+def verify_and_seal(cohort_dir, split_json_path, manifest_path, train_manifest_path="backend/data_manifest.json"):
     cohort_path = Path(cohort_dir).resolve()
     
-    # Verify training-ID disjointness
-    with open(split_json_path, "r") as f:
-        split = json.load(f)
-    train_ids = set(split["train"] + split["val"] + split["test"])
-    
-    with open(cohort_path / "cohort_ids.json", "r") as f:
-        cohort_ids = json.load(f)
+    prov_path = cohort_path / "cohort_provenance.json"
+    if not prov_path.exists():
+        raise FileNotFoundError("Missing or altered provenance record blocks sealing.")
         
-    if len(cohort_ids) != len(set(cohort_ids)):
-        raise ValueError("Cohort IDs are not unique.")
+    with open(prov_path, "r") as f:
+        prov = json.load(f)
         
-    overlap = set(cohort_ids).intersection(train_ids)
-    if overlap:
-        raise ValueError(f"Cohort IDs overlap with training IDs: {overlap}")
+    # Check freshness (trajectory identity check) against training data
+    with open(train_manifest_path, "r") as f:
+        train_manifest = json.load(f)
         
-    # Verify expected files exist
-    expected_files = ["patients_ehr.csv", "patient_cgm_telemetry.csv", "scientific_meal_log.npz", "cohort_ids.json"]
-    for fname in expected_files:
-        if not (cohort_path / fname).exists():
-            raise FileNotFoundError(f"Missing required file: {fname}")
-
-    # Compute deterministic recursive hash over regular files
-    import hashlib
+    train_files = train_manifest["files"]
+    raw_inv = prov.get("raw_inventory", {})
+    if not raw_inv:
+        raise ValueError("Incomplete provenance: missing raw_inventory")
+        
+    for fname, raw_hash in raw_inv.items():
+        if fname in train_files and train_files[fname] == raw_hash:
+            raise ValueError(f"Freshness check failed: {fname} raw hash matches authoritative training data (trajectory reuse detected)")
+            
+    # Verify split hash
+    split_hash = sha256_file(split_json_path)
+    if split_hash != train_manifest["split_sha256"] or prov.get("authoritative_split_sha256") != split_hash:
+        raise ValueError("Authoritative split modified or doesn't match provenance")
+        
+    # Verify prepared inventory matches current files
+    prep_inv = prov.get("prepared_inventory", {})
+    for fname, expected_hash in prep_inv.items():
+        if fname == "cohort_provenance.json":
+            continue
+        actual_hash = sha256_file(cohort_path / fname)
+        if actual_hash != expected_hash:
+            raise ValueError(f"Prepared inventory hash mismatch for {fname}")
+            
+    # Compute deterministic recursive hash over all files for sealing
     combined_hash_obj = hashlib.sha256()
     for fpath in sorted(cohort_path.glob("*")):
         if fpath.is_file():
@@ -54,10 +65,11 @@ def verify_and_seal(cohort_dir, split_json_path, manifest_path):
     
     print(f"Cohort sealed. Artifact SHA-256: {combined_hash}")
     
-    # Update manifest
     with open(manifest_path, "r") as f:
         manifest = json.load(f)
         
+    if "cohort" not in manifest:
+        manifest["cohort"] = {}
     manifest["cohort"]["cohort_artifact_sha256"] = combined_hash
     
     with open(manifest_path, "w") as f:
