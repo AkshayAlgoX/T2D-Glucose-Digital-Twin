@@ -1,0 +1,15 @@
+{
+  "schema_id": "EW01-FRESHNESS-1",
+  "fields": [
+    {"name": "timestamp", "type": "relative_seconds"},
+    {"name": "glucose_level", "type": "integer", "scale": 0, "unit": "mg/dL", "missing": "NaN"},
+    {"name": "heart_rate", "type": "integer", "scale": 1, "missing": "NaN"},
+    {"name": "hrv", "type": "integer", "scale": 1, "missing": "NaN"},
+    {"name": "sleep_stage", "type": "categorical", "values": ["Awake", "Light", "Deep", "REM"], "missing": "NaN"},
+    {"name": "step_count", "type": "integer", "scale": 0, "missing": "NaN"},
+    {"name": "meal_event", "type": "integer", "scale": 0, "missing": "NaN"},
+    {"name": "carbs_g", "type": "integer", "scale": 1, "missing": "NaN"}
+  ],
+  "format": "UTF-8 string encoding: T:{t}|GL:{gl}|HR:{hr}|HRV:{hrv}|SL:{sl}|ST:{st}|ME:{me}|CA:{ca}",
+  "missing_representation": "NaN"
+}
