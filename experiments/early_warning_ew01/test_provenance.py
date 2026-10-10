@@ -592,7 +592,7 @@ def parse_lock(path=EW01_DIR / "requirements.txt"):
     for block in path.read_text().replace("\\\n", " ").splitlines():
         if not block.strip() or block.lstrip().startswith("#"):
             continue
-        m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._\-]*)==(\S+)\s", block + " ")
+        m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._\-]*)(?:\[[^\]]*\])?==(\S+)\s", block + " ")
         assert m, f"unpinned or non-exact requirement in lock: {block[:80]}"
         hashes = re.findall(r"--hash=sha256:([0-9a-f]{64})", block)
         assert hashes, f"{m[1]} has no sha256 hash"
