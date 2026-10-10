@@ -1,15 +1,33 @@
 {
   "schema_id": "EW01-FRESHNESS-1",
+  "ehr_fields": [
+    {"name": "age", "type": "integer", "missing": null},
+    {"name": "gender", "type": "categorical", "values": ["M", "F"]},
+    {"name": "bmi", "type": "float", "missing": null},
+    {"name": "genetic_risk_score", "type": "float", "missing": null},
+    {"name": "hba1c", "type": "float", "missing": null},
+    {"name": "diabetes_status", "type": "categorical", "values": ["Type 1", "Type 2", "Prediabetes", "Healthy"]},
+    {"name": "height_cm", "type": "float", "missing": null},
+    {"name": "weight_kg", "type": "float", "missing": null},
+    {"name": "egfr", "type": "float", "missing": null},
+    {"name": "diabetes_duration_years", "type": "float", "missing": null},
+    {"name": "med_classes", "type": "string_list", "empty_representation": [], "missing": null},
+    {"name": "target_mean_glucose", "type": "float", "missing": null},
+    {"name": "basal_glucose", "type": "float", "missing": null},
+    {"name": "insulin_sensitivity_rel", "type": "float", "missing": null},
+    {"name": "tmax0_min", "type": "float", "missing": null},
+    {"name": "tau_isf_min", "type": "float", "missing": null}
+  ],
   "fields": [
     {"name": "timestamp", "type": "relative_seconds"},
-    {"name": "glucose_level", "type": "integer", "scale": 0, "unit": "mg/dL", "missing": "NaN"},
-    {"name": "heart_rate", "type": "integer", "scale": 1, "missing": "NaN"},
-    {"name": "hrv", "type": "integer", "scale": 1, "missing": "NaN"},
-    {"name": "sleep_stage", "type": "categorical", "values": ["Awake", "Light", "Deep", "REM"], "missing": "NaN"},
-    {"name": "step_count", "type": "integer", "scale": 0, "missing": "NaN"},
-    {"name": "meal_event", "type": "integer", "scale": 0, "missing": "NaN"},
-    {"name": "carbs_g", "type": "integer", "scale": 1, "missing": "NaN"}
+    {"name": "glucose_level", "type": "integer", "scale": 0, "unit": "mg/dL", "missing": null},
+    {"name": "heart_rate", "type": "integer", "scale": 1, "missing": null},
+    {"name": "hrv", "type": "integer", "scale": 1, "missing": null},
+    {"name": "sleep_stage", "type": "categorical", "values": ["Awake", "Light", "Deep", "REM"], "missing": null},
+    {"name": "step_count", "type": "integer", "scale": 0, "missing": null},
+    {"name": "meal_event", "type": "integer", "scale": 0, "missing": null},
+    {"name": "carbs_g", "type": "integer", "scale": 1, "missing": null}
   ],
   "format": "UTF-8 string encoding: T:{t}|GL:{gl}|HR:{hr}|HRV:{hrv}|SL:{sl}|ST:{st}|ME:{me}|CA:{ca}",
-  "missing_representation": "NaN"
+  "missing_representation": null
 }

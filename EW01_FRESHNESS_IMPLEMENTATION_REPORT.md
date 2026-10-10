@@ -17,3 +17,9 @@ The final adjudicated EW-01 freshness specification has been implemented without
 
 ## 3. Pending Pre-conditions
 Code is currently blocked until the owner formally provisions the true cryptographic signing keys, signed environment receipts, and authenticated protected-reference catalogs. No cohort construction or evaluations will be run until this condition is cleared.
+
+## 4. Final T3 Audit Remediation (Current Updates)
+- **Reproducible Environment Lock:** Generated a hash-pinned `requirements.txt` environment lockfile including `cryptography` via `pip-compile --generate-hashes`.
+- **Direct Canonical-Value Matching:** Updated freshness matching to perform a direct fallback string comparison of the canonical payload when a digest matches (using `non_protected_payloads`), preventing unverified hash collisions. If a protected reference cannot be verified directly, it fails closed as an `UNKNOWN` disposition.
+- **EHR Missingness Consistency:** Modified EHR canonicalization to serialize explicitly missing fields as JSON `null` and empty medication classes as `[]`, preventing the silent omission of null information.
+- **Behavioral Test Coverage:** Removed 7 empty placeholder tests in `test_provenance.py` and replaced them with genuine assertions covering unknown dispositions and edge case matches, achieving 100% test completion (26 tests total).
