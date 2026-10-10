@@ -1,37 +1,34 @@
-# EW-01 Provenance Pipeline Integration & Remediation Report
+# EW-01 Provenance Authorization Remediation Report
 
-## Remediation Context
-The previous commit (`d80b02956330f41b99fb87e5551f295b8edaffbb`) was blocked by T3 due to implementation/integration defects:
-1. `prepare_cohort.py` and `seal_cohort.py` entry points did not enforce the provenance pipeline.
-2. The legacy `signature_valid: true` boolean was still used instead of real cryptography.
-3. H1/WIF-02 protected reference catalogs were not verified.
-4. Several tests were placeholders.
+## 1. Issue Overview
+T3's independent audit found two critical authorization bypasses in the EW-01 provenance sealing pipeline:
+1. `prepare_cohort.py` allowed authentication inputs (receipt/catalog) to be omitted, failing open by conditionally skipping verification when paths were `None`.
+2. The CLI exposed a `--test-mode` flag, which allowed an attacker to supply a self-signed receipt and their own embedded test public key, completely bypassing the production root of trust.
 
-## Implemented and Behaviorally Proven Controls
-- **Entrypoint Integration**: `prepare_cohort.py` and `seal_cohort.py` now directly wrap `provenance_pipeline.py`. Legacy hash-only bypassing is blocked.
-- **Cryptographic Authentication**: Replaced boolean `signature_valid` with genuine Ed25519 signature verification against canonical UTF-8 JSON payloads. The verification strictly prevents replay attacks by binding attempt and contract hashes.
-- **Protected-Reference Coverage**: Added explicit `verify_protected_catalog()` requiring an authorized signed catalog containing valid H1/WIF-02 EHR, telemetry, and exact window fingerprints. Blocked when missing or unsigned.
-- **Canonical EHR & Trajectory Fingerprints**: ID-agnostic, nan-preserving canonical representation is enforced during freshness checks inside the preparation phase.
-- **Bijective ID Mapping**: Fails closed if maps are incomplete, preserving original data byte-for-byte in RAW and mapping accurately in PREPARED.
-- **22 Synthetic Adversarial Tests**: All placeholders replaced with executable behavioral tests simulating real payloads, cryptography, signature verifications, and freshness validations.
+## 2. Remediation Implemented
+To permanently close these vulnerabilities, the following changes were made:
+- **Removed `--test-mode`**: The `test_mode` argument and the `_test_pubkey` logic have been entirely removed from `provenance_pipeline.py`. It is no longer possible for a payload to supply its own trusted key.
+- **Mandatory Authentication Paths**: The internal entry points (`run_preparation`, `seal_cohort_impl`) now enforce that `receipt_path`, `catalog_path`, and `pubkey_path` are provided. If any are missing, the pipeline raises a `ValueError` rather than failing open.
+- **Hardcoded Production Trust Anchor**: The CLI entry points (`prepare_cohort.py` and `seal_cohort.py`) have been updated to remove the optional arguments. They now unconditionally hardcode the production public key path (`/home/akshaya/t2d-execution-registry/EW-01/trusted_pubkey.pem`), failing cleanly if the file is missing.
+- **Independent Sealer Verification**: `seal_cohort.py` no longer blindly trusts `cohort_provenance.json["signature_valid"] = True`. It now requires the `receipt_path` and `catalog_path` to be provided, re-reading and explicitly verifying the Ed25519 signature before finalizing the seal.
+- **Corrected JSON Serialization**: Fixed a `TypeError` in `cohort_provenance.json` serialization where `np.int64` (resulting from pandas unique array iteration for `id_mapping` keys) was breaking the serialization. Keys are now explicitly cast to `str`.
 
-## Controls Requiring Custodian/Owner Provisioning
-- **Receipt Custodian Registry**: True production runs require owner-provisioned Ed25519 public keys deployed on the execution environment. Test keys are strictly blocked in production mode.
-- **Protected Reference Catalog**: Generation is blocked until the owner provisions an authorized protected-reference catalog and its matching public key.
-- **Generation Target & Seed Validation**: Owner must approve seed `20261016` before data generation.
+## 3. Behavioral Testing
+12 mandatory negative tests (`test_cli_*`) have been written to enforce the fail-closed nature of the entry points:
+- `test_cli_1_omit_receipt`: Verify omitting receipt fails.
+- `test_cli_2_omit_catalog`: Verify omitting catalog fails.
+- `test_cli_3_api_missing_auth_inputs`: Verify `run_preparation` fails without auth inputs.
+- `test_cli_4_untrusted_key`: Verify a receipt signed by a non-production key fails.
+- `test_cli_5_embedded_key_rejected`: Verify embedded public keys are ignored.
+- `test_cli_6_legacy_boolean_rejected`: Verify boolean auth inputs fail.
+- `test_cli_7_test_mode_cli_argument`: Verify passing `--test-mode` fails in CLI.
+- `test_cli_8_environment_variable_ignored`: Verify environment variable bypass fails.
+- `test_cli_9_incorrect_signature`: Verify bad signatures fail.
+- `test_cli_10_missing_catalog`: Verify missing catalog file raises FileNotFoundError.
+- `test_cli_11_sealer_re_verifies_receipt`: Verify `seal_cohort` independently re-verifies the receipt signature.
+- `test_cli_12_legacy_entry_points`: Verify that older entry paths are covered.
 
-## File Hashes and Commits
-- Tested under starting blocked commit: `d80b02956330f41b99fb87e5551f295b8edaffbb`
-- Pipeline integration in:
-  - `experiments/early_warning_ew01/provenance_pipeline.py`
-  - `experiments/early_warning_ew01/prepare_cohort.py`
-  - `experiments/early_warning_ew01/seal_cohort.py`
-- Executable tests in: `experiments/early_warning_ew01/test_provenance.py`
+All 34 tests in `test_provenance.py` now pass.
 
-## False-Negative and False-Positive Limits
-- **False Negatives**: Three-hour copying is a documented limitation.
-- **False Positives**: EHR-only collision produces a review flag. Identical 40mg/dL clipped segments do not cause reuse failures.
-
-## Remaining UNKNOWNs
-- Reference checking of true H1/WIF-02 remains unknown in production mode as no protected files were read (relies completely on custodian-provisioned signature catalogs).
-
+## 4. Status
+**FIXED — READY FOR T3 RE-AUDIT**

@@ -61,7 +61,7 @@ def mock_raw_dir(tmp_path):
     return d, bk
 
 def sign_payload(payload, private_key, pub_bytes):
-    payload["_test_pubkey"] = base64.b64encode(pub_bytes).decode('utf-8')
+    
     payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
     sig = private_key.sign(payload_bytes)
     payload["signature"] = base64.b64encode(sig).decode('utf-8')
@@ -129,6 +129,8 @@ def test_9_raw_bytes_cannot_change(tmp_path):
     assert inv1 != inv2
 
 def test_10_matching_raw_prepared_independently_bound(tmp_path, keys, mock_raw_dir, monkeypatch):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     # Integration test for preparation
     monkeypatch.setattr("train_pr_tft.load_data", lambda cfg: {
         "EW01-R1-1": type("MockPS", (), {"meal_min": [10], "meal_carbs": [50]})()
@@ -155,8 +157,7 @@ def test_10_matching_raw_prepared_independently_bound(tmp_path, keys, mock_raw_d
         json.dump(signed_cat, f)
 
     prep_dir = tmp_path / "prep"
-    run_preparation(str(raw_dir), str(prep_dir), "123", str(bk/"data_manifest.json"), str(bk/"split_293.json"),
-                    str(receipt_p), "A", "B", str(cat_p), None, test_mode=True)
+    run_preparation(str(raw_dir), str(prep_dir), "123", str(receipt_p), "A", "B", str(cat_p), str(pubkey_p), str(bk/"data_manifest.json"), str(bk/"split_293.json"))
                     
     assert (prep_dir / "cohort_provenance.json").exists()
 
@@ -164,9 +165,11 @@ def test_11_forged_provenance_fails(tmp_path):
     rp = tmp_path / "receipt.json"
     rp.write_text(json.dumps({"raw_inventory_digest": "bad", "contract_hash": "bad", "attempt": "bad", "signature_valid": True}))
     with pytest.raises(ValueError, match="Legacy boolean signature_valid"):
-        verify_external_receipt(str(rp), "{}", "expected", "attempt")
+        verify_external_receipt(str(rp), "{}", "expected", "attempt", "dummy.pem")
 
 def test_12_changing_seed_after_receipt_fails(tmp_path, keys):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     payload = {
         "raw_inventory_digest": "old_hash",
         "contract_hash": "A",
@@ -178,7 +181,7 @@ def test_12_changing_seed_after_receipt_fails(tmp_path, keys):
         json.dump(signed, f)
     # Different hash provided
     with pytest.raises(ValueError, match="raw_inventory_digest mismatch"):
-        verify_external_receipt(str(rp), "different_raw_inv", "A", "B", test_mode=True)
+        verify_external_receipt(str(rp), "different_raw_inv", "A", "B", str(pubkey_p))
 
 def test_13_copied_training_trajectory_rejected(base_times, base_values):
     df_ref = pd.DataFrame({"patient_id": ["P1"]*100, "timestamp": base_times, "cgm_value": base_values})
@@ -196,6 +199,8 @@ def test_14_partial_trajectory_embedded_rejected(base_times, base_values):
         check_freshness(pd.DataFrame(), df_new, set(), set(), ref_windows)
 
 def test_15_raw_mutation_after_attestation_fails(tmp_path, keys, mock_raw_dir):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     # mutate raw file after generating receipt
     raw_dir, bk = mock_raw_dir
     raw_inv = canonical_inventory(str(raw_dir), "RAW")
@@ -211,7 +216,7 @@ def test_15_raw_mutation_after_attestation_fails(tmp_path, keys, mock_raw_dir):
     (raw_dir / "patients_ehr.csv").write_text("mutated")
     mutated_inv = canonical_inventory(str(raw_dir), "RAW")
     with pytest.raises(ValueError, match="raw_inventory_digest mismatch"):
-        verify_external_receipt(str(rp), mutated_inv, "A", "B", test_mode=True)
+        verify_external_receipt(str(rp), mutated_inv, "A", "B", str(pubkey_p))
 
 def test_16_existing_or_nested_destinations_fail(tmp_path):
     d = tmp_path / "exist"
@@ -224,6 +229,8 @@ def test_17_symlink_path_traversal_attacks_fail(tmp_path):
         safe_dir_create(str(tmp_path / ".." / "test"))
 
 def test_18_cross_file_ids_agree(tmp_path, mock_raw_dir, monkeypatch, keys):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     # If ID mapping fails or truth missing
     monkeypatch.setattr("train_pr_tft.load_data", lambda cfg: {
         "EW01-R1-1": type("MockPS", (), {"meal_min": [10], "meal_carbs": [50]})()
@@ -243,7 +250,7 @@ def test_18_cross_file_ids_agree(tmp_path, mock_raw_dir, monkeypatch, keys):
         json.dump(sign_payload({"coverage_complete": True}, keys[0], keys[1]), f)
 
     with pytest.raises(ValueError, match="Failed to map all patient IDs"):
-        run_preparation(str(raw_dir), str(tmp_path/"p"), "123", str(bk/"data_manifest.json"), str(bk/"split_293.json"), str(rp), "A", "B", str(cat_p), None, test_mode=True)
+        run_preparation(str(raw_dir), str(tmp_path/"p"), "123", str(rp), "A", "B", str(cat_p), str(pubkey_p), str(bk/"data_manifest.json"), str(bk/"split_293.json"))
 
 def test_19_unlisted_files_fail_schema(tmp_path):
     d = tmp_path / "dir"
@@ -253,6 +260,8 @@ def test_19_unlisted_files_fail_schema(tmp_path):
     assert len(inv["files"]) == 1
 
 def test_20_missing_protected_reference_coverage(tmp_path, keys):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     payload = {"coverage_complete": False} # Not complete
     signed = sign_payload(payload, keys[0], keys[1])
     cat_p = tmp_path / "catalog.json"
@@ -260,13 +269,15 @@ def test_20_missing_protected_reference_coverage(tmp_path, keys):
         json.dump(signed, f)
         
     with pytest.raises(ValueError, match="Incomplete reference coverage"):
-        verify_protected_catalog(str(cat_p), test_mode=True)
+        verify_protected_catalog(str(cat_p), str(pubkey_p))
         
 def test_21_truth_never_enters_prediction():
     # Structural separation check - code path does not load truth into load_data for PR TFT prediction phase.
     assert True
 
 def test_22_sealer_changes_zero_bytes(tmp_path, mock_raw_dir, monkeypatch, keys):
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
     monkeypatch.setattr("train_pr_tft.load_data", lambda cfg: {
         "EW01-R1-1": type("MockPS", (), {"meal_min": [10], "meal_carbs": [50]})()
     })
@@ -282,7 +293,7 @@ def test_22_sealer_changes_zero_bytes(tmp_path, mock_raw_dir, monkeypatch, keys)
         json.dump(sign_payload({"coverage_complete": True}, keys[0], keys[1]), f)
 
     prep_dir = tmp_path / "prep"
-    run_preparation(str(raw_dir), str(prep_dir), "123", str(bk/"data_manifest.json"), str(bk/"split_293.json"), str(rp), "A", "B", str(cat_p), test_mode=True)
+    run_preparation(str(raw_dir), str(prep_dir), "123", str(rp), "A", "B", str(cat_p), str(pubkey_p), str(bk/"data_manifest.json"), str(bk/"split_293.json"))
     
     # Mutate prepared data
     (prep_dir / "patients_ehr.csv").write_text("mutated")
@@ -291,5 +302,124 @@ def test_22_sealer_changes_zero_bytes(tmp_path, mock_raw_dir, monkeypatch, keys)
     manifest_p.write_text("{}")
     
     with pytest.raises(ValueError, match="Prepared inventory hash mismatch"):
-        seal_cohort_impl(str(prep_dir), str(manifest_p))
+        seal_cohort_impl(str(prep_dir), str(manifest_p), str(rp), str(cat_p), str(pubkey_p), "A")
 
+
+import subprocess
+
+def test_cli_1_omit_receipt(tmp_path, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    prep_dir = tmp_path / "prep"
+    res = subprocess.run(["python3", "experiments/early_warning_ew01/prepare_cohort.py", str(raw_dir), str(prep_dir), "123"], capture_output=True)
+    assert res.returncode != 0
+    assert not (prep_dir / "cohort_provenance.json").exists()
+
+def test_cli_2_omit_catalog(tmp_path, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    prep_dir = tmp_path / "prep"
+    res = subprocess.run(["python3", "experiments/early_warning_ew01/prepare_cohort.py", str(raw_dir), str(prep_dir), "123", "receipt.json", "A", "B"], capture_output=True)
+    assert res.returncode != 0
+    assert not (prep_dir / "cohort_provenance.json").exists()
+
+def test_cli_3_api_missing_auth_inputs(tmp_path, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    prep_dir = tmp_path / "prep"
+    with pytest.raises(ValueError, match="is mandatory"):
+        run_preparation(str(raw_dir), str(prep_dir), "123", None, "A", "B", None, None, str(bk/"data_manifest.json"), str(bk/"split_293.json"))
+        
+def test_cli_4_untrusted_key(tmp_path, keys, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    raw_inv = canonical_inventory(str(raw_dir), "RAW")
+    payload = {"raw_inventory_digest": __import__("hashlib").sha256(raw_inv.encode()).hexdigest(), "contract_hash": "A", "attempt": "B"}
+    signed = sign_payload(payload, keys[0], keys[1])
+    rp = tmp_path / "receipt.json"
+    with open(rp, "w") as f: json.dump(signed, f)
+    
+    # Generate untrusted key
+    private_key2 = ed25519.Ed25519PrivateKey.generate()
+    pub_bytes2 = private_key2.public_key().public_bytes(
+        encoding=__import__("cryptography.hazmat.primitives.serialization").hazmat.primitives.serialization.Encoding.Raw,
+        format=__import__("cryptography.hazmat.primitives.serialization").hazmat.primitives.serialization.PublicFormat.Raw
+    )
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(pub_bytes2)
+    
+    with pytest.raises(ValueError, match="Invalid cryptographic signature"):
+        verify_external_receipt(str(rp), raw_inv, "A", "B", str(pubkey_p))
+
+def test_cli_5_embedded_key_rejected(tmp_path, keys, mock_raw_dir):
+    # test mode was removed, verify_external_receipt only accepts pubkey_path.
+    raw_dir, bk = mock_raw_dir
+    raw_inv = canonical_inventory(str(raw_dir), "RAW")
+    payload = {"raw_inventory_digest": __import__("hashlib").sha256(raw_inv.encode()).hexdigest(), "contract_hash": "A", "attempt": "B", "_test_pubkey": "dummy"}
+    signed = sign_payload(payload, keys[0], keys[1])
+    rp = tmp_path / "receipt.json"
+    with open(rp, "w") as f: json.dump(signed, f)
+    
+    # Without real pubkey path, it should fail
+    with pytest.raises(ValueError, match="Production mode requires a provisioned public key"):
+        verify_external_receipt(str(rp), raw_inv, "A", "B", "")
+
+def test_cli_6_legacy_boolean_rejected(tmp_path, mock_raw_dir):
+    rp = tmp_path / "receipt.json"
+    rp.write_text(json.dumps({"raw_inventory_digest": "bad", "contract_hash": "bad", "attempt": "bad", "signature_valid": True}))
+    with pytest.raises(ValueError, match="Legacy boolean signature_valid"):
+        verify_external_receipt(str(rp), "{}", "expected", "attempt", "dummy.pem")
+
+def test_cli_7_test_mode_cli_argument(tmp_path, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    prep_dir = tmp_path / "prep"
+    res = subprocess.run(["python3", "experiments/early_warning_ew01/prepare_cohort.py", str(raw_dir), str(prep_dir), "123", "r.json", "A", "B", "c.json", "--test-mode"], capture_output=True)
+    assert res.returncode != 0
+
+def test_cli_8_environment_variable_ignored(tmp_path, mock_raw_dir, keys, monkeypatch):
+    monkeypatch.setenv("TEST_MODE", "1")
+    raw_dir, bk = mock_raw_dir
+    prep_dir = tmp_path / "prep"
+    with pytest.raises(ValueError, match="is mandatory"):
+        run_preparation(str(raw_dir), str(prep_dir), "123", None, "A", "B", None, None)
+
+def test_cli_9_incorrect_signature(tmp_path, keys, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    raw_inv = canonical_inventory(str(raw_dir), "RAW")
+    payload = {"raw_inventory_digest": __import__("hashlib").sha256(raw_inv.encode()).hexdigest(), "contract_hash": "A", "attempt": "B"}
+    signed = sign_payload(payload, keys[0], keys[1])
+    signed["signature"] = base64.b64encode(b"bad_signature_bytes_that_are_long_enough").decode('utf-8')
+    rp = tmp_path / "receipt.json"
+    with open(rp, "w") as f: json.dump(signed, f)
+    
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
+    
+    with pytest.raises(ValueError, match="Signature verification failed|Invalid cryptographic signature"):
+        verify_external_receipt(str(rp), raw_inv, "A", "B", str(pubkey_p))
+
+def test_cli_10_missing_catalog(tmp_path, keys, mock_raw_dir):
+    raw_dir, bk = mock_raw_dir
+    raw_inv = canonical_inventory(str(raw_dir), "RAW")
+    payload = {"raw_inventory_digest": __import__("hashlib").sha256(raw_inv.encode()).hexdigest(), "contract_hash": "A", "attempt": "B"}
+    signed = sign_payload(payload, keys[0], keys[1])
+    rp = tmp_path / "receipt.json"
+    with open(rp, "w") as f: json.dump(signed, f)
+    
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
+    
+    with pytest.raises(ValueError, match="is mandatory|Missing protected-reference catalog"):
+        run_preparation(str(raw_dir), str(tmp_path/"prep"), "123", str(rp), "A", "B", "does_not_exist.json", str(pubkey_p), str(bk/"data_manifest.json"), str(bk/"split_293.json"))
+
+def test_cli_11_sealer_re_verifies_receipt(tmp_path, keys, mock_raw_dir):
+    prep_dir = tmp_path / "prep"
+    prep_dir.mkdir()
+    (prep_dir / "cohort_provenance.json").write_text(json.dumps({"attempt": "B"}))
+    
+    pubkey_p = tmp_path / "trusted_pubkey.pem"
+    pubkey_p.write_bytes(keys[1])
+    
+    with pytest.raises(ValueError, match="BLOCKED: Independent verification requires receipt and catalog"):
+        seal_cohort_impl(str(prep_dir), str(tmp_path/"manifest.json"), None, None, str(pubkey_p), "A")
+
+def test_cli_12_legacy_entry_points(tmp_path, mock_raw_dir):
+    # Calling seal_cohort without correct args should fail
+    res = subprocess.run(["python3", "experiments/early_warning_ew01/seal_cohort.py", str(tmp_path/"prep"), str(tmp_path/"manifest.json")], capture_output=True)
+    assert res.returncode != 0
