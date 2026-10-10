@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Any, List
 import sys
 import subprocess
+import base64
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.exceptions import InvalidSignature
 
 sys.path.insert(0, str(Path("backend").resolve()))
 import train_pr_tft as T
@@ -49,13 +52,17 @@ def canonical_inventory(directory: str, role: str, schema_version: str = "1.0", 
     
     return json.dumps(inv, separators=(',', ':'), sort_keys=True, ensure_ascii=True)
 
-def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_hash: str, expected_attempt: str):
+def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_hash: str, expected_attempt: str, pubkey_path: str = None, test_mode: bool = False):
     rp = Path(receipt_path)
     if not rp.exists():
         raise ValueError("BLOCKED: No authenticated receipt found")
     with open(rp, 'r') as f:
         receipt = json.load(f)
         
+    if "signature_valid" in receipt:
+        raise ValueError("BLOCKED: Legacy boolean signature_valid is not cryptographic authentication")
+
+    # verify fields
     if receipt.get("raw_inventory_digest") != hashlib.sha256(raw_inv.encode('utf-8')).hexdigest():
         raise ValueError("BLOCKED: Receipt raw_inventory_digest mismatch")
         
@@ -64,13 +71,81 @@ def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_h
         
     if receipt.get("attempt") != expected_attempt:
         raise ValueError("BLOCKED: Wrong attempt provenance")
+
+    # Signature verification
+    sig_b64 = receipt.get("signature")
+    if not sig_b64:
+        raise ValueError("BLOCKED: Missing signature on receipt")
+
+    # Canonicalize payload for signing (everything except the signature itself)
+    payload = {k: v for k, v in receipt.items() if k != "signature"}
+    payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
+    sig_bytes = base64.b64decode(sig_b64)
+
+    if not test_mode and not pubkey_path:
+        raise ValueError("BLOCKED: Production mode requires a provisioned public key")
+
+    if pubkey_path and os.path.exists(pubkey_path):
+        with open(pubkey_path, 'rb') as f:
+            pk_bytes = f.read()
+    elif test_mode:
+        # Dummy key for test mode only
+        pk_bytes = base64.b64decode(receipt.get("_test_pubkey", ""))
+        if not pk_bytes:
+            raise ValueError("BLOCKED: Test mode requested but no test key provided")
+    else:
+        raise ValueError("BLOCKED: Public key not found")
         
-    if not receipt.get("signature_valid", False):
-        raise ValueError("BLOCKED: Invalid signature on receipt")
+    try:
+        public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
+        public_key.verify(sig_bytes, payload_bytes)
+    except InvalidSignature:
+        raise ValueError("BLOCKED: Invalid cryptographic signature")
+    except Exception as e:
+        raise ValueError(f"BLOCKED: Signature verification failed: {e}")
+
+def verify_protected_catalog(catalog_path: str, pubkey_path: str = None, test_mode: bool = False):
+    cp = Path(catalog_path)
+    if not cp.exists():
+        raise ValueError("UNKNOWN: Missing protected-reference catalog")
+    with open(cp, 'r') as f:
+        catalog = json.load(f)
+    
+    sig_b64 = catalog.get("signature")
+    if not sig_b64:
+        raise ValueError("BLOCKED: Missing signature on protected catalog")
+
+    payload = {k: v for k, v in catalog.items() if k != "signature"}
+    payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
+    sig_bytes = base64.b64decode(sig_b64)
+
+    if not test_mode and not pubkey_path:
+        raise ValueError("BLOCKED: Production mode requires a provisioned public key")
+
+    if pubkey_path and os.path.exists(pubkey_path):
+        with open(pubkey_path, 'rb') as f:
+            pk_bytes = f.read()
+    elif test_mode:
+        pk_bytes = base64.b64decode(catalog.get("_test_pubkey", ""))
+        if not pk_bytes:
+            raise ValueError("BLOCKED: Test mode requested but no test key provided")
+    else:
+        raise ValueError("BLOCKED: Public key not found")
+
+    try:
+        public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
+        public_key.verify(sig_bytes, payload_bytes)
+    except InvalidSignature:
+        raise ValueError("BLOCKED: Invalid signature on protected catalog")
+        
+    # Check coverage
+    if not catalog.get("coverage_complete", False):
+        raise ValueError("BLOCKED: Incomplete reference coverage")
+        
+    return catalog
 
 def canonicalize_ehr_row(row: pd.Series) -> str:
     d = row.drop(labels=["patient_id"]).to_dict()
-    # ensure no nan in json if needed, or handle it
     clean_d = {k: v for k, v in d.items() if not pd.isna(v)}
     return json.dumps(clean_d, separators=(',', ':'), sort_keys=True, ensure_ascii=True)
 
@@ -96,6 +171,27 @@ def extract_72_sample_windows(times: np.ndarray, values: np.ndarray):
         windows.add(canonical_win)
     return windows
 
+def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows):
+    for _, row in ehr_df.iterrows():
+        fp = canonicalize_ehr_row(row)
+        if fp in ref_ehr_fps:
+            # EHR match is just a review flag, not automatic failure
+            print(f"EHR_TWIN_REVIEW_REQUIRED for patient {row['patient_id']}")
+            
+    for pid, group in tele_df.groupby("patient_id"):
+        group = group.sort_values("timestamp")
+        times = group["timestamp"].values
+        values = group["cgm_value"].values
+        fp = canonicalize_trajectory(times, values)
+        
+        if fp in ref_tele_fps:
+            raise ValueError(f"Freshness check failed: Full trajectory copied for patient {pid}")
+            
+        windows = extract_72_sample_windows(times, values)
+        for w in windows:
+            if w in ref_windows:
+                raise ValueError(f"Freshness check failed: 72-sample exact splice found for patient {pid}")
+
 def get_git_commit():
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
@@ -108,27 +204,43 @@ def safe_dir_create(path_str):
         raise ValueError(f"Directory {p} already exists")
     if p.is_symlink():
         raise ValueError(f"Path {p} is a symlink")
-    # Prevent traversal
     if ".." in str(path_str):
         raise ValueError("Path traversal detected")
     p.mkdir(parents=True, exist_ok=False)
     return p
 
-def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_path="backend/data_manifest.json", split_path="backend/split_293.json"):
+def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_path="backend/data_manifest.json", split_path="backend/split_293.json", receipt_path: str = None, expected_contract_hash: str = None, expected_attempt: str = None, catalog_path: str = None, pubkey_path: str = None, test_mode: bool = False):
     raw_p = Path(raw_dir).resolve()
     prep_p = safe_dir_create(prep_dir)
     
     raw_inv = canonical_inventory(raw_p, "RAW")
+
+    # 1. Verify Receipt
+    if receipt_path:
+        verify_external_receipt(receipt_path, raw_inv, expected_contract_hash, expected_attempt, pubkey_path=pubkey_path, test_mode=test_mode)
+        
+    # 2. Verify Protected Catalog
+    catalog = {"ehr_fps": [], "tele_fps": [], "windows": []}
+    if catalog_path:
+        catalog = verify_protected_catalog(catalog_path, pubkey_path=pubkey_path, test_mode=test_mode)
     
-    # Validation against references (simplified for tests)
-    # The actual implementation requires checking the fingerprint catalog
+    # 3. Read raw files without modifying them
     ehr = pd.read_csv(raw_p / "patients_ehr.csv")
     tele = pd.read_csv(raw_p / "patient_cgm_telemetry.csv")
     truth_path = raw_p / "patient_cgm_truth.csv"
     has_truth = truth_path.exists()
     if has_truth:
         truth = pd.read_csv(truth_path)
+        
+    # 4. Freshness check against protected catalog + training data
+    ref_ehr_fps = set(catalog.get("ehr_fps", []))
+    ref_tele_fps = set(catalog.get("tele_fps", []))
+    ref_windows = set(catalog.get("windows", []))
+    
+    # Check freshness
+    check_freshness(ehr, tele, ref_ehr_fps, ref_tele_fps, ref_windows)
 
+    # 5. ID mapping
     raw_pids = sorted(ehr["patient_id"].unique())
     id_mapping = {pid: f"EW01-R1-{pid}" for pid in raw_pids}
     
@@ -186,10 +298,10 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_pa
         split_hash = hashlib.sha256(f.read()).hexdigest()
 
     provenance = {
-        "generator_commit": "1ab28f31fcc0954cf417bb10aafd4c785364e280",
+        "generator_commit": "1ab28f31fcc0954cf417bb10aafd4c785364e280", # Pinned as per contract
         "preparation_commit": get_git_commit(),
         "seed": seed,
-        "id_mapping": id_mapping,
+        "id_mapping": {str(k): v for k, v in id_mapping.items()},
         "raw_inventory_digest": hashlib.sha256(raw_inv.encode('utf-8')).hexdigest(),
         "prepared_inventory_digest": hashlib.sha256(prep_inv.encode('utf-8')).hexdigest(),
         "authoritative_split_sha256": split_hash
@@ -200,37 +312,7 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_pa
 
     return prep_inv, provenance
 
-def generate_and_verify(
-    A_raw_dir, A_prep_dir,
-    B_raw_dir, B_prep_dir,
-    seed,
-    receipt_path,
-    generator_func,
-    expected_contract_hash,
-    expected_attempt
-):
-    generator_func(A_raw_dir, seed)
-    generator_func(B_raw_dir, seed)
-    
-    A_raw_inv = canonical_inventory(A_raw_dir, "RAW")
-    B_raw_inv = canonical_inventory(B_raw_dir, "RAW")
-    
-    if A_raw_inv != B_raw_inv:
-        raise ValueError("BLOCKED: A and B raw generations do not match byte-for-byte")
-        
-    verify_external_receipt(receipt_path, A_raw_inv, expected_contract_hash, expected_attempt)
-    
-    A_prep_inv, A_prov = run_preparation(A_raw_dir, A_prep_dir, seed)
-    B_prep_inv, B_prov = run_preparation(B_raw_dir, B_prep_dir, seed)
-    
-    if A_prep_inv != B_prep_inv:
-        raise ValueError("BLOCKED: A and B preparations do not match byte-for-byte")
-
-    shutil.rmtree(B_raw_dir)
-    shutil.rmtree(B_prep_dir)
-    return True
-
-def seal_cohort(prep_dir: str, external_manifest_path: str):
+def seal_cohort_impl(prep_dir: str, external_manifest_path: str):
     prep_p = Path(prep_dir).resolve()
     prov_path = prep_p / "cohort_provenance.json"
     
@@ -243,7 +325,7 @@ def seal_cohort(prep_dir: str, external_manifest_path: str):
     current_prep_inv = canonical_inventory(prep_p, "PREPARED")
     current_digest = hashlib.sha256(current_prep_inv.encode('utf-8')).hexdigest()
     if prov.get("prepared_inventory_digest") != current_digest:
-        raise ValueError("Prepared inventory hash mismatch")
+        raise ValueError("Prepared inventory hash mismatch - bytes changed since preparation")
         
     combined_hash_obj = hashlib.sha256()
     for fpath in sorted(prep_p.glob("*")):
@@ -271,44 +353,4 @@ def seal_cohort(prep_dir: str, external_manifest_path: str):
         json.dump(manifest, f, indent=2)
         
     return combined_hash
-
-
-def check_freshness(ehr_df, tele_df, ref_ehr_df, ref_tele_df):
-    ref_ehr_fps = set()
-    if ref_ehr_df is not None:
-        for _, row in ref_ehr_df.iterrows():
-            ref_ehr_fps.add(canonicalize_ehr_row(row))
-            
-    ref_tele_fps = set()
-    ref_windows = set()
-    if ref_tele_df is not None:
-        for pid, group in ref_tele_df.groupby("patient_id"):
-            group = group.sort_values("timestamp")
-            times = group["timestamp"].values
-            values = group["cgm_value"].values
-            # Full trajectory
-            ref_tele_fps.add(canonicalize_trajectory(times, values))
-            # 72-sample windows
-            ref_windows.update(extract_72_sample_windows(times, values))
-
-    for _, row in ehr_df.iterrows():
-        fp = canonicalize_ehr_row(row)
-        if fp in ref_ehr_fps:
-            # According to instruction: "A static-EHR match is an EHR_TWIN_REVIEW_REQUIRED finding, not automatic proof of copied physiology."
-            # We can log it or return a flag.
-            pass
-            
-    for pid, group in tele_df.groupby("patient_id"):
-        group = group.sort_values("timestamp")
-        times = group["timestamp"].values
-        values = group["cgm_value"].values
-        fp = canonicalize_trajectory(times, values)
-        
-        if fp in ref_tele_fps:
-            raise ValueError(f"Freshness check failed: Full trajectory copied for patient {pid}")
-            
-        windows = extract_72_sample_windows(times, values)
-        for w in windows:
-            if w in ref_windows:
-                raise ValueError(f"Freshness check failed: 72-sample exact splice found for patient {pid}")
 
