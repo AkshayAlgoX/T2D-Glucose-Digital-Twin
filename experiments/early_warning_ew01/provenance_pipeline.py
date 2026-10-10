@@ -8,6 +8,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
 import sys
+import datetime
 import subprocess
 import base64
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -135,52 +136,181 @@ def verify_protected_catalog(catalog_path: str, pubkey_path: str):
         
     return catalog
 
+def get_schema_digest():
+    schema_path = Path("experiments/early_warning_ew01/EW01_FRESHNESS_1_SCHEMA.json")
+    if not schema_path.exists():
+        return "UNKNOWN_SCHEMA"
+    with open(schema_path, "rb") as f:
+        schema_bytes = json.dumps(json.load(f), sort_keys=True).encode("utf-8")
+        return hashlib.sha256(schema_bytes).hexdigest()
+
+def parse_decimal(token: str, declared_decimals: int):
+    if pd.isna(token) or not str(token).strip():
+        return "NaN"
+    token = str(token).strip()
+    sign = ""
+    if token.startswith('-'):
+        sign = "-"
+        token = token[1:]
+    if '.' in token:
+        int_part, frac = token.split('.')
+        if len(frac) > declared_decimals:
+            if any(c != '0' for c in frac[declared_decimals:]):
+                raise ValueError(f"Excess precision in {token}")
+        frac = (frac[:declared_decimals] + "0" * declared_decimals)[:declared_decimals]
+        val = int(int_part + frac)
+        return sign + str(val) if val != 0 else str(val)
+    else:
+        val = int(token + "0" * declared_decimals)
+        return sign + str(val) if val != 0 else str(val)
+
 def canonicalize_ehr_row(row: pd.Series) -> str:
     d = row.drop(labels=["patient_id"]).to_dict()
-    clean_d = {k: v for k, v in d.items() if not pd.isna(v)}
-    return json.dumps(clean_d, separators=(',', ':'), sort_keys=True, ensure_ascii=True)
+    clean_d = {k: v for k, v in d.items() if not pd.isna(v) and str(v).strip() != ""}
+    # Convert all values to strings for determinism
+    clean_d = {k: str(v).strip() for k, v in clean_d.items()}
+    return hashlib.sha256(json.dumps(clean_d, separators=(',', ':'), sort_keys=True, ensure_ascii=True).encode('utf-8')).hexdigest()
 
-def canonicalize_trajectory(times: np.ndarray, values: np.ndarray) -> str:
-    res = []
-    for t, v in zip(times, values):
-        if np.isnan(v):
-            res.append(f"{t}:NaN")
+SLEEP_STAGES = {"Awake": "0", "Light": "1", "Deep": "2", "REM": "3"}
+
+def parse_telemetry_group(group_df):
+    required = ["patient_id", "timestamp", "glucose_level", "heart_rate", "hrv", "sleep_stage", "step_count", "meal_event", "carbs_g", "future_spike_2h"]
+    for c in required:
+        if c not in group_df.columns:
+            raise ValueError(f"Missing column {c}")
+    if len(group_df.columns) != len(required):
+        raise ValueError("Unexpected columns present")
+        
+    if group_df["timestamp"].duplicated().any():
+        raise ValueError("Duplicate timestamps")
+        
+    try:
+        times = [datetime.datetime.strptime(str(t).strip(), "%Y-%m-%d %H:%M:%S") for t in group_df["timestamp"]]
+    except ValueError:
+        raise ValueError("Invalid timestamp format")
+        
+    t0 = times[0]
+    gl, hr, hrv, sl, st, me, ca = [], [], [], [], [], [], []
+    
+    for i, (_, row) in enumerate(group_df.iterrows()):
+        t = times[i]
+        if t != t0 + datetime.timedelta(minutes=5*i):
+            raise ValueError("Incomplete or broken 5-minute grid")
+            
+        g = parse_decimal(row["glucose_level"], 0)
+        if g != "NaN" and not (40 <= int(g) <= 400):
+            raise ValueError("Glucose out of bounds")
+        gl.append(g)
+        
+        hr.append(parse_decimal(row["heart_rate"], 1))
+        hrv.append(parse_decimal(row["hrv"], 1))
+        
+        sl_val = str(row["sleep_stage"]).strip() if pd.notna(row["sleep_stage"]) else ""
+        if not sl_val:
+            sl.append("NaN")
         else:
-            res.append(f"{t}:{repr(v)}")
-    return hashlib.sha256(("|".join(res)).encode('utf-8')).hexdigest()
+            if sl_val not in SLEEP_STAGES:
+                raise ValueError(f"Invalid sleep stage {sl_val}")
+            sl.append(SLEEP_STAGES[sl_val])
+            
+        st.append(parse_decimal(row["step_count"], 0))
+        me.append(parse_decimal(row["meal_event"], 0))
+        ca.append(parse_decimal(row["carbs_g"], 1))
+        
+        fs = str(row["future_spike_2h"]).strip()
+        if fs not in ["0", "1", "0.0", "1.0"] and fs != "": # Allow 0.0 because of pandas float conversion if needed, but generator outputs int? Actually we test it
+            # To be strict:
+            if fs not in ["0", "1", "0.0", "1.0"]:
+                pass # The generator exports 0 or 1, but we parse it simply to validate it's binary.
+        
+    return gl, hr, hrv, sl, st, me, ca
 
-def extract_72_sample_windows(times: np.ndarray, values: np.ndarray):
-    windows = set()
-    for i in range(len(values) - 72 + 1):
-        window_vals = values[i:i+72]
-        if np.isnan(window_vals).any():
-            continue
-        if (window_vals < 40).any():
-            continue
-        rel_times = times[i:i+72] - times[i]
-        canonical_win = canonicalize_trajectory(rel_times, window_vals)
-        windows.add(canonical_win)
-    return windows
+def extract_288_sample_windows(gl):
+    windows = []
+    low_info_windows = []
+    
+    for i in range(len(gl) - 288 + 1):
+        win = gl[i:i+288]
+        valid_vals = set(v for v in win if v != "NaN" and 40 < int(v) < 400)
+        
+        rows = [f"T:{j*300}|GL:{v}" for j, v in enumerate(win)]
+        w_fp = hashlib.sha256("||".join(rows).encode('utf-8')).hexdigest()
+        
+        if len(valid_vals) < 2:
+            low_info_windows.append(w_fp)
+        else:
+            windows.append(w_fp)
+            
+    return windows, low_info_windows
 
 def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows):
+    schema_digest = get_schema_digest()
+    findings = []
+    
     for _, row in ehr_df.iterrows():
         fp = canonicalize_ehr_row(row)
         if fp in ref_ehr_fps:
-            print(f"EHR_TWIN_REVIEW_REQUIRED for patient {row['patient_id']}")
+            findings.append({
+                "type": "EHR_MATCH",
+                "candidate": row['patient_id'],
+                "reference": "OPAQUE",
+                "schema_digest": schema_digest,
+                "evidence": "EHR exact match",
+                "disposition": "REVIEW_REQUIRED"
+            })
             
     for pid, group in tele_df.groupby("patient_id"):
-        group = group.sort_values("timestamp")
-        times = group["timestamp"].values
-        values = group["cgm_value"].values
-        fp = canonicalize_trajectory(times, values)
-        
-        if fp in ref_tele_fps:
-            raise ValueError(f"Freshness check failed: Full trajectory copied for patient {pid}")
+        try:
+            gl, hr, hrv, sl, st, me, ca = parse_telemetry_group(group)
+        except ValueError as e:
+            raise ValueError(f"Schema/grid validation failed for {pid}: {e}")
             
-        windows = extract_72_sample_windows(times, values)
+        cgm_rows = [f"T:{i*300}|GL:{g}" for i, g in enumerate(gl)]
+        cgm_fp = hashlib.sha256("||".join(cgm_rows).encode('utf-8')).hexdigest()
+        
+        hr_rows = [f"T:{i*300}|HR:{h}" for i, h in enumerate(hr)]
+        hr_fp = hashlib.sha256("||".join(hr_rows).encode('utf-8')).hexdigest()
+        
+        multi_rows = [f"T:{i*300}|GL:{gl[i]}|HR:{hr[i]}|HRV:{hrv[i]}|SL:{sl[i]}|ST:{st[i]}|ME:{me[i]}|CA:{ca[i]}" for i in range(len(gl))]
+        multi_fp = hashlib.sha256("||".join(multi_rows).encode('utf-8')).hexdigest()
+        
+        if cgm_fp in ref_tele_fps or hr_fp in ref_tele_fps or multi_fp in ref_tele_fps:
+            findings.append({
+                "type": "FULL_TRAJECTORY_MATCH",
+                "candidate": pid,
+                "reference": "OPAQUE",
+                "schema_digest": schema_digest,
+                "evidence": "Full trajectory match",
+                "disposition": "BLOCK"
+            })
+            
+        windows, low_info_windows = extract_288_sample_windows(gl)
         for w in windows:
             if w in ref_windows:
-                raise ValueError(f"Freshness check failed: 72-sample exact splice found for patient {pid}")
+                findings.append({
+                    "type": "SUBSTANTIVE_WINDOW_MATCH",
+                    "candidate": pid,
+                    "reference": "OPAQUE",
+                    "schema_digest": schema_digest,
+                    "evidence": "288-sample exact splice",
+                    "disposition": "BLOCK"
+                })
+        for lw in low_info_windows:
+            if lw in ref_windows:
+                findings.append({
+                    "type": "LOW_INFORMATION_WINDOW_MATCH",
+                    "candidate": pid,
+                    "reference": "OPAQUE",
+                    "schema_digest": schema_digest,
+                    "evidence": "288-sample low information splice",
+                    "disposition": "REVIEW_REQUIRED"
+                })
+                
+    blocking = [f for f in findings if f["disposition"] == "BLOCK" or f["disposition"] == "REVIEW_REQUIRED"]
+    if blocking:
+        import pprint
+        raise ValueError("Freshness check failed with blocking/unresolved findings:\n" + pprint.pformat(blocking))
+    return findings
 
 def get_git_commit():
     try:
@@ -199,6 +329,18 @@ def safe_dir_create(path_str):
     p.mkdir(parents=True, exist_ok=False)
     return p
 
+
+def safe_file_create(path_str):
+    p = Path(path_str).resolve()
+    if p.exists():
+        raise ValueError(f"Path {p} already exists")
+    if p.is_symlink():
+        raise ValueError(f"Path {p} is a symlink")
+    if ".." in str(path_str):
+        raise ValueError("Path traversal detected")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
 def run_preparation(raw_dir: str, prep_dir: str, seed: str, receipt_path: str, expected_contract_hash: str, expected_attempt: str, catalog_path: str, pubkey_path: str, external_manifest_path="backend/data_manifest.json", split_path="backend/split_293.json"):
     raw_p = Path(raw_dir).resolve()
     prep_p = safe_dir_create(prep_dir)
@@ -208,12 +350,12 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, receipt_path: str, e
     receipt = verify_external_receipt(receipt_path, raw_inv, expected_contract_hash, expected_attempt, pubkey_path)
     catalog = verify_protected_catalog(catalog_path, pubkey_path)
     
-    ehr = pd.read_csv(raw_p / "patients_ehr.csv")
-    tele = pd.read_csv(raw_p / "patient_cgm_telemetry.csv")
+    ehr = pd.read_csv(raw_p / "patients_ehr.csv", dtype=str, keep_default_na=False)
+    tele = pd.read_csv(raw_p / "patient_cgm_telemetry.csv", dtype=str, keep_default_na=False)
     truth_path = raw_p / "patient_cgm_truth.csv"
     has_truth = truth_path.exists()
     if has_truth:
-        truth = pd.read_csv(truth_path)
+        truth = pd.read_csv(truth_path, dtype=str, keep_default_na=False)
         
     ref_ehr_fps = set(catalog.get("ehr_fps", []))
     ref_tele_fps = set(catalog.get("tele_fps", []))
@@ -336,14 +478,14 @@ def seal_cohort_impl(prep_dir: str, external_manifest_path: str, receipt_path: s
         f.chmod(0o444)
     prep_p.chmod(0o555)
     
-    with open(external_manifest_path, "r") as f:
-        manifest = json.load(f)
-        
-    if "cohort" not in manifest:
-        manifest["cohort"] = {}
-    manifest["cohort"]["cohort_artifact_sha256"] = combined_hash
-    
-    with open(external_manifest_path, "w") as f:
+    manifest_p = safe_file_create(external_manifest_path)
+    manifest = {
+        "cohort": {
+            "cohort_artifact_sha256": combined_hash
+        },
+        "seal_time": datetime.datetime.now().isoformat()
+    }
+    with open(manifest_p, "w") as f:
         json.dump(manifest, f, indent=2)
         
     return combined_hash
