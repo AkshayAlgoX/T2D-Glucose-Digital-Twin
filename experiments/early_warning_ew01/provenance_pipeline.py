@@ -1,3 +1,4 @@
+
 import json
 import hashlib
 import os
@@ -52,7 +53,10 @@ def canonical_inventory(directory: str, role: str, schema_version: str = "1.0", 
     
     return json.dumps(inv, separators=(',', ':'), sort_keys=True, ensure_ascii=True)
 
-def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_hash: str, expected_attempt: str, pubkey_path: str = None, test_mode: bool = False):
+def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_hash: str, expected_attempt: str, pubkey_path: str, skip_digest_check: bool = False):
+    if not receipt_path:
+        raise ValueError("BLOCKED: receipt_path is mandatory")
+        
     rp = Path(receipt_path)
     if not rp.exists():
         raise ValueError("BLOCKED: No authenticated receipt found")
@@ -63,8 +67,9 @@ def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_h
         raise ValueError("BLOCKED: Legacy boolean signature_valid is not cryptographic authentication")
 
     # verify fields
-    if receipt.get("raw_inventory_digest") != hashlib.sha256(raw_inv.encode('utf-8')).hexdigest():
-        raise ValueError("BLOCKED: Receipt raw_inventory_digest mismatch")
+    if not skip_digest_check:
+        if receipt.get("raw_inventory_digest") != hashlib.sha256(raw_inv.encode('utf-8')).hexdigest():
+            raise ValueError("BLOCKED: Receipt raw_inventory_digest mismatch")
         
     if receipt.get("contract_hash") != expected_contract_hash:
         raise ValueError("BLOCKED: Receipt contract_hash mismatch")
@@ -72,29 +77,19 @@ def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_h
     if receipt.get("attempt") != expected_attempt:
         raise ValueError("BLOCKED: Wrong attempt provenance")
 
-    # Signature verification
     sig_b64 = receipt.get("signature")
     if not sig_b64:
         raise ValueError("BLOCKED: Missing signature on receipt")
 
-    # Canonicalize payload for signing (everything except the signature itself)
-    payload = {k: v for k, v in receipt.items() if k != "signature"}
+    # Canonicalize payload
+    payload = {k: v for k, v in receipt.items() if k != "signature" and k != "_test_pubkey"}
     payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
     sig_bytes = base64.b64decode(sig_b64)
 
-    if not test_mode and not pubkey_path:
+    if not pubkey_path or not os.path.exists(pubkey_path):
         raise ValueError("BLOCKED: Production mode requires a provisioned public key")
-
-    if pubkey_path and os.path.exists(pubkey_path):
-        with open(pubkey_path, 'rb') as f:
-            pk_bytes = f.read()
-    elif test_mode:
-        # Dummy key for test mode only
-        pk_bytes = base64.b64decode(receipt.get("_test_pubkey", ""))
-        if not pk_bytes:
-            raise ValueError("BLOCKED: Test mode requested but no test key provided")
-    else:
-        raise ValueError("BLOCKED: Public key not found")
+    with open(pubkey_path, 'rb') as f:
+        pk_bytes = f.read()
         
     try:
         public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
@@ -104,7 +99,12 @@ def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_h
     except Exception as e:
         raise ValueError(f"BLOCKED: Signature verification failed: {e}")
 
-def verify_protected_catalog(catalog_path: str, pubkey_path: str = None, test_mode: bool = False):
+    return receipt
+
+def verify_protected_catalog(catalog_path: str, pubkey_path: str):
+    if not catalog_path:
+        raise ValueError("BLOCKED: catalog_path is mandatory")
+        
     cp = Path(catalog_path)
     if not cp.exists():
         raise ValueError("UNKNOWN: Missing protected-reference catalog")
@@ -115,22 +115,14 @@ def verify_protected_catalog(catalog_path: str, pubkey_path: str = None, test_mo
     if not sig_b64:
         raise ValueError("BLOCKED: Missing signature on protected catalog")
 
-    payload = {k: v for k, v in catalog.items() if k != "signature"}
+    payload = {k: v for k, v in catalog.items() if k != "signature" and k != "_test_pubkey"}
     payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
     sig_bytes = base64.b64decode(sig_b64)
 
-    if not test_mode and not pubkey_path:
+    if not pubkey_path or not os.path.exists(pubkey_path):
         raise ValueError("BLOCKED: Production mode requires a provisioned public key")
-
-    if pubkey_path and os.path.exists(pubkey_path):
-        with open(pubkey_path, 'rb') as f:
-            pk_bytes = f.read()
-    elif test_mode:
-        pk_bytes = base64.b64decode(catalog.get("_test_pubkey", ""))
-        if not pk_bytes:
-            raise ValueError("BLOCKED: Test mode requested but no test key provided")
-    else:
-        raise ValueError("BLOCKED: Public key not found")
+    with open(pubkey_path, 'rb') as f:
+        pk_bytes = f.read()
 
     try:
         public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
@@ -138,7 +130,6 @@ def verify_protected_catalog(catalog_path: str, pubkey_path: str = None, test_mo
     except InvalidSignature:
         raise ValueError("BLOCKED: Invalid signature on protected catalog")
         
-    # Check coverage
     if not catalog.get("coverage_complete", False):
         raise ValueError("BLOCKED: Incomplete reference coverage")
         
@@ -175,7 +166,6 @@ def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows):
     for _, row in ehr_df.iterrows():
         fp = canonicalize_ehr_row(row)
         if fp in ref_ehr_fps:
-            # EHR match is just a review flag, not automatic failure
             print(f"EHR_TWIN_REVIEW_REQUIRED for patient {row['patient_id']}")
             
     for pid, group in tele_df.groupby("patient_id"):
@@ -209,22 +199,15 @@ def safe_dir_create(path_str):
     p.mkdir(parents=True, exist_ok=False)
     return p
 
-def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_path="backend/data_manifest.json", split_path="backend/split_293.json", receipt_path: str = None, expected_contract_hash: str = None, expected_attempt: str = None, catalog_path: str = None, pubkey_path: str = None, test_mode: bool = False):
+def run_preparation(raw_dir: str, prep_dir: str, seed: str, receipt_path: str, expected_contract_hash: str, expected_attempt: str, catalog_path: str, pubkey_path: str, external_manifest_path="backend/data_manifest.json", split_path="backend/split_293.json"):
     raw_p = Path(raw_dir).resolve()
     prep_p = safe_dir_create(prep_dir)
     
     raw_inv = canonical_inventory(raw_p, "RAW")
 
-    # 1. Verify Receipt
-    if receipt_path:
-        verify_external_receipt(receipt_path, raw_inv, expected_contract_hash, expected_attempt, pubkey_path=pubkey_path, test_mode=test_mode)
-        
-    # 2. Verify Protected Catalog
-    catalog = {"ehr_fps": [], "tele_fps": [], "windows": []}
-    if catalog_path:
-        catalog = verify_protected_catalog(catalog_path, pubkey_path=pubkey_path, test_mode=test_mode)
+    receipt = verify_external_receipt(receipt_path, raw_inv, expected_contract_hash, expected_attempt, pubkey_path)
+    catalog = verify_protected_catalog(catalog_path, pubkey_path)
     
-    # 3. Read raw files without modifying them
     ehr = pd.read_csv(raw_p / "patients_ehr.csv")
     tele = pd.read_csv(raw_p / "patient_cgm_telemetry.csv")
     truth_path = raw_p / "patient_cgm_truth.csv"
@@ -232,15 +215,12 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_pa
     if has_truth:
         truth = pd.read_csv(truth_path)
         
-    # 4. Freshness check against protected catalog + training data
     ref_ehr_fps = set(catalog.get("ehr_fps", []))
     ref_tele_fps = set(catalog.get("tele_fps", []))
     ref_windows = set(catalog.get("windows", []))
     
-    # Check freshness
     check_freshness(ehr, tele, ref_ehr_fps, ref_tele_fps, ref_windows)
 
-    # 5. ID mapping
     raw_pids = sorted(ehr["patient_id"].unique())
     id_mapping = {pid: f"EW01-R1-{pid}" for pid in raw_pids}
     
@@ -304,7 +284,8 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_pa
         "id_mapping": {str(k): v for k, v in id_mapping.items()},
         "raw_inventory_digest": hashlib.sha256(raw_inv.encode('utf-8')).hexdigest(),
         "prepared_inventory_digest": hashlib.sha256(prep_inv.encode('utf-8')).hexdigest(),
-        "authoritative_split_sha256": split_hash
+        "authoritative_split_sha256": split_hash,
+        "attempt": receipt.get("attempt")
     }
     
     with open(prep_p / "cohort_provenance.json", "w") as f:
@@ -312,7 +293,10 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, external_manifest_pa
 
     return prep_inv, provenance
 
-def seal_cohort_impl(prep_dir: str, external_manifest_path: str):
+def seal_cohort_impl(prep_dir: str, external_manifest_path: str, receipt_path: str, catalog_path: str, pubkey_path: str, expected_contract_hash: str):
+    if not receipt_path or not catalog_path:
+        raise ValueError("BLOCKED: Independent verification requires receipt and catalog")
+        
     prep_p = Path(prep_dir).resolve()
     prov_path = prep_p / "cohort_provenance.json"
     
@@ -321,6 +305,16 @@ def seal_cohort_impl(prep_dir: str, external_manifest_path: str):
         
     with open(prov_path, "r") as f:
         prov = json.load(f)
+        
+    expected_attempt = prov.get("attempt", "EW01-R1")
+    
+    # Independently re-verify authentication
+    receipt = verify_external_receipt(receipt_path, "", expected_contract_hash, expected_attempt, pubkey_path, skip_digest_check=True)
+    verify_protected_catalog(catalog_path, pubkey_path)
+    
+    # Ensure receipt matches provenance
+    if prov.get("raw_inventory_digest") != receipt.get("raw_inventory_digest"):
+        raise ValueError("BLOCKED: Provenance raw inventory digest does not match receipt")
         
     current_prep_inv = canonical_inventory(prep_p, "PREPARED")
     current_digest = hashlib.sha256(current_prep_inv.encode('utf-8')).hexdigest()
