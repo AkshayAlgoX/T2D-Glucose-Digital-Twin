@@ -38,6 +38,112 @@ def verify_commit(expected_commit):
         print(f"FATAL: Execution commit {current} does not match authorized commit {expected_commit}.", file=sys.stderr)
         sys.exit(1)
 
+def evaluate_scientific_rules(result, trace, candidate_inputs, cfg, rule, manifest, attempt_id):
+    # Apply the explicit scientific Boolean rule:
+    b7_vs_b9 = result["populations"]["primary"]["paired_differences"]["pr_tft_minus_twin_only"]
+    
+    # Sensitivity: lower bound > +0.02
+    b7_sens_lb = b7_vs_b9["event_sensitivity"]["ci_low"]
+    # FA/day: upper bound < -0.10
+    b7_fa_ub = b7_vs_b9["false_alerts_per_patient_day"]["ci_high"]
+    
+    if b7_sens_lb is None or b7_fa_ub is None:
+        pass_b7_vs_b9 = False
+    else:
+        pass_b7_vs_b9 = (b7_sens_lb > manifest["decision_rule"]["co_primary_sensitivity_lower_bound_gt"]) and \
+                        (b7_fa_ub < manifest["decision_rule"]["co_primary_false_alerts_per_day_upper_bound_lt"])
+                        
+    # B1 conditional
+    pass_b7_vs_b1 = False
+    if pass_b7_vs_b9:
+        from experiments.baselines.point import linear_trend
+        
+        # Construct B1 anchors
+        a_t = trace.split_test.anchor_t.numpy()
+        a_p = trace.split_test.anchor_patient.numpy()
+        grid = np.zeros(a_t.size, dtype=bool)
+        for i, ps in enumerate(candidate_inputs):
+            sel = a_p == i
+            grid[sel] = np.isin(a_t[sel], T.eligible_anchors(ps, cfg))
+        
+        eligible_t = a_t[grid]
+        eligible_p = a_p[grid]
+        
+        series_dict = {ps.pid: ps for ps in candidate_inputs}
+        patient_ids = [ps.pid for ps in candidate_inputs]
+        
+        b1_anchors = {
+            "patient_ids": patient_ids,
+            "t": eligible_t,
+            "patient": eligible_p,
+            "g0": np.array([candidate_inputs[p].cgm_ff[t] for p, t in zip(eligible_p, eligible_t)])
+        }
+        
+        # Run baseline
+        b1_preds = linear_trend(b1_anchors, series_dict)
+        
+        # Compute event stats for B1
+        b1_ev = []
+        cooldown = 24
+        hist_len = T.RISE_STEPS + 1
+        for i, ps in enumerate(candidate_inputs):
+            _, first, last = trace.decisions[ps.pid]
+            sel = np.flatnonzero(eligible_p == i)
+            ts = eligible_t[sel]
+            at_risk = np.zeros(ps.n, dtype=bool)
+            at_risk[ts] = ps.armed[ts]
+            
+            trig_b1 = np.zeros(ps.n, dtype=bool)
+            for j, t in zip(sel, ts):
+                if at_risk[t] and b1_preds[j].max() >= T.SPIKE_LEVEL:
+                    trig_b1[t] = E.forecast_meets_spike_rule(ps.cgm[t - hist_len + 1:t + 1], b1_preds[j])
+                    
+            raised_b1 = E.raise_alerts(trig_b1, at_risk, cooldown=cooldown)
+            counts_b1 = E.event_counts(raised_b1, ps.onset, first, last)
+            b1_ev.append(counts_b1)
+            
+        b1_stats = {}
+        for key in ("monitored_onsets", "detected_onsets", "alerts_raised", "true_alerts", "false_alerts", "patient_days"):
+            b1_stats[key] = np.array([r[key] for r in b1_ev], dtype=float)
+        b1_stats["lead_times_min"] = [r["lead_times_min"] for r in b1_ev]
+        
+        primary_idx = np.flatnonzero(np.isin(np.array([ps.group for ps in candidate_inputs]), E.POPULATIONS["primary"]))
+        sub_b1 = {k: v[primary_idx] if isinstance(v, np.ndarray) else [v[i] for i in primary_idx] for k, v in b1_stats.items()}
+        w = trace.populations["primary"]["weights"]
+        ones = np.ones((1, len(primary_idx)))
+        point_b1 = E.metric_draws(sub_b1, ones)
+        draws_b1 = E.metric_draws(sub_b1, w)
+        
+        point_b7 = trace.populations["primary"]["point"]["pr_tft@0.35"]
+        draws_b7 = trace.populations["primary"]["draws"]["pr_tft@0.35"]
+        
+        diff_sens = E.summarize(point_b7["event_sensitivity"][0] - point_b1["event_sensitivity"][0], 
+                                draws_b7["event_sensitivity"] - draws_b1["event_sensitivity"], 
+                                rule["uncertainty"]["ci"])
+        diff_fa = E.summarize(point_b7["false_alerts_per_patient_day"][0] - point_b1["false_alerts_per_patient_day"][0], 
+                              draws_b7["false_alerts_per_patient_day"] - draws_b1["false_alerts_per_patient_day"], 
+                              rule["uncertainty"]["ci"])
+        
+        if diff_sens["ci_low"] is not None and diff_fa["ci_high"] is not None:
+            pass_b7_vs_b1 = (diff_sens["ci_low"] > 0.02) and (diff_fa["ci_high"] < -0.10)
+        else:
+            pass_b7_vs_b1 = "NO_PASS_UNDEFINED"
+    else:
+        pass_b7_vs_b1 = "B1_NOT_EVALUATED_GATE_FAILED"
+            
+    final_result = {
+        "attempt_id": attempt_id,
+        "pass_b7_vs_b9": pass_b7_vs_b9,
+        "pass_b7_vs_b1": pass_b7_vs_b1,
+        "b7_vs_b9_sensitivity_lb": b7_sens_lb,
+        "b7_vs_b9_fa_ub": b7_fa_ub,
+        "primary_metrics": result["populations"]["primary"]["models"],
+        "paired_differences": result["populations"]["primary"]["paired_differences"],
+        "status": "COMPLETE"
+    }
+    return final_result
+
+
 def main(manifest_path, output_dir):
     verify_clean_tree()
     
@@ -138,110 +244,7 @@ def main(manifest_path, output_dir):
         
         result, trace = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
         
-        # Apply the explicit scientific Boolean rule:
-        primary_pop = trace.populations["primary"]
-        
-        b7_vs_b9 = primary_pop["paired_differences"]["pr_tft_minus_twin_only"]
-        
-        # Sensitivity: lower bound > +0.02
-        b7_sens_lb = b7_vs_b9["event_sensitivity"]["ci_low"]
-        # FA/day: upper bound < -0.10
-        b7_fa_ub = b7_vs_b9["false_alerts_per_patient_day"]["ci_high"]
-        
-        if b7_sens_lb is None or b7_fa_ub is None:
-            pass_b7_vs_b9 = False
-        else:
-            pass_b7_vs_b9 = (b7_sens_lb > manifest["decision_rule"]["co_primary_sensitivity_lower_bound_gt"]) and \
-                            (b7_fa_ub < manifest["decision_rule"]["co_primary_false_alerts_per_day_upper_bound_lt"])
-                            
-        # B1 conditional
-        pass_b7_vs_b1 = False
-        if pass_b7_vs_b9:
-            from experiments.baselines.point import linear_trend
-            
-            # Construct B1 anchors
-            a_t = trace.split_test.anchor_t.numpy()
-            a_p = trace.split_test.anchor_patient.numpy()
-            grid = np.zeros(a_t.size, dtype=bool)
-            for i, ps in enumerate(candidate_inputs):
-                sel = a_p == i
-                grid[sel] = np.isin(a_t[sel], T.eligible_anchors(ps, cfg))
-            
-            eligible_t = a_t[grid]
-            eligible_p = a_p[grid]
-            
-            series_dict = {ps.pid: ps for ps in candidate_inputs}
-            patient_ids = [ps.pid for ps in candidate_inputs]
-            
-            b1_anchors = {
-                "patient_ids": patient_ids,
-                "t": eligible_t,
-                "patient": eligible_p,
-                "g0": np.array([candidate_inputs[p].cgm[t] for p, t in zip(eligible_p, eligible_t)])
-            }
-            
-            # Run baseline
-            b1_preds = linear_trend(b1_anchors, series_dict)
-            
-            # Compute event stats for B1
-            b1_ev = []
-            cooldown = 24
-            hist_len = T.RISE_STEPS + 1
-            for i, ps in enumerate(candidate_inputs):
-                _, first, last = trace.decisions[ps.pid]
-                sel = np.flatnonzero(eligible_p == i)
-                ts = eligible_t[sel]
-                at_risk = np.zeros(ps.n, dtype=bool)
-                at_risk[ts] = ps.armed[ts]
-                
-                trig_b1 = np.zeros(ps.n, dtype=bool)
-                for j, t in zip(sel, ts):
-                    if at_risk[t] and b1_preds[j].max() >= T.SPIKE_LEVEL:
-                        trig_b1[t] = E.forecast_meets_spike_rule(ps.cgm[t - hist_len + 1:t + 1], b1_preds[j])
-                        
-                raised_b1 = E.raise_alerts(trig_b1, at_risk, cooldown=cooldown)
-                counts_b1 = E.event_counts(raised_b1, ps.onset, first, last)
-                b1_ev.append(counts_b1)
-                
-            b1_stats = {}
-            for key in ("monitored_onsets", "detected_onsets", "alerts_raised", "true_alerts", "false_alerts", "patient_days"):
-                b1_stats[key] = np.array([r[key] for r in b1_ev], dtype=float)
-            b1_stats["lead_times_min"] = [r["lead_times_min"] for r in b1_ev]
-            
-            primary_idx = np.flatnonzero(np.isin(np.array([ps.group for ps in candidate_inputs]), E.POPULATIONS["primary"]))
-            sub_b1 = {k: v[primary_idx] if isinstance(v, np.ndarray) else [v[i] for i in primary_idx] for k, v in b1_stats.items()}
-            w = trace.populations["primary"]["weights"]
-            ones = np.ones((1, len(primary_idx)))
-            point_b1 = E.metric_draws({"b1": sub_b1}, ones)["b1"]
-            draws_b1 = E.metric_draws({"b1": sub_b1}, w)["b1"]
-            
-            point_b7 = trace.populations["primary"]["point"]["pr_tft@0.35"]
-            draws_b7 = trace.populations["primary"]["draws"]["pr_tft@0.35"]
-            
-            diff_sens = E.summarize(point_b7["event_sensitivity"][0] - point_b1["event_sensitivity"][0], 
-                                    draws_b7["event_sensitivity"] - draws_b1["event_sensitivity"], 
-                                    rule["uncertainty"]["ci"])
-            diff_fa = E.summarize(point_b7["false_alerts_per_patient_day"][0] - point_b1["false_alerts_per_patient_day"][0], 
-                                  draws_b7["false_alerts_per_patient_day"] - draws_b1["false_alerts_per_patient_day"], 
-                                  rule["uncertainty"]["ci"])
-            
-            if diff_sens["ci_low"] is not None and diff_fa["ci_high"] is not None:
-                pass_b7_vs_b1 = (diff_sens["ci_low"] > 0.02) and (diff_fa["ci_high"] < -0.10)
-            else:
-                pass_b7_vs_b1 = "NO_PASS_UNDEFINED"
-        else:
-            pass_b7_vs_b1 = "B1_NOT_EVALUATED_GATE_FAILED"
-                
-        final_result = {
-            "attempt_id": attempt_id,
-            "pass_b7_vs_b9": pass_b7_vs_b9,
-            "pass_b7_vs_b1": pass_b7_vs_b1,
-            "b7_vs_b9_sensitivity_lb": b7_sens_lb,
-            "b7_vs_b9_fa_ub": b7_fa_ub,
-            "primary_metrics": primary_pop["models"],
-            "paired_differences": primary_pop["paired_differences"],
-            "status": "COMPLETE"
-        }
+        final_result = evaluate_scientific_rules(result, trace, candidate_inputs, cfg, rule, manifest, attempt_id)
         
         with open(out_path / "scientific_results.json", "w") as f:
             json.dump(final_result, f, indent=2)
