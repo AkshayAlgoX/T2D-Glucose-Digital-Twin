@@ -11,6 +11,7 @@ import sys
 import datetime
 import subprocess
 import base64
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.exceptions import InvalidSignature
 
@@ -54,6 +55,23 @@ def canonical_inventory(directory: str, role: str, schema_version: str = "1.0", 
     
     return json.dumps(inv, separators=(',', ':'), sort_keys=True, ensure_ascii=True)
 
+def load_trusted_pubkey(pubkey_path: str) -> ed25519.Ed25519PublicKey:
+    """The pinned Ed25519 trust anchor: a PEM SubjectPublicKeyInfo file or the raw 32-byte key."""
+    if not pubkey_path or not os.path.exists(pubkey_path):
+        raise ValueError("BLOCKED: Production mode requires a provisioned public key")
+    with open(pubkey_path, 'rb') as f:
+        pk_bytes = f.read()
+    try:
+        if pk_bytes.lstrip().startswith(b"-----BEGIN"):
+            public_key = serialization.load_pem_public_key(pk_bytes)
+        else:
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
+    except Exception as e:
+        raise ValueError(f"BLOCKED: Trusted public key is not a valid Ed25519 key: {e}")
+    if not isinstance(public_key, ed25519.Ed25519PublicKey):
+        raise ValueError(f"BLOCKED: Trusted public key is not an Ed25519 key: {type(public_key).__name__}")
+    return public_key
+
 def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_hash: str, expected_attempt: str, pubkey_path: str, skip_digest_check: bool = False):
     if not receipt_path:
         raise ValueError("BLOCKED: receipt_path is mandatory")
@@ -87,13 +105,8 @@ def verify_external_receipt(receipt_path: str, raw_inv: str, expected_contract_h
     payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
     sig_bytes = base64.b64decode(sig_b64)
 
-    if not pubkey_path or not os.path.exists(pubkey_path):
-        raise ValueError("BLOCKED: Production mode requires a provisioned public key")
-    with open(pubkey_path, 'rb') as f:
-        pk_bytes = f.read()
-        
+    public_key = load_trusted_pubkey(pubkey_path)
     try:
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
         public_key.verify(sig_bytes, payload_bytes)
     except InvalidSignature:
         raise ValueError("BLOCKED: Invalid cryptographic signature")
@@ -120,13 +133,8 @@ def verify_protected_catalog(catalog_path: str, pubkey_path: str):
     payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
     sig_bytes = base64.b64decode(sig_b64)
 
-    if not pubkey_path or not os.path.exists(pubkey_path):
-        raise ValueError("BLOCKED: Production mode requires a provisioned public key")
-    with open(pubkey_path, 'rb') as f:
-        pk_bytes = f.read()
-
+    public_key = load_trusted_pubkey(pubkey_path)
     try:
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(pk_bytes)
         public_key.verify(sig_bytes, payload_bytes)
     except InvalidSignature:
         raise ValueError("BLOCKED: Invalid signature on protected catalog")
@@ -526,7 +534,10 @@ def seal_cohort_impl(prep_dir: str, external_manifest_path: str, receipt_path: s
     current_digest = hashlib.sha256(current_prep_inv.encode('utf-8')).hexdigest()
     if prov.get("prepared_inventory_digest") != current_digest:
         raise ValueError("Prepared inventory hash mismatch - bytes changed since preparation")
-        
+
+    # Refuse an existing or unsafe manifest destination before any permission change.
+    manifest_p = safe_file_create(external_manifest_path)
+
     combined_hash_obj = hashlib.sha256()
     for fpath in sorted(prep_p.glob("*")):
         if fpath.is_file():
@@ -542,7 +553,6 @@ def seal_cohort_impl(prep_dir: str, external_manifest_path: str, receipt_path: s
         f.chmod(0o444)
     prep_p.chmod(0o555)
     
-    manifest_p = safe_file_create(external_manifest_path)
     manifest = {
         "cohort": {
             "cohort_artifact_sha256": combined_hash
