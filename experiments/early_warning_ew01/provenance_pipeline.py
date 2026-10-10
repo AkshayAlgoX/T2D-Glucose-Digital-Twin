@@ -164,15 +164,50 @@ def parse_decimal(token: str, declared_decimals: int):
         val = int(token + "0" * declared_decimals)
         return sign + str(val) if val != 0 else str(val)
 
-def canonicalize_ehr_row(row: pd.Series) -> str:
-    d = row.drop(labels=["patient_id"]).to_dict()
-    clean_d = {k: v for k, v in d.items() if not pd.isna(v) and str(v).strip() != ""}
-    # Convert all values to strings for determinism
-    clean_d = {k: str(v).strip() for k, v in clean_d.items()}
-    return hashlib.sha256(json.dumps(clean_d, separators=(',', ':'), sort_keys=True, ensure_ascii=True).encode('utf-8')).hexdigest()
+def parse_ehr_field(f, val):
+    import pandas as pd
+    if pd.isna(val) or val == "":
+        if f == "med_classes":
+            return []
+        return None
+    
+    val = str(val).strip()
+    
+    if f == "age":
+        if '.' in val: raise ValueError(f"Excess precision for age: {val}")
+        return int(val)
+    elif f in ["gender", "diabetes_status"]:
+        return val
+    elif f == "med_classes":
+        return val.split(";")
+    else:
+        if '.' in val:
+            int_part, frac = val.split('.')
+            if f == "genetic_risk_score":
+                if len(frac) > 3: raise ValueError("Excess precision")
+            elif f == "insulin_sensitivity_rel":
+                if len(frac) > 3: raise ValueError("Excess precision")
+            else:
+                if any(c != '0' for c in frac[1:]): raise ValueError("Excess precision")
+        return float(val)
+
+def canonicalize_ehr_row(row: pd.Series):
+    expected_fields = [
+        "age", "gender", "bmi", "genetic_risk_score", "hba1c", "diabetes_status",
+        "height_cm", "weight_kg", "egfr", "diabetes_duration_years", "med_classes",
+        "target_mean_glucose", "basal_glucose", "insulin_sensitivity_rel", "tmax0_min", "tau_isf_min"
+    ]
+    
+    out = {}
+    for f in expected_fields:
+        if f not in row:
+            raise ValueError(f"Missing required EHR field: {f}")
+        out[f] = parse_ehr_field(f, row[f])
+    payload = json.dumps(out, separators=(',', ':'))
+    digest = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+    return digest, payload
 
 SLEEP_STAGES = {"Awake": "0", "Light": "1", "Deep": "2", "REM": "3"}
-
 def parse_telemetry_group(group_df):
     required = ["patient_id", "timestamp", "glucose_level", "heart_rate", "hrv", "sleep_stage", "step_count", "meal_event", "carbs_g", "future_spike_2h"]
     for c in required:
@@ -218,10 +253,8 @@ def parse_telemetry_group(group_df):
         ca.append(parse_decimal(row["carbs_g"], 1))
         
         fs = str(row["future_spike_2h"]).strip()
-        if fs not in ["0", "1", "0.0", "1.0"] and fs != "": # Allow 0.0 because of pandas float conversion if needed, but generator outputs int? Actually we test it
-            # To be strict:
-            if fs not in ["0", "1", "0.0", "1.0"]:
-                pass # The generator exports 0 or 1, but we parse it simply to validate it's binary.
+        if fs not in ["0", "1", "0.0", "1.0"] and fs != "":
+            pass
         
     return gl, hr, hrv, sl, st, me, ca
 
@@ -234,29 +267,46 @@ def extract_288_sample_windows(gl):
         valid_vals = set(v for v in win if v != "NaN" and 40 < int(v) < 400)
         
         rows = [f"T:{j*300}|GL:{v}" for j, v in enumerate(win)]
-        w_fp = hashlib.sha256("||".join(rows).encode('utf-8')).hexdigest()
+        payload = "||".join(rows)
+        w_fp = hashlib.sha256(payload.encode('utf-8')).hexdigest()
         
         if len(valid_vals) < 2:
-            low_info_windows.append(w_fp)
+            low_info_windows.append((w_fp, payload))
         else:
-            windows.append(w_fp)
+            windows.append((w_fp, payload))
             
     return windows, low_info_windows
 
-def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows):
+def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows, catalog=None):
     schema_digest = get_schema_digest()
     findings = []
+    if catalog is None:
+        catalog = {}
+    
+    non_protected = catalog.get("non_protected_payloads", {})
+    
+    def verify_match(digest, candidate_payload):
+        if digest in non_protected:
+            if non_protected[digest] == candidate_payload:
+                return "EXACT_MATCH"
+            else:
+                return "COLLISION"
+        else:
+            return "UNKNOWN"
     
     for _, row in ehr_df.iterrows():
-        fp = canonicalize_ehr_row(row)
+        fp, payload = canonicalize_ehr_row(row)
         if fp in ref_ehr_fps:
+            match_status = verify_match(fp, payload)
+            if match_status == "COLLISION":
+                continue
             findings.append({
                 "type": "EHR_MATCH",
                 "candidate": row['patient_id'],
                 "reference": "OPAQUE",
                 "schema_digest": schema_digest,
-                "evidence": "EHR exact match",
-                "disposition": "REVIEW_REQUIRED"
+                "evidence": f"EHR match ({match_status})",
+                "disposition": "REVIEW_REQUIRED" if match_status == "EXACT_MATCH" else "UNKNOWN"
             })
             
     for pid, group in tele_df.groupby("patient_id"):
@@ -266,50 +316,64 @@ def check_freshness(ehr_df, tele_df, ref_ehr_fps, ref_tele_fps, ref_windows):
             raise ValueError(f"Schema/grid validation failed for {pid}: {e}")
             
         cgm_rows = [f"T:{i*300}|GL:{g}" for i, g in enumerate(gl)]
-        cgm_fp = hashlib.sha256("||".join(cgm_rows).encode('utf-8')).hexdigest()
+        cgm_payload = "||".join(cgm_rows)
+        cgm_fp = hashlib.sha256(cgm_payload.encode('utf-8')).hexdigest()
         
         hr_rows = [f"T:{i*300}|HR:{h}" for i, h in enumerate(hr)]
-        hr_fp = hashlib.sha256("||".join(hr_rows).encode('utf-8')).hexdigest()
+        hr_payload = "||".join(hr_rows)
+        hr_fp = hashlib.sha256(hr_payload.encode('utf-8')).hexdigest()
         
         multi_rows = [f"T:{i*300}|GL:{gl[i]}|HR:{hr[i]}|HRV:{hrv[i]}|SL:{sl[i]}|ST:{st[i]}|ME:{me[i]}|CA:{ca[i]}" for i in range(len(gl))]
-        multi_fp = hashlib.sha256("||".join(multi_rows).encode('utf-8')).hexdigest()
+        multi_payload = "||".join(multi_rows)
+        multi_fp = hashlib.sha256(multi_payload.encode('utf-8')).hexdigest()
         
-        if cgm_fp in ref_tele_fps or hr_fp in ref_tele_fps or multi_fp in ref_tele_fps:
-            findings.append({
-                "type": "FULL_TRAJECTORY_MATCH",
-                "candidate": pid,
-                "reference": "OPAQUE",
-                "schema_digest": schema_digest,
-                "evidence": "Full trajectory match",
-                "disposition": "BLOCK"
-            })
+        for fp, payload, typ in [(cgm_fp, cgm_payload, "CGM"), (hr_fp, hr_payload, "HR"), (multi_fp, multi_payload, "MULTI")]:
+            if fp in ref_tele_fps:
+                match_status = verify_match(fp, payload)
+                if match_status == "COLLISION":
+                    continue
+                findings.append({
+                    "type": "FULL_TRAJECTORY_MATCH",
+                    "candidate": pid,
+                    "reference": "OPAQUE",
+                    "schema_digest": schema_digest,
+                    "evidence": f"Full trajectory match ({match_status})",
+                    "disposition": "BLOCK" if match_status == "EXACT_MATCH" else "UNKNOWN"
+                })
             
         windows, low_info_windows = extract_288_sample_windows(gl)
-        for w in windows:
-            if w in ref_windows:
+        for w_fp, w_payload in windows:
+            if w_fp in ref_windows:
+                match_status = verify_match(w_fp, w_payload)
+                if match_status == "COLLISION":
+                    continue
                 findings.append({
                     "type": "SUBSTANTIVE_WINDOW_MATCH",
                     "candidate": pid,
                     "reference": "OPAQUE",
                     "schema_digest": schema_digest,
-                    "evidence": "288-sample exact splice",
-                    "disposition": "BLOCK"
+                    "evidence": f"288-sample exact splice ({match_status})",
+                    "disposition": "BLOCK" if match_status == "EXACT_MATCH" else "UNKNOWN"
                 })
-        for lw in low_info_windows:
-            if lw in ref_windows:
+        for lw_fp, lw_payload in low_info_windows:
+            if lw_fp in ref_windows:
+                match_status = verify_match(lw_fp, lw_payload)
+                if match_status == "COLLISION":
+                    continue
                 findings.append({
                     "type": "LOW_INFORMATION_WINDOW_MATCH",
                     "candidate": pid,
                     "reference": "OPAQUE",
                     "schema_digest": schema_digest,
-                    "evidence": "288-sample low information splice",
-                    "disposition": "REVIEW_REQUIRED"
+                    "evidence": f"288-sample low information splice ({match_status})",
+                    "disposition": "REVIEW_REQUIRED" if match_status == "EXACT_MATCH" else "UNKNOWN"
                 })
                 
-    blocking = [f for f in findings if f["disposition"] == "BLOCK" or f["disposition"] == "REVIEW_REQUIRED"]
+    blocking = [f for f in findings if f["disposition"] in ["BLOCK", "REVIEW_REQUIRED", "UNKNOWN"]]
     if blocking:
         import pprint
         raise ValueError("Freshness check failed with blocking/unresolved findings:\n" + pprint.pformat(blocking))
+        
     return findings
 
 def get_git_commit():
@@ -361,7 +425,7 @@ def run_preparation(raw_dir: str, prep_dir: str, seed: str, receipt_path: str, e
     ref_tele_fps = set(catalog.get("tele_fps", []))
     ref_windows = set(catalog.get("windows", []))
     
-    check_freshness(ehr, tele, ref_ehr_fps, ref_tele_fps, ref_windows)
+    check_freshness(ehr, tele, ref_ehr_fps, ref_tele_fps, ref_windows, catalog=catalog)
 
     raw_pids = sorted(ehr["patient_id"].unique())
     id_mapping = {pid: f"EW01-R1-{pid}" for pid in raw_pids}
