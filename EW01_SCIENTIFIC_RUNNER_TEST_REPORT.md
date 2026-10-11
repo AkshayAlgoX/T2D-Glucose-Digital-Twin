@@ -1,5 +1,7 @@
 # EW-01 Scientific Runner Test Report (Final Astra Protocol)
 
+> **SUPERSEDED (2026-10-11).** This report covers the runner as of commit `5d91ae08`. Later T3 audits did not uphold its conclusions, and the tests it describes no longer reflect the code. Current runner-gate evidence: `experiments/early_warning_ew01/test_run_scientific_gate.py` and `experiments/early_warning_ew01/EW01_RUNNER_GATE_TEST.log` (112 passed at `68bcb278` in the clean locked environment). The text below is kept unchanged as a historical record.
+
 ## Synthetic Integrity Tests
 The scientific runner and sealing logic were tested against synthetic fixtures and violations to ensure strict safety boundaries, remediating the 4 blockers previously identified in the T3 audit and resolving all subsequent bypasses caught in the second audit.
 
