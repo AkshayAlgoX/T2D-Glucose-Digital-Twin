@@ -1,42 +1,93 @@
-import sys
-import os
-import json
-import hashlib
-import subprocess
+"""EW-01 scientific runner: scores one authority-sealed cohort, exactly once.
+
+    SCIENTIFIC_EVALUATION=true python experiments/early_warning_ew01/run_scientific.py
+
+The runner takes no arguments and has no fallback. Everything it relies on comes from records the
+designated authority signed into the registry pinned at PRODUCTION_REGISTRY_ROOT:
+
+  * EW01_SCIENTIFIC_RUN_AUTHORIZATION binds the sealed-cohort record, the execution commit, the run's
+    code and model-artifact inventory, the environment and the output directory;
+  * EW01_SEALED_COHORT (the authority's signature over seal_cohort.py's manifest) binds the sealed
+    directory, its inventory and every construction record the seal relied on.
+
+`authorize_run` verifies all of it -- signatures against the trust anchor, every binding, a clean tree
+at the authorized commit, the locked environment, and the sealed directory's path, read-only modes and
+bytes -- and writes nothing. Only then does `run` reserve the single attempt in the registry and score
+the verified sealed bytes. A missing registry, anchor or record blocks; nothing here creates one.
+"""
+from __future__ import annotations
+
 import dataclasses
+import io
+import json
+import os
+import secrets
+import stat
+import sys
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime
+from typing import Any, Callable
+
 import numpy as np
 
-if os.environ.get("SCIENTIFIC_EVALUATION", "").lower() != "true":
-    print("FATAL: SCIENTIFIC_EVALUATION=true is required.", file=sys.stderr)
-    sys.exit(1)
+EW01_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(EW01_DIR.parents[1] / "backend"))
+sys.path.insert(0, str(EW01_DIR.parents[1]))
+sys.path.insert(0, str(EW01_DIR))
+import evaluate_run as E  # noqa: E402
+import train_pr_tft as T  # noqa: E402
+from ew01_trust import (AUTHORIZATION, CONSTRUCTION, EXPERIMENT, GENERATION_RECEIPT, HEX40, HEX64, LOCK_PATH,  # noqa: E402
+                        PREPARATION_ATTESTATION, PREPARED_ALL, PREPARED_SCIENTIFIC, PRODUCTION_REGISTRY_ROOT,
+                        REPLICA_COMPARISON, REPLICAS, SCIENTIFIC_ATTEMPT, SCIENTIFIC_RUN_AUTHORIZATION, SEALED_COHORT,
+                        SEALED_COHORT_KEYS, SEED_RESERVATION, SELECTED_REPLICA, Authority, Blocked, SignedRecord,
+                        _inside, canonical_json, check_output_path, cohort_artifact_digest, create_exclusive, inventory,
+                        open_authority, read_regular_file, require_clean_tree, require_equal, require_hex, require_keys,
+                        require_outside_repository, sha256_bytes, snapshot_directory, strict_json, sub_inventory,
+                        validate_authorization, validate_inventory, verify_environment, verify_registry_layout,
+                        verify_sources)
+from experiments.early_warning_ew01.harness import evaluate_locked_core  # noqa: E402
+from experiments.early_warning_ew01.loader import load_cohort_explicit_canonical  # noqa: E402
+from freshness2 import SCHEMA_DIGEST  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
-import evaluate_run as E
-import train_pr_tft as T
-import provenance as prov
-from experiments.early_warning_ew01.loader import load_cohort_explicit_canonical
-from experiments.early_warning_ew01.harness import evaluate_locked_core
+RUN_DIR = "runs/pr_tft_ablation_arm_d"
+CONFIG = f"{RUN_DIR}/config.json"
+NORMALIZATION = f"{RUN_DIR}/normalization.json"
+CALIBRATION = f"{RUN_DIR}/calibration.json"
+CHECKPOINT = f"{RUN_DIR}/checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt"
+HABIT = "canonical_population_habit.npz"
+SELECTION_RULE = "backend/model_selection_rule.json"
 
-def sha256_file(path):
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        while chunk := f.read(8192):
-            h.update(chunk)
-    return h.hexdigest()
+# Everything the run executes or loads; the run authorization binds each file's sha256, and the file on
+# disk and in the execution commit must both match it.
+RUN_SOURCES = tuple(sorted((
+    "backend/ablation_twins.py", "backend/evaluate_run.py", "backend/input_contract.py", "backend/provenance.py",
+    "backend/train_pr_tft.py", "backend/ukf_twin.py", SELECTION_RULE, HABIT, "experiments/baselines/point.py",
+    "experiments/early_warning_ew01/EW01_FRESHNESS_2_SCHEMA.json", "experiments/early_warning_ew01/ew01_trust.py",
+    "experiments/early_warning_ew01/freshness2.py", "experiments/early_warning_ew01/harness.py",
+    "experiments/early_warning_ew01/loader.py", "experiments/early_warning_ew01/requirements.txt",
+    "experiments/early_warning_ew01/run_scientific.py",
+    "experiments/protocol_amendments/EW01_AMENDMENT_001.md",
+    "experiments/protocol_amendments/EW01_AMENDMENT_002_BOOLEAN_PREDICATE.md",
+    "experiments/protocol_amendments/EW01_AMENDMENT_003_EXECUTION_AND_B1_SUCCESS.md",
+    CONFIG, NORMALIZATION, CALIBRATION, CHECKPOINT,
+)))
 
-def verify_clean_tree():
-    status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-    if status.stdout.strip():
-        print("FATAL: Dirty working tree.", file=sys.stderr)
-        sys.exit(1)
+# EW01_AMENDMENT_002 co-primary rule; the amendment's bytes are bound through RUN_SOURCES.
+DECISION_RULE = {"co_primary_sensitivity_lower_bound_gt": 0.02,
+                 "co_primary_false_alerts_per_day_upper_bound_lt": -0.10}
 
-def verify_commit(expected_commit):
-    current = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    if current != expected_commit:
-        print(f"FATAL: Execution commit {current} does not match authorized commit {expected_commit}.", file=sys.stderr)
-        sys.exit(1)
+RUN_AUTHORIZATION_KEYS = frozenset({"record_type", "experiment", "construction", "construction_authorization_digest",
+                                    "sealed_cohort_digest", "execution_commit", "run_source_inventory", "environment",
+                                    "output_dir"})
+
+PRODUCTION = "PRODUCTION"
+TEST_FIXTURE = "TEST_FIXTURE_NOT_PRODUCTION_EVIDENCE"
+
+
+class AttemptFailed(RuntimeError):
+    """The attempt was reserved (and is spent) but did not complete; its outcome is recorded INVALID."""
+
 
 def evaluate_scientific_rules(result, trace, candidate_inputs, cfg, rule, manifest, attempt_id):
     # Apply the explicit scientific Boolean rule:
@@ -144,126 +195,298 @@ def evaluate_scientific_rules(result, trace, candidate_inputs, cfg, rule, manife
     return final_result
 
 
-def main(manifest_path, output_dir):
-    verify_clean_tree()
-    
-    with open(manifest_path, "r") as f:
-        manifest = json.load(f)
-        
-    if manifest.get("status") != "AUTHORIZED":
-        print("FATAL: Manifest is not AUTHORIZED.", file=sys.stderr)
-        sys.exit(1)
-        
-    verify_commit(manifest["authorized_execution_commit"])
-    
-    out_path = Path(output_dir)
-    if out_path.exists():
-        print("FATAL: Output directory already exists.", file=sys.stderr)
-        sys.exit(1)
-    out_path.mkdir(parents=True)
-    
-    attempt_id = f"EW01-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-    ledger_path = out_path / "attempt_ledger.json"
-    global_ledger_dir = Path("/home/akshaya/t2d-execution-registry/EW-01/")
-    global_ledger_dir.mkdir(parents=True, exist_ok=True)
-    global_ledger_file = global_ledger_dir / "ew01_scientific_ledger.json"
-    
-    ledger = {
-        "attempt_id": attempt_id,
-        "manifest": manifest,
-        "status": "STARTED",
-        "scientific_evaluation": True,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
+# --------------------------------------------------------------------------- what runs after the gate
+
+
+@dataclass(frozen=True)
+class Stages:
+    """The model-facing steps that run only after the gate has passed. Production always uses
+    production_stages(); substitutes are accepted only in test-fixture mode."""
+    load_cohort: Callable[..., list]  # (cfg, cohort_ids, meal_log) -> patient series
+    make_twin: Callable[..., Any]     # (cfg) -> twin prior
+    load_model: Callable[..., Any]    # (checkpoint) -> module
+    evaluate: Callable[..., tuple]    # evaluate_locked_core
+    decide: Callable[..., dict]       # evaluate_scientific_rules
+
+
+def load_model(checkpoint: io.BytesIO):
+    return T.PRTFTModule.load_from_checkpoint(checkpoint, map_location="cpu").eval()
+
+
+def production_stages() -> Stages:
+    return Stages(load_cohort_explicit_canonical, T.make_twin, load_model, evaluate_locked_core,
+                  evaluate_scientific_rules)
+
+
+_SCORING = (load_model, evaluate_locked_core, T.make_twin)
+
+
+def _select_stages(registry_root: Path, test_fixture: bool, stages: Stages | None) -> Stages:
+    """Production runs open only the pinned registry with the real stages. A test fixture never opens
+    the production registry and never reaches the real model or evaluator."""
+    root = os.path.abspath(registry_root)
+    production = root == str(PRODUCTION_REGISTRY_ROOT) or Path(root).resolve() == PRODUCTION_REGISTRY_ROOT.resolve()
+    if not test_fixture:
+        if root != str(PRODUCTION_REGISTRY_ROOT):
+            raise Blocked(f"BLOCKED: scientific runs use only the designated registry {PRODUCTION_REGISTRY_ROOT}; "
+                          "any other registry is accepted only as an explicit test fixture")
+        if stages is not None:
+            raise Blocked("BLOCKED: production runs use the production evaluation stages only")
+        return production_stages()
+    if production:
+        raise Blocked("BLOCKED: test-fixture mode never opens the production registry")
+    if stages is None or any(f in _SCORING for f in (stages.make_twin, stages.load_model, stages.evaluate)):
+        raise Blocked("BLOCKED: test-fixture mode never runs the real model or evaluator; supply test stages")
+    return stages
+
+
+# --------------------------------------------------------------------------- the gate
+
+
+@dataclass(frozen=True)
+class Gate:
+    trust: str
+    authority: Authority
+    run_authorization: SignedRecord
+    sealed_cohort: SignedRecord
+    sealed_dir: Path
+    cohort: dict[str, bytes]
+    cohort_identity: tuple
+    sources: dict[str, bytes]
+    output_dir: Path
+    environment: dict
+
+
+def _absolute_path(value: Any, what: str) -> Path:
+    if not isinstance(value, str) or not os.path.isabs(value) or os.path.normpath(value) != value:
+        raise Blocked(f"BLOCKED: {what} must be an absolute normalized path: {value!r}")
+    return Path(value)
+
+
+def _validate_run_authorization(p: dict) -> dict:
+    require_keys(p, RUN_AUTHORIZATION_KEYS, "scientific run authorization")
+    require_equal(p["experiment"], EXPERIMENT, "run authorization experiment")
+    require_equal(p["construction"], CONSTRUCTION, "run authorization construction")
+    require_hex(p["construction_authorization_digest"], HEX64, "run authorization construction digest")
+    require_hex(p["sealed_cohort_digest"], HEX64, "run authorization sealed cohort digest")
+    require_hex(p["execution_commit"], HEX40, "run authorization execution commit")
+    require_keys(p["run_source_inventory"], set(RUN_SOURCES), "authorized run source inventory")
+    for v in p["run_source_inventory"].values():
+        require_hex(v, HEX64, "authorized run source digest")
+    env = require_keys(p["environment"], {"lock_sha256", "runtime"}, "authorized run environment")
+    require_hex(env["lock_sha256"], HEX64, "authorized run lock sha256")
+    _absolute_path(p["output_dir"], "authorized output directory")
+    return p
+
+
+def _validate_sealed_record(authority: Authority, p: dict, construction: SignedRecord, seed: SignedRecord) -> dict:
+    """The authority-signed seal: its own bindings, and every construction record it relied on, which must
+    still be present, authority-signed and byte-identical."""
+    require_keys(p, SEALED_COHORT_KEYS, "sealed cohort record")
+    a, reg = construction.payload, authority.registry
+    for key, expected in [("experiment", EXPERIMENT), ("construction", CONSTRUCTION),
+                          ("selected_replica", SELECTED_REPLICA), ("authorization_digest", construction.digest),
+                          ("seed_reservation_digest", seed.digest),
+                          ("generation_seed", a["generation"]["generation_seed"]),
+                          ("trust_anchor_sha256", authority.anchor_sha256), ("registry_root", str(reg.root)),
+                          ("preparation_commit", a["preparation"]["preparation_commit"]),
+                          ("environment", a["environment"]), ("freshness", a["freshness"])]:
+        require_equal(p[key], expected, f"sealed cohort {key}")
+    cohort = require_keys(p["cohort"], {"cohort_artifact_sha256", "inventory"}, "sealed cohort")
+    inv = validate_inventory(cohort["inventory"], PREPARED_ALL, "sealed cohort inventory")
+    require_equal(cohort["cohort_artifact_sha256"], cohort_artifact_digest(inv), "sealed cohort artifact digest")
+
+    verify_registry_layout(reg, sealing=True)
+    attestations = {}
+    for field, path_of, rtype in [("generation_receipts", reg.receipt, GENERATION_RECEIPT),
+                                  ("preparation_attestations", reg.attestation, PREPARATION_ATTESTATION)]:
+        require_keys(p[field], set(REPLICAS), f"sealed cohort {field}")
+        for r in REPLICAS:
+            rec = authority.verify(path_of(r), rtype)
+            require_equal(rec.digest, p[field][r], f"sealed cohort {field}[{r}]")
+            require_equal(rec.payload.get("replica"), r, f"{rtype} replica")
+            require_equal(rec.payload.get("authorization_digest"), construction.digest, f"{rtype} {r} authorization")
+            if rtype == PREPARATION_ATTESTATION:
+                attestations[r] = rec.payload
+    require_keys(p["slot_starts"], set(REPLICAS), "sealed cohort slot_starts")
+    for r in REPLICAS:
+        start = read_regular_file(reg.start(r), f"slot {r} start marker")
+        require_equal(sha256_bytes(start), p["slot_starts"][r], f"sealed cohort slot_starts[{r}]")
+    comparison = authority.verify(reg.comparison, REPLICA_COMPARISON)
+    require_equal(comparison.digest, p["comparison_attestation_digest"], "sealed cohort comparison attestation")
+    c = comparison.payload
+    require_equal(c.get("result"), "MATCH", "replica comparison result")
+    require_equal(c.get("selected_replica"), SELECTED_REPLICA, "replica comparison selected replica")
+    require_equal(c.get("authorization_digest"), construction.digest, "replica comparison authorization")
+    require_equal(inv, attestations[SELECTED_REPLICA].get("prepared_inventory"),
+                  "sealed inventory vs the selected replica's attested preparation")
+    require_equal(sub_inventory(inv, PREPARED_SCIENTIFIC), c.get("prepared_scientific_inventory"),
+                  "sealed scientific inventory vs the signed replica comparison")
+    return p
+
+
+def _sealed_identity(path: Path) -> tuple:
+    """Directory and file identities; the directory and every file must be read-only and unlinked elsewhere."""
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode) or st.st_mode & 0o222:
+        raise Blocked(f"BLOCKED: sealed cohort directory is not a read-only real directory: {path}")
+    ident = [(".", st.st_dev, st.st_ino, st.st_mtime_ns, st.st_ctime_ns)]
+    for name in PREPARED_ALL:
+        f = os.lstat(path / name)
+        if not stat.S_ISREG(f.st_mode) or f.st_mode & 0o222 or f.st_nlink != 1:
+            raise Blocked(f"BLOCKED: sealed cohort file {name} is not a read-only, singly linked regular file")
+        ident.append((name, f.st_dev, f.st_ino, f.st_size, f.st_mtime_ns, f.st_ctime_ns))
+    return tuple(ident)
+
+
+def _verify_sealed_directory(sealed: dict, construction: dict, authority: Authority) -> tuple[Path, dict, tuple]:
+    path = _absolute_path(sealed["sealed_dir"], "sealed cohort directory")
+    require_outside_repository(path, "sealed cohort directory")
+    if os.path.realpath(path) != str(path):
+        raise Blocked(f"BLOCKED: sealed cohort directory path traverses a symlink: {path}")
+    others = [Path(construction[k]["output_dirs"][r]) for k in ("generation", "preparation") for r in REPLICAS]
+    for other in others + [authority.registry.root]:
+        if _inside(path, other) or _inside(other, path):
+            raise Blocked(f"BLOCKED: sealed cohort directory {path} overlaps {other}; only the sealed copy is scored")
+    snapshot_directory(path, PREPARED_ALL, "sealed cohort")  # exact allowlist of regular files before identity
+    before = _sealed_identity(path)
+    cohort = snapshot_directory(path, PREPARED_ALL, "sealed cohort")
+    if _sealed_identity(path) != before:
+        raise Blocked("BLOCKED: sealed cohort changed while it was being verified")
+    require_equal(inventory(cohort), sealed["cohort"]["inventory"],
+                  "sealed cohort bytes vs the authority-signed seal inventory")
+    return path, cohort, before
+
+
+def _recheck_sealed(gate: Gate) -> None:
+    """After the loader has read the sealed directory: nothing about it may have changed."""
+    if _sealed_identity(gate.sealed_dir) != gate.cohort_identity:
+        raise Blocked("BLOCKED: sealed cohort changed after verification")
+    again = snapshot_directory(gate.sealed_dir, PREPARED_ALL, "sealed cohort")
+    require_equal(inventory(again), inventory(gate.cohort), "sealed cohort bytes after loading")
+
+
+def authorize_run(registry_root: Path, *, test_fixture: bool, lock_path: Path = LOCK_PATH) -> Gate:
+    """Every check the run depends on, in order; creates and modifies nothing, and blocks on the first
+    failure. Scientific inputs are opened only after all authority records have been authenticated."""
+    authority = open_authority(registry_root)
+    reg = authority.registry
+    run_auth = authority.verify(reg.run_authorization, SCIENTIFIC_RUN_AUTHORIZATION)
+    a = _validate_run_authorization(run_auth.payload)
+    construction = authority.verify(reg.authorization, AUTHORIZATION)
+    validate_authorization(construction.payload, SCHEMA_DIGEST)
+    require_equal(construction.digest, a["construction_authorization_digest"],
+                  "run authorization vs construction authorization")
+    seed = authority.verify(reg.seed_reservation, SEED_RESERVATION)
+    require_equal(seed.digest, construction.payload["seed_reservation_digest"], "seed reservation digest")
+    sealed = authority.verify(reg.sealed_cohort, SEALED_COHORT)
+    require_equal(sealed.digest, a["sealed_cohort_digest"], "run authorization vs sealed cohort record")
+    _validate_sealed_record(authority, sealed.payload, construction, seed)
+    environment = verify_environment(a["environment"], lock_path)
+    require_clean_tree()
+    sources = verify_sources(a["run_source_inventory"], a["execution_commit"], RUN_SOURCES, "execution commit")
+    sealed_dir, cohort, identity = _verify_sealed_directory(sealed.payload, construction.payload, authority)
+    others = tuple(Path(construction.payload[k]["output_dirs"][r]) for k in ("generation", "preparation")
+                   for r in REPLICAS)
+    output_dir = check_output_path(a["output_dir"], "scientific output directory", (reg.root, sealed_dir) + others)
+    return Gate(TEST_FIXTURE if test_fixture else PRODUCTION, authority, run_auth, sealed, sealed_dir, cohort,
+                identity, sources, output_dir, environment)
+
+
+# --------------------------------------------------------------------------- the single attempt
+
+
+def _plain(o):
+    if isinstance(o, np.generic):
+        return o.item()
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    raise TypeError(f"not JSON serializable: {type(o).__name__}")
+
+
+def _write(path: Path, obj: dict) -> None:
+    create_exclusive(path, (json.dumps(obj, indent=2, sort_keys=True, default=_plain) + "\n").encode(), 0o444)
+
+
+def _score(gate: Gate, stages: Stages, attempt_id: str) -> dict:
+    src, cohort = gate.sources, gate.cohort
+    cfg = T.validate_train_config(E._cfg_from_dict(json.loads(src[CONFIG])))
+    cfg = dataclasses.replace(cfg, data_dir=str(gate.sealed_dir))
+    cohort_ids = strict_json(cohort["cohort_ids.json"], "sealed cohort_ids.json")
+    if (not isinstance(cohort_ids, list) or not all(isinstance(x, str) for x in cohort_ids)
+            or len(set(cohort_ids)) != len(cohort_ids)):
+        raise Blocked("BLOCKED: sealed cohort_ids.json is not a list of distinct ids")
+    inputs = stages.load_cohort(cfg, sorted(cohort_ids), io.BytesIO(cohort["scientific_meal_log.npz"]))
+    _recheck_sealed(gate)
+    twin = stages.make_twin(cfg)
+    norm = T.Normalizer(**json.loads(src[NORMALIZATION]))
+    habit = np.load(io.BytesIO(src[HABIT]))
+    pop = (habit["pop_counts"], float(habit["pop_mean"]))
+    calib = T.Calibrators(**json.loads(src[CALIBRATION]))
+    rule = json.loads(src[SELECTION_RULE])
+    module = stages.load_model(io.BytesIO(src[CHECKPOINT]))
+    result, trace = stages.evaluate(inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
+    return stages.decide(result, trace, inputs, cfg, rule, {"decision_rule": dict(DECISION_RULE)}, attempt_id)
+
+
+def run(*, registry_root: Path = PRODUCTION_REGISTRY_ROOT, test_fixture: bool = False, stages: Stages | None = None,
+        lock_path: Path = LOCK_PATH) -> dict:
+    """The only scoring entry point: the gate, then the single attempt's reservation, then scoring of the
+    verified sealed bytes. Nothing is created unless the whole gate passes."""
+    stages = _select_stages(registry_root, test_fixture, stages)
+    gate = authorize_run(Path(registry_root), test_fixture=test_fixture, lock_path=lock_path)
+    attempt_id = f"EW01-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{secrets.token_hex(4)}"
+    attempt = canonical_json({"record_type": SCIENTIFIC_ATTEMPT, "experiment": EXPERIMENT,
+                              "construction": CONSTRUCTION, "attempt_id": attempt_id, "trust": gate.trust,
+                              "run_authorization_digest": gate.run_authorization.digest,
+                              "sealed_cohort_digest": gate.sealed_cohort.digest, "nonce": secrets.token_hex(32)})
     try:
-        fd = os.open(global_ledger_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        with os.fdopen(fd, 'w') as f:
-            json.dump(ledger, f, indent=2)
+        create_exclusive(gate.authority.registry.scientific_attempt, attempt, 0o444)
     except FileExistsError:
-        print("FATAL: A scientific run has already been attempted globally.", file=sys.stderr)
-        sys.exit(1)
-        
-    with open(ledger_path, "w") as f:
-        json.dump(ledger, f, indent=2)
-        
-    print(f"Attempt reserved globally: {attempt_id}")
-    
+        raise Blocked("BLOCKED: the single EW-01 scientific attempt is already reserved; it is never repeated") from None
+    bindings = {"attempt_id": attempt_id, "attempt_digest": sha256_bytes(attempt), "trust": gate.trust,
+                "trust_anchor_sha256": gate.authority.anchor_sha256,
+                "run_authorization_digest": gate.run_authorization.digest,
+                "sealed_cohort_digest": gate.sealed_cohort.digest,
+                "cohort_artifact_sha256": gate.sealed_cohort.payload["cohort"]["cohort_artifact_sha256"],
+                "sealed_dir": str(gate.sealed_dir),
+                "execution_commit": gate.run_authorization.payload["execution_commit"],
+                "environment": gate.environment}
+    out = gate.output_dir
     try:
-        if sha256_file("experiments/protocol_amendments/EW01_AMENDMENT_002_BOOLEAN_PREDICATE.md") != manifest["protocol_amendment_sha256"]:
-             raise ValueError("Protocol amendment hash mismatch.")
-             
-        run_dir = Path("runs/pr_tft_ablation_arm_d")
-        cfg_dict = prov.load_json(run_dir / "config.json")
-        cfg = T.validate_train_config(E._cfg_from_dict(cfg_dict))
-        
-        cohort_dir = Path("experiments/early_warning_ew01/scientific_cohort")
-        
-        # Verify cohort hash recursively
-        import hashlib
-        combined_hash_obj = hashlib.sha256()
-        for fpath in sorted(cohort_dir.glob("*")):
-            if fpath.is_file():
-                combined_hash_obj.update(fpath.name.encode())
-                combined_hash_obj.update(b":")
-                combined_hash_obj.update(sha256_file(fpath).encode())
-                combined_hash_obj.update(b"\n")
-        
-        if combined_hash_obj.hexdigest() != manifest["cohort"]["cohort_artifact_sha256"]:
-            raise ValueError("Cohort artifact hash mismatch.")
-            
-        cfg = dataclasses.replace(cfg, data_dir=str(cohort_dir))
-        
-        cohort_ids = sorted(prov.load_json(cohort_dir / "cohort_ids.json"))
-        
-        norm_path = run_dir / "normalization.json"
-        calib_path = run_dir / "calibration.json"
-        habit_path = Path("canonical_population_habit.npz")
-        ckpt_path = run_dir / "checkpoints/stage2_observed-epoch=03-val_loss=0.2255.ckpt"
-        
-        # Verify model artifact hashes
-        if sha256_file(norm_path) != manifest["model_artifacts"]["normalization_sha256"]:
-            raise ValueError("Normalization hash mismatch.")
-        if sha256_file(calib_path) != manifest["model_artifacts"]["calibration_sha256"]:
-            raise ValueError("Calibration hash mismatch.")
-        if sha256_file(habit_path) != manifest["model_artifacts"]["habit_sha256"]:
-            raise ValueError("Habit hash mismatch.")
-        if sha256_file(ckpt_path) != manifest["model_artifacts"]["checkpoint_sha256"]:
-            raise ValueError("Checkpoint hash mismatch.")
-            
-        candidate_inputs = load_cohort_explicit_canonical(cfg, cohort_ids, cohort_dir / "scientific_meal_log.npz")
-        
-        twin = T.make_twin(cfg)
-        norm = T.Normalizer(**prov.load_json(norm_path))
-        pop_npz = np.load(habit_path)
-        pop = (pop_npz["pop_counts"], float(pop_npz["pop_mean"]))
-        calib = T.Calibrators(**prov.load_json(calib_path))
-        rule = prov.load_json(prov.BACKEND_DIR / "model_selection_rule.json")
-        
-        module = T.PRTFTModule.load_from_checkpoint(str(ckpt_path), map_location="cpu").eval()
-        
-        result, trace = evaluate_locked_core(candidate_inputs, twin, module, cfg, norm, pop, calib, rule, trace=True)
-        
-        final_result = evaluate_scientific_rules(result, trace, candidate_inputs, cfg, rule, manifest, attempt_id)
-        
-        with open(out_path / "scientific_results.json", "w") as f:
-            json.dump(final_result, f, indent=2)
-            
-        ledger["status"] = "COMPLETE"
-        with open(ledger_path, "w") as f:
-            json.dump(ledger, f, indent=2)
-            
-        print("Scientific evaluation COMPLETE.")
-        
+        os.makedirs(out.parent, exist_ok=True)
+        os.mkdir(out)
+        _write(out / "attempt_ledger.json", {**bindings, "status": "STARTED",
+                                             "started_utc": datetime.now(timezone.utc).isoformat()})
+    except OSError as e:
+        raise AttemptFailed(f"FATAL: attempt {attempt_id} is spent: cannot create {out}: {e}") from e
+    try:
+        result = {**_score(gate, stages, attempt_id), "bindings": bindings}
+        _write(out / "scientific_results.json", result)
     except Exception as e:
-        ledger["status"] = f"INVALID: {str(e)}"
-        with open(ledger_path, "w") as f:
-            json.dump(ledger, f, indent=2)
-        print(f"FATAL: {e}", file=sys.stderr)
-        sys.exit(1)
+        _write(out / "attempt_outcome.json", {**bindings, "status": f"INVALID: {e}"})
+        raise AttemptFailed(f"FATAL: attempt {attempt_id} is spent and INVALID: {e}") from e
+    _write(out / "attempt_outcome.json", {**bindings, "status": "COMPLETE"})
+    return result
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv:
+        print("BLOCKED: run_scientific.py takes no arguments; the sealed cohort, the authorization and the output "
+              "location come only from authority-signed records in the designated registry", file=sys.stderr)
+        return 1
+    if os.environ.get("SCIENTIFIC_EVALUATION", "").lower() != "true":
+        print("FATAL: SCIENTIFIC_EVALUATION=true is required.", file=sys.stderr)
+        return 1
+    try:
+        result = run()
+    except (Blocked, AttemptFailed) as e:
+        print(e, file=sys.stderr)
+        return 1
+    print(f"Scientific evaluation COMPLETE: {result['bindings']['attempt_id']}")
+    return 0
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python run_scientific.py <manifest_path> <output_dir>")
-        sys.exit(1)
-    main(sys.argv[1], sys.argv[2])
+    sys.exit(main())

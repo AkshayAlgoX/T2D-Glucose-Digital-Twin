@@ -20,9 +20,10 @@ import numpy as np
 
 from ew01_trust import (CONSTRUCTION, EXPERIMENT, LOCK_PATH, MEAL_LOG_SEED, PREPARATION_ATTESTATION,
                         PREPARATION_CLAIM, PREPARATION_VERIFICATION_METHODS, PREPARED_ALL, PREPARED_SCIENTIFIC,
-                        RAW_SCIENTIFIC, REPLICA_COMPARISON, REPLICAS, REPO_ROOT, SELECTED_REPLICA, Blocked, Context,
-                        SignedRecord, canonical_json, check_output_path, create_exclusive, digest_of, inventory,
-                        inventory_entry, load_context, open_authority, require_equal, require_keys, require_replica,
+                        RAW_SCIENTIFIC, REPLICA_COMPARISON, REPLICAS, REPO_ROOT, SEALED_COHORT, SEALED_COHORT_KEYS,
+                        SELECTED_REPLICA, Blocked, Context, SignedRecord, canonical_json, check_output_path,
+                        cohort_artifact_digest, create_exclusive, digest_of, inventory, inventory_entry, load_context,
+                        open_authority, require_equal, require_keys, require_outside_repository, require_replica,
                         sha256_bytes, snapshot_directory, strict_json, sub_inventory, validate_inventory,
                         verify_generation_receipt, verify_registry_layout)
 from freshness2 import (EHR_COLUMNS, SCHEMA_DIGEST, SCHEMA_ID, TELEMETRY_COLUMNS, TRUTH_COLUMNS, Catalog,
@@ -328,17 +329,16 @@ def _comparison_payload(ctx: Context, ev: dict[str, Evidence]) -> dict:
 
 
 def cohort_artifact_sha256(files: dict[str, bytes]) -> str:
-    """The digest run_scientific.py recomputes over the sealed directory."""
-    import hashlib
-    h = hashlib.sha256()
-    for name in sorted(files):
-        h.update(name.encode() + b":" + sha256_bytes(files[name]).encode() + b"\n")
-    return h.hexdigest()
+    """The digest run_scientific.py recomputes from the sealed directory's inventory."""
+    return cohort_artifact_digest(inventory(files))
 
 
 def seal_construction(*, registry_root: Path, sealed_dir: Path, manifest_path: Path,
                       lock_path: Path = LOCK_PATH) -> dict:
     """Seal the prospectively selected replica into a new read-only directory plus a new manifest.
+
+    The manifest is the unsigned EW01_SEALED_COHORT payload: run_scientific.py accepts the cohort only
+    once the designated authority has verified the seal and signed this payload into the registry.
 
     Inputs are never modified or made read-only: the sealed copy is written from the same in-memory
     snapshot that was verified, so nothing can change between verification and sealing."""
@@ -346,6 +346,7 @@ def seal_construction(*, registry_root: Path, sealed_dir: Path, manifest_path: P
     reg = ctx.authority.registry
     inputs = tuple(ctx.raw_dir(r) for r in REPLICAS) + tuple(ctx.prepared_dir(r) for r in REPLICAS) + (reg.root,)
     sealed = check_output_path(sealed_dir, "sealed cohort directory", inputs)
+    require_outside_repository(sealed, "sealed cohort directory")
     manifest = check_output_path(manifest_path, "seal manifest", inputs + (sealed,))
     verify_registry_layout(reg, sealing=True)
     selected = ctx.auth["selected_replica"]
@@ -371,9 +372,11 @@ def seal_construction(*, registry_root: Path, sealed_dir: Path, manifest_path: P
         written = snapshot_directory(sealed, PREPARED_ALL, "sealed cohort")
         require_equal(inventory(written), inventory(snapshot), "sealed copy vs verified snapshot")
         record = {
+            "record_type": SEALED_COHORT,
             "experiment": EXPERIMENT,
             "construction": CONSTRUCTION,
             "selected_replica": selected,
+            "sealed_dir": str(sealed),
             "cohort": {"cohort_artifact_sha256": cohort_artifact_sha256(written), "inventory": inventory(written)},
             "authorization_digest": ctx.authorization.digest,
             "seed_reservation_digest": ctx.seed_reservation.digest,
@@ -388,6 +391,7 @@ def seal_construction(*, registry_root: Path, sealed_dir: Path, manifest_path: P
             "environment": ctx.environment,
             "freshness": ctx.auth["freshness"],
         }
+        require_equal(set(record), set(SEALED_COHORT_KEYS), "seal record fields")
         manifest.parent.mkdir(parents=True, exist_ok=True)
         create_exclusive(manifest, json.dumps(record, indent=2, sort_keys=True).encode() + b"\n", 0o444)
     except BaseException:
