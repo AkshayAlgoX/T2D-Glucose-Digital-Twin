@@ -1,0 +1,265 @@
+### date: 2026-10-11T11:53:12+05:30
+### worktree: /home/akshaya/t2d-ew01-final  branch: t2-ew01-final-impl
+### HEAD: 894627b708671df8fb42889c2b19635ec8a9b0b5
+### git status --porcelain (expect empty):
+### end status
+### committed lock blob: 100644 blob fdeae214994ab77685ca7099b7554809fa3c686c	experiments/early_warning_ew01/requirements.txt
+### lock sha256 BEFORE: committed=ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44 worktree=ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44 venv-build-input=ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44
+### main checkout lock (dirty copy, preserved, not used): 13e24cfa8e7ea8ebec96cec2be5a6b1bf9d5750cc9b420a53eefa9a09dfbf1d9
+### venv build (bootstrap + install) log: /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/build.log
+++ env -i HOME=/home/akshaya PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 /usr/bin/python3 -m venv --clear venv
+++ sha256sum lock_committed.txt
+ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44  lock_committed.txt
+++ env -i HOME=/home/akshaya PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 venv/bin/python -m pip --version
+pip 24.0 from /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/pip (python 3.12)
+++ env -i HOME=/home/akshaya PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 venv/bin/python -m pip install --require-hashes --only-binary :all: --no-deps -r lock_committed.txt
+++ echo 'install rc=0'
+install rc=0
+++ env -i HOME=/home/akshaya PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 venv/bin/python -m pip check
+No broken requirements found.
+++ echo 'pip check rc=0'
+pip check rc=0
+++ sha256sum lock_committed.txt
+ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44  lock_committed.txt
+++ set +x
+### interpreter
+Python 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]
+executable /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/bin/python
+prefix /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv
+base_prefix /usr
+ENABLE_USER_SITE False
+platform Linux-7.0.0-38-generic-x86_64-with-glibc2.39 ('glibc', '2.39')
+sys.path ['', '/usr/lib/python312.zip', '/usr/lib/python3.12', '/usr/lib/python3.12/lib-dynload', '/tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages']
+### pip
+pip 26.2.1 from /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/pip (python 3.12)
+### pip check
+No broken requirements found.
+pip check rc=0
+### pip freeze --all
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.4
+aiosignal==1.4.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+attrs==26.1.0
+build==1.6.1
+certifi==2026.7.22
+cffi==2.1.1
+click==8.5.0
+cloudpickle==3.1.2
+cryptography==50.0.2
+cuda-bindings==13.4.3
+cuda-pathfinder==1.8.3
+cuda-toolkit==13.0.3.0
+fastapi==0.142.2
+filelock==4.1.0
+frozenlist==1.8.0
+fsspec==2026.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+iniconfig==2.3.1
+jax==0.11.2
+jaxlib==0.11.2
+Jinja2==3.1.6
+joblib==1.6.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+lightning==2.6.6
+lightning-utilities==0.15.3
+MarkupSafe==3.0.4
+ml_dtypes==0.6.0
+mpmath==1.3.0
+multidict==6.9.1
+narwhals==2.27.1
+networkx==3.7
+numpy==2.5.3
+nvidia-cublas==13.1.1.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.24.0.43
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.1
+nvidia-nccl-cu13==2.30.7
+nvidia-nvjitlink==13.4.92
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+opentelemetry-api==1.45.1
+opt_einsum==3.4.0
+packaging==26.3
+pandas==3.0.6
+pip==26.2.1
+pip-tools==7.6.2
+pluggy==1.6.0
+propcache==0.5.4
+pycparser==3.11
+pydantic==2.13.5
+pydantic_core==2.46.5
+Pygments==2.21.0
+pyproject_hooks==1.3.3
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+pytorch-lightning==2.6.6
+PyYAML==6.0.3
+referencing==0.37.0
+rpds-py==2026.9.1
+scikit-learn==1.9.1
+scipy==1.18.1
+setuptools==84.0.0
+six==1.17.0
+starlette==1.7.0
+sympy==1.14.0
+threadpoolctl==3.7.0
+torch==2.14.1
+torchmetrics==1.9.0
+tqdm==4.70.1
+triton==3.8.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.54.0
+wheel==0.48.0
+xgboost==3.4.1
+yarl==1.25.1
+### environment verification against committed lock (ew01_trust.verify_environment)
+environment_identity {'lock_sha256': 'ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44', 'runtime': {'implementation': 'CPython', 'python_version': '3.12.3', 'system': 'Linux', 'machine': 'x86_64', 'libc': 'glibc-2.39', 'virtualenv': True}}
+verify_environment -> True
+lock pins 91 installed dists 91 sets equal True versions equal True
+import numpy                  2.5.3        /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/numpy/__init__.py
+import pandas                 3.0.6        /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/pandas/__init__.py
+import cryptography           50.0.2       /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/cryptography/__init__.py
+import torch                  2.14.1+cu130 /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/torch/__init__.py
+import lightning              2.6.6        /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/lightning/__init__.py
+import sklearn                1.9.1        /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/sklearn/__init__.py
+import scipy                  1.18.1       /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/scipy/__init__.py
+import pytest                 9.1.1        /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/pytest/__init__.py
+import packaging              26.3         /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/lib/python3.12/site-packages/packaging/__init__.py
+import train_pr_tft           -            /home/akshaya/t2d-ew01-final/backend/train_pr_tft.py
+import ew01_trust             -            /home/akshaya/t2d-ew01-final/experiments/early_warning_ew01/ew01_trust.py
+import freshness2             -            /home/akshaya/t2d-ew01-final/experiments/early_warning_ew01/freshness2.py
+import provenance_pipeline    -            /home/akshaya/t2d-ew01-final/experiments/early_warning_ew01/provenance_pipeline.py
+import ew01_construct         -            /home/akshaya/t2d-ew01-final/experiments/early_warning_ew01/ew01_construct.py
+lock numpy: numpy==2.5.3 (66 allowed sha256, first 012e66aca395d795...)
+lock pandas: pandas==3.0.6 (58 allowed sha256, first 0704044b676496b8...)
+lock cryptography: cryptography==50.0.2 (59 allowed sha256, first 0ddc924c04591c28...)
+lock torch: torch==2.14.1 (24 allowed sha256, first 06c3ec25f3b497f9...)
+lock pytest: pytest==9.1.1 (2 allowed sha256, first 1088fbde8f2b49d9...)
+construction sources:
+  backend/input_contract.py 5d4a078bc837b463d7aa8ba4eabc18dabbaae875c3d1e9ed33c86e76cf7da302
+  backend/provenance.py 6a35cb078e18b1e77e3c68c1d19c8804979f37b1236d64c090a02a63f885c97c
+  backend/train_pr_tft.py 60e3edab4e39cb50a46c991f7347eed16db7d4f8265ea9ccf9744cfdb059e3ad
+  experiments/early_warning_ew01/EW01_FRESHNESS_2_SCHEMA.json ce99c91f7dbc6e6c69a7f0362e11b376b29f17c4b8583d1dedc13d19a2566349
+  experiments/early_warning_ew01/ew01_construct.py 80a761ae78803ad8f45d326d11e772a241148e7ddd647bf12e58f79d5cb5ecd5
+  experiments/early_warning_ew01/ew01_trust.py 711cbf9fa5565fb8eeb9d98a976aae3372c9f23cdf89572eab9f1d5f37dce657
+  experiments/early_warning_ew01/freshness2.py e4279bf161a2689adde04aff85404a828984c8c6abbeca54ec15e372e1892016
+  experiments/early_warning_ew01/prepare_cohort.py 53fca1c9ce9ad21a95f4ee1d82e1e37b2e42cd54f7b2bb821375432bde2957e7
+  experiments/early_warning_ew01/provenance_pipeline.py 9dc5cefb316374d556bb154837a1c340df921c07cb2b40f24726aca06a94277f
+  experiments/early_warning_ew01/requirements.txt ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44
+  experiments/early_warning_ew01/seal_cohort.py 415dfbf5f3578119336b928a5e855e739958b47a277deca880ec6f2099d2dbcf
+### selected wheels (pip --require-hashes verified each against the lock):
+Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl
+Using cached lightning-2.6.6-py3-none-any.whl
+Using cached numpy-2.5.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+Using cached pandas-3.0.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+Using cached pytest-9.1.1-py3-none-any.whl
+Using cached torch-2.14.1-cp312-cp312-manylinux_2_28_x86_64.whl
+### test command (cwd /home/akshaya/t2d-ew01-final): env -i HOME=/home/akshaya PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/bin/python -m pytest experiments/early_warning_ew01/test_provenance.py experiments/early_warning_ew01/test_b1_baseline.py -v -p no:cacheprovider
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env/venv/bin/python
+rootdir: /home/akshaya/t2d-ew01-final
+plugins: anyio-4.15.1
+collecting ... collected 80 items
+
+experiments/early_warning_ew01/test_provenance.py::test_e2e_two_constructions_seal_selected_replica_without_touching_inputs PASSED [  1%]
+experiments/early_warning_ew01/test_provenance.py::test_nc1_prepared_bytes_and_local_provenance_changed_together_fail PASSED [  2%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over0-drop0-missing \\['generation_seed'\\]] PASSED [  3%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over1-drop1-receipt generation seed] PASSED [  5%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over2-drop2-receipt seed reservation] PASSED [  6%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over3-drop3-normalized argument vector] PASSED [  7%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over4-drop4-effective configuration] PASSED [  8%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over5-drop5-replica output location] PASSED [ 10%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over6-drop6-receipt environment identity] PASSED [ 11%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over7-drop7-receipt replica] PASSED [ 12%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over8-drop8-receipt generator source] PASSED [ 13%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over9-drop9-missing \\['raw_inventory'\\]] PASSED [ 15%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_receipt_binding_mismatch_blocks_preparation[over10-drop10-witness method] PASSED [ 16%]
+experiments/early_warning_ew01/test_provenance.py::test_nc2_asserted_seed_and_raw_bytes_and_environment PASSED [ 17%]
+experiments/early_warning_ew01/test_provenance.py::test_nc3_single_replica_blocks_comparison_and_seal PASSED [ 18%]
+experiments/early_warning_ew01/test_provenance.py::test_nc3_duplicate_replica_blocks PASSED [ 20%]
+experiments/early_warning_ew01/test_provenance.py::test_nc3_raw_mismatch_blocks_even_with_forged_match_attestation PASSED [ 21%]
+experiments/early_warning_ew01/test_provenance.py::test_nc3_prepared_mismatch_blocks PASSED [ 22%]
+experiments/early_warning_ew01/test_provenance.py::test_nc4_third_construction_and_slot_reuse_rejected PASSED [ 23%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_empty_and_nan_cgm_tokens_canonicalize_identically PASSED [ 25%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[nan] PASSED [ 26%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[NA] PASSED [ 27%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[null] PASSED [ 28%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[None] PASSED [ 30%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[ ] PASSED [ 31%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[  ] PASSED [ 32%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[inf] PASSED [ 33%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[Infinity] PASSED [ 35%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[-inf] PASSED [ 36%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[1e2] PASSED [ 37%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[120.5] PASSED [ 38%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[120.] PASSED [ 40%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[.5] PASSED [ 41%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[0120] PASSED [ 42%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[+120] PASSED [ 43%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[-1] PASSED [ 45%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[N/A] PASSED [ 46%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[ 120] PASSED [ 47%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[39] PASSED [ 48%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[401] PASSED [ 50%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_invalid_cgm_tokens_fail[NaN ] PASSED [ 51%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[heart_rate-] PASSED [ 52%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[heart_rate-NaN] PASSED [ 53%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[hrv-] PASSED [ 55%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[sleep_stage-] PASSED [ 56%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[sleep_stage-NaN] PASSED [ 57%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[step_count-] PASSED [ 58%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[carbs_g-NaN] PASSED [ 60%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[meal_event-2] PASSED [ 61%]
+experiments/early_warning_ew01/test_provenance.py::test_nc5_missing_non_cgm_telemetry_is_invalid[carbs_g-45.05] PASSED [ 62%]
+experiments/early_warning_ew01/test_provenance.py::test_nc6_empty_medication_list_is_distinct_from_invalid_missing_input PASSED [ 63%]
+experiments/early_warning_ew01/test_provenance.py::test_nc7_version1_catalog_rejected_by_version2_verification PASSED [ 65%]
+experiments/early_warning_ew01/test_provenance.py::test_nc8_lock_drift_or_runtime_mismatch_invalidates_verification PASSED [ 66%]
+experiments/early_warning_ew01/test_provenance.py::test_nc9_failed_or_refused_seal_does_not_mutate_inputs PASSED [ 67%]
+experiments/early_warning_ew01/test_provenance.py::test_nc10_seal_cannot_overwrite_protected_manifests PASSED [ 68%]
+experiments/early_warning_ew01/test_provenance.py::test_authority_signatures_types_and_strict_json PASSED [ 70%]
+experiments/early_warning_ew01/test_provenance.py::test_authority_absent_or_misplaced_trust_root_fails_closed PASSED [ 71%]
+experiments/early_warning_ew01/test_provenance.py::test_authorization_contract_checks PASSED [ 72%]
+experiments/early_warning_ew01/test_provenance.py::test_missing_catalog_is_unknown_not_zero_matches PASSED [ 73%]
+experiments/early_warning_ew01/test_provenance.py::test_preparation_blocked_by_freshness_finding_before_any_output PASSED [ 75%]
+experiments/early_warning_ew01/test_provenance.py::test_window_preimage_fast_path_matches_canonical_definition PASSED [ 76%]
+experiments/early_warning_ew01/test_provenance.py::test_fingerprints_bind_kind_version_and_schema_digest PASSED [ 77%]
+experiments/early_warning_ew01/test_provenance.py::test_schema_digest_is_pinned_and_csv_cells_are_strings PASSED [ 78%]
+experiments/early_warning_ew01/test_provenance.py::test_ehr_scaled_integer_representation PASSED [ 80%]
+experiments/early_warning_ew01/test_provenance.py::test_timestamp_grid_and_structure_validation PASSED [ 81%]
+experiments/early_warning_ew01/test_provenance.py::test_matching_dispositions_preserved PASSED [ 82%]
+experiments/early_warning_ew01/test_provenance.py::test_splice_at_any_offset_and_low_information_windows PASSED [ 83%]
+experiments/early_warning_ew01/test_provenance.py::test_truth_and_labels_never_enter_fingerprints PASSED [ 85%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv0] PASSED [ 86%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv1] PASSED [ 87%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv2] PASSED [ 88%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv3] PASSED [ 90%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv4] PASSED [ 91%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv5] PASSED [ 92%]
+experiments/early_warning_ew01/test_provenance.py::test_cli_fails_closed_without_the_designated_authority[argv6] PASSED [ 93%]
+experiments/early_warning_ew01/test_provenance.py::test_i1_lock_pins_every_requirement_with_hashes PASSED [ 95%]
+experiments/early_warning_ew01/test_provenance.py::test_i2_lock_covers_ew01_imports_and_dependency_closure PASSED [ 96%]
+experiments/early_warning_ew01/test_b1_baseline.py::test_b1_normal_history PASSED [ 97%]
+experiments/early_warning_ew01/test_b1_baseline.py::test_b1_missing_history PASSED [ 98%]
+experiments/early_warning_ew01/test_b1_baseline.py::test_b1_clipping PASSED [100%]
+
+============================= 80 passed in 43.87s ==============================
+### pytest exit code: 0
+### lock sha256 AFTER: worktree=ce42933580f17ae80c1378c6f600d3d32c3db6436f09abb8fb14d47fe3979d44 main-checkout=13e24cfa8e7ea8ebec96cec2be5a6b1bf9d5750cc9b420a53eefa9a09dfbf1d9
+### git status after (expect empty):
+### end
+### production registry present: NO
