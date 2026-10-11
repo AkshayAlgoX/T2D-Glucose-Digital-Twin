@@ -9,7 +9,6 @@ import base64
 import datetime
 import hashlib
 import json
-import os
 import shutil
 import stat
 import subprocess
@@ -161,28 +160,28 @@ class FixtureAuthority:
             (self.raw[replica] / name).write_text(text)
         self.witness(replica, **receipt_over)
 
-    def receipt_payload(self, replica, **over):
+    def receipt_payload(self, slot, **over):
         ctx = self.ctx()
-        start = self.reg.start(replica).read_bytes()
-        raw_inv = tr.inventory({n: (self.raw[replica] / n).read_bytes() for n in tr.RAW_SCIENTIFIC})
+        start = self.reg.start(slot).read_bytes()
+        raw_inv = tr.inventory({n: (self.raw[slot] / n).read_bytes() for n in tr.RAW_SCIENTIFIC})
         p = {"record_type": tr.GENERATION_RECEIPT, "experiment": tr.EXPERIMENT, "construction": tr.CONSTRUCTION,
-             "replica": replica, "authorization_digest": self.auth_digest,
+             "replica": slot, "authorization_digest": self.auth_digest,
              "slot_start_digest": hashlib.sha256(start).hexdigest(), "contract_digest": "c" * 64,
              "generation_seed": self.seed, "seed_reservation_digest": self.seed_digest,
              "generator_path": tr.GENERATOR_PATH, "generator_commit": tr.GENERATOR_COMMIT,
              "generator_source_sha256": tr.GENERATOR_SOURCE_SHA256, "environment": ctx.auth["environment"],
-             "argv": tr.canonical_generation_argv(ctx, replica),
-             "effective_config": tr.expected_effective_config(ctx, replica),
-             "output_dir": str(self.raw[replica]), "raw_inventory": raw_inv,
+             "argv": tr.canonical_generation_argv(ctx, slot),
+             "effective_config": tr.expected_effective_config(ctx, slot),
+             "output_dir": str(self.raw[slot]), "raw_inventory": raw_inv,
              "raw_inventory_digest": tr.digest_of(raw_inv), "witness": {"method": "WITNESSED_EXECUTION"}}
         p.update(over)
         return p
 
-    def witness(self, replica, drop=(), **over):
-        p = self.receipt_payload(replica, **over)
+    def witness(self, slot, drop=(), **over):
+        p = self.receipt_payload(slot, **over)
         for k in drop:
             p.pop(k)
-        return self.sign(self.reg.receipt(replica), p)
+        return self.sign(self.reg.receipt(slot), p)
 
     def prepare(self, replica, **kw):
         return pp.prepare_replica(replica, registry_root=self.root, **kw)
@@ -341,7 +340,7 @@ def test_nc3_raw_mismatch_blocks_even_with_forged_match_attestation(fa):
     with pytest.raises(Blocked, match="raw scientific inventories of the two constructions differ"):
         pp.compare_replicas(registry_root=fa.root)
     ctx = fa.ctx()
-    ev = {r: pp.replica_evidence(ctx, r, False) for r in tr.REPLICAS}
+    ev = {r: pp.replica_evidence(ctx, r, pp._catalog(ctx), False) for r in tr.REPLICAS}
     forged = pp._comparison_payload(ctx, ev)  # a "MATCH" record over A's inventories, signed anyway
     fa.sign(fa.reg.comparison, forged)
     before = fa.inputs_state()
@@ -726,6 +725,11 @@ def test_timestamp_grid_and_structure_validation():
         f2.parse_telemetry(df.rename(columns={"glucose_level": "cgm_value"}))
     with pytest.raises(Blocked, match="header must be exactly"):
         f2.read_csv_bytes(b"patient_id,timestamp\nP0001,x\n", f2.TELEMETRY_COLUMNS, "t")
+    body = "\n".join([",".join(f2.TELEMETRY_COLUMNS)] + telemetry_rows(0, "P0001")) + "\n"
+    for bad in [body.replace("\n", "\n\n", 3), body + "P0001,x\n", body.replace(",Light,", ",Light,,", 1),
+                ",".join(f2.TELEMETRY_COLUMNS) + "\n"]:
+        with pytest.raises(Blocked, match="blank line or a row with the wrong number"):
+            f2.read_csv_bytes(bad.encode(), f2.TELEMETRY_COLUMNS, "t")
     with pytest.raises(Blocked, match="quote"):
         f2.read_csv_bytes(('"' + ",".join(f2.TELEMETRY_COLUMNS) + '"\n').encode(), f2.TELEMETRY_COLUMNS, "t")
 

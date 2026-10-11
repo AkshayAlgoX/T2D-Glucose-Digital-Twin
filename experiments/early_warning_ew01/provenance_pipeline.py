@@ -203,7 +203,8 @@ ATTESTATION_KEYS = frozenset({"record_type", "experiment", "construction", "repl
                               "provenance_sha256", "verification"})
 
 
-def verify_preparation_attestation(ctx: Context, replica: str, receipt: SignedRecord) -> SignedRecord:
+def verify_preparation_attestation(ctx: Context, replica: str, receipt: SignedRecord,
+                                   catalog: Catalog) -> SignedRecord:
     """Authenticate the slot's preparation attestation; every expected value comes from the
     authorization or the authenticated receipt, never from local provenance JSON."""
     rec = ctx.authority.verify(ctx.authority.registry.attestation(replica), PREPARATION_ATTESTATION)
@@ -232,6 +233,7 @@ def verify_preparation_attestation(ctx: Context, replica: str, receipt: SignedRe
     require_equal(f["schema_id"], a["freshness"]["schema_id"], "attested freshness schema")
     require_equal(f["schema_digest"], a["freshness"]["schema_digest"], "attested freshness schema digest")
     require_equal(f["reference_catalog_sha256"], a["freshness"]["reference_catalog_sha256"], "attested catalog")
+    require_equal(f["reference_coverage"], catalog.coverage, "attested reference coverage")
     require_equal(f["validation_report_sha256"], inventory_entry(inv, "freshness_validation_report.json")["sha256"],
                   "attested validation report")
     v = require_keys(p["verification"], {"method", "reproduced_prepared_inventory_digest"},
@@ -257,10 +259,10 @@ def _dir_identity(path: Path) -> tuple:
     return st.st_dev, st.st_ino
 
 
-def replica_evidence(ctx: Context, replica: str, keep_prepared: bool) -> Evidence:
+def replica_evidence(ctx: Context, replica: str, catalog: Catalog, keep_prepared: bool) -> Evidence:
     """Authenticate and recompute everything for one construction from stable snapshots."""
     receipt = verify_generation_receipt(ctx, replica)
-    att = verify_preparation_attestation(ctx, replica, receipt)
+    att = verify_preparation_attestation(ctx, replica, receipt, catalog)
     raw_inv = inventory(_authenticated_raw(ctx, replica, receipt))
     prepared = snapshot_directory(ctx.prepared_dir(replica), PREPARED_ALL, f"slot {replica} prepared output")
     require_equal(inventory(prepared), att.payload["prepared_inventory"],
@@ -299,7 +301,8 @@ def compare_replicas(*, registry_root: Path, lock_path: Path = LOCK_PATH) -> dic
     verify_registry_layout(reg, sealing=True)
     if os.path.lexists(reg.comparison):
         raise Blocked("BLOCKED: a comparison attestation already exists")
-    ev = {r: replica_evidence(ctx, r, keep_prepared=False) for r in REPLICAS}
+    catalog = _catalog(ctx)
+    ev = {r: replica_evidence(ctx, r, catalog, keep_prepared=False) for r in REPLICAS}
     _require_distinct(ev)
     _require_replicas_match(ev)
     return _comparison_payload(ctx, ev)
@@ -349,8 +352,8 @@ def seal_construction(*, registry_root: Path, sealed_dir: Path, manifest_path: P
     require_equal(selected, SELECTED_REPLICA, "selected replica")
     if not os.path.lexists(reg.comparison):
         raise Blocked("BLOCKED: signed comparison attestation is absent")
-    _catalog(ctx)
-    ev = {r: replica_evidence(ctx, r, keep_prepared=(r == selected)) for r in REPLICAS}
+    catalog = _catalog(ctx)
+    ev = {r: replica_evidence(ctx, r, catalog, keep_prepared=(r == selected)) for r in REPLICAS}
     _require_distinct(ev)
     _require_replicas_match(ev)
     comparison = ctx.authority.verify(reg.comparison, REPLICA_COMPARISON)
