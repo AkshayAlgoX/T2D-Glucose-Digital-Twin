@@ -1,5 +1,7 @@
 # EW-01 Provenance Authorization Remediation Report
 
+> **SUPERSEDED (2026-10-11).** This report describes the provenance pipeline as of commit `5d8c6b07`. The APIs it names (`run_preparation`, `seal_cohort_impl`, the receipt, catalog and pubkey path arguments, and the `test_cli_*` tests) no longer exist. Since `ff5f8505`, preparation and sealing verify authority-signed records in the designated registry through `ew01_trust.py`, with exactly two replica constructions. Since `68bcb278`, the runner is gated on the signed seal and run authorization. The text below is kept unchanged as a historical record.
+
 ## 1. Issue Overview
 T3's independent audit found two critical authorization bypasses in the EW-01 provenance sealing pipeline:
 1. `prepare_cohort.py` allowed authentication inputs (receipt/catalog) to be omitted, failing open by conditionally skipping verification when paths were `None`.

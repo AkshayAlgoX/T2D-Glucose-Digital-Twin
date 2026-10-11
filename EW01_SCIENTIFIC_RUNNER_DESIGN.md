@@ -1,5 +1,7 @@
 # EW-01 Scientific Runner Design (Final Astra Protocol)
 
+> **SUPERSEDED (2026-10-11).** This design describes the runner as of commit `5d91ae08`: an unsigned "authorized manifest", and an exclusive ledger in a registry directory the runner created itself. It no longer matches the code. Since `68bcb278`, `run_scientific.py` takes no arguments. It accepts only the authority-signed `EW01_SCIENTIFIC_RUN_AUTHORIZATION` and `EW01_SEALED_COHORT` records, never creates the registry, scores only the verified read-only sealed copy outside the repository, and reserves its single attempt after the full gate passes. The current design is in the `run_scientific.py` module docstring and in Amendment 003 §3–4. The text below is kept unchanged as a historical record.
+
 ## Objective
 Provide an immutable, one-shot scientific execution entrypoint (`experiments/early_warning_ew01/run_scientific.py`) for the final BL-01 EW-01 evaluation according to the Astra Adjudication.
 

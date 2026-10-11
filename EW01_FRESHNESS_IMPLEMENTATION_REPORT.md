@@ -1,5 +1,7 @@
 # EW-01 Freshness Implementation Report
 
+> **SUPERSEDED (2026-10-11).** This report describes EW01-FRESHNESS-1 as of commit `f63cfc4c`. Since `ff5f8505`, the active schema is `EW01_FRESHNESS_2_SCHEMA.json`, and version-1 catalogs are rejected. A missing EHR value is now rejected rather than serialized as `null`; only an empty `med_classes` field is valid, and it means `[]`. Without a custodian-supplied v2 catalog the result is UNKNOWN or BLOCKED, never zero matches. The text below is kept unchanged as a historical record.
+
 ## 1. Overview
 The final adjudicated EW-01 freshness specification has been implemented without modifying frozen artifacts, the generator, or sealed datasets. The correct generator schema `patient_cgm_telemetry.csv` and `patients_ehr.csv` is now properly supported.
 
