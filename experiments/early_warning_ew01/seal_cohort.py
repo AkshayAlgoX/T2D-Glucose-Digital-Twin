@@ -1,27 +1,32 @@
-import sys
-from provenance_pipeline import seal_cohort_impl
+"""Seal the prospectively selected EW-01 replica into a new read-only directory and a new manifest.
 
-def main():
-    if len(sys.argv) != 6:
-        print("Usage: python seal_cohort.py <prep_dir> <manifest_path> <receipt_path> <catalog_path> <expected_contract_hash>")
-        sys.exit(1)
-        
-    prep_dir = sys.argv[1]
-    manifest_path = sys.argv[2]
-    receipt_path = sys.argv[3]
-    catalog_path = sys.argv[4]
-    expected_contract_hash = sys.argv[5]
-    
-    # Pinned production trust anchor
-    pubkey_path = "/home/akshaya/t2d-execution-registry/EW-01/trusted_pubkey.pem"
-    
-    seal_cohort_impl(
-        prep_dir, manifest_path,
-        receipt_path=receipt_path,
-        catalog_path=catalog_path,
-        pubkey_path=pubkey_path,
-        expected_contract_hash=expected_contract_hash
-    )
+    python seal_cohort.py --sealed-dir DIR --manifest PATH
+
+Both paths must not exist and may not be protected locations (backend/, runs/, t2d-sealed, or any
+data/run/cohort manifest name). The registry and trust anchor are pinned to the designated authority.
+"""
+import argparse
+import json
+import sys
+
+from ew01_trust import PRODUCTION_REGISTRY_ROOT, Blocked
+from provenance_pipeline import seal_construction
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--sealed-dir", required=True)
+    ap.add_argument("--manifest", required=True)
+    args = ap.parse_args(argv)
+    try:
+        record = seal_construction(registry_root=PRODUCTION_REGISTRY_ROOT, sealed_dir=args.sealed_dir,
+                                   manifest_path=args.manifest)
+    except Blocked as e:
+        print(e, file=sys.stderr)
+        return 1
+    print(json.dumps(record["cohort"], indent=2))
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

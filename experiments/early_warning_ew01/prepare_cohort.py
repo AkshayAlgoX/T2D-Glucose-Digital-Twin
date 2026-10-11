@@ -1,30 +1,32 @@
-import sys
-from provenance_pipeline import run_preparation
+"""Prepare one reserved EW-01 construction slot from its authenticated generation output.
 
-def main():
-    if len(sys.argv) != 8:
-        print("Usage: python prepare_cohort.py <raw_dir> <prep_dir> <seed> <receipt_path> <expected_contract_hash> <expected_attempt> <catalog_path>")
-        sys.exit(1)
-        
-    raw_dir = sys.argv[1]
-    prep_dir = sys.argv[2]
-    seed = sys.argv[3]
-    receipt_path = sys.argv[4]
-    expected_contract_hash = sys.argv[5]
-    expected_attempt = sys.argv[6]
-    catalog_path = sys.argv[7]
-    
-    # Pinned production trust anchor
-    pubkey_path = "/home/akshaya/t2d-execution-registry/EW-01/trusted_pubkey.pem"
-    
-    run_preparation(
-        raw_dir, prep_dir, seed,
-        receipt_path=receipt_path,
-        expected_contract_hash=expected_contract_hash,
-        expected_attempt=expected_attempt,
-        catalog_path=catalog_path,
-        pubkey_path=pubkey_path
-    )
+    python prepare_cohort.py --replica A [--assert-seed SEED]
+
+The registry and trust anchor are pinned to the designated authority's production location; there is
+no argument that supplies a key, a receipt, a catalog or a seed. --assert-seed only asserts: a value
+different from the authorized generation seed blocks.
+"""
+import argparse
+import json
+import sys
+
+from ew01_trust import PRODUCTION_REGISTRY_ROOT, Blocked
+from provenance_pipeline import prepare_replica
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--replica", required=True)
+    ap.add_argument("--assert-seed", type=int, default=None)
+    args = ap.parse_args(argv)
+    try:
+        inv = prepare_replica(args.replica, registry_root=PRODUCTION_REGISTRY_ROOT, assert_seed=args.assert_seed)
+    except Blocked as e:
+        print(e, file=sys.stderr)
+        return 1
+    print(json.dumps(inv, indent=2))
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
