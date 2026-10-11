@@ -3,7 +3,10 @@
     python seal_cohort.py --sealed-dir DIR --manifest PATH
 
 Both paths must not exist and may not be protected locations (backend/, runs/, t2d-sealed, or any
-data/run/cohort manifest name). The registry and trust anchor are pinned to the designated authority.
+data/run/cohort manifest name); the sealed directory must be outside the repository. The registry and
+trust anchor are pinned to the designated authority. The manifest is an unsigned EW01_SEALED_COHORT
+payload: run_scientific.py scores the sealed directory only after the authority has verified the seal
+and signed that payload into the registry.
 """
 import argparse
 import json

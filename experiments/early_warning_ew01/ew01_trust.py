@@ -16,6 +16,10 @@ Registry layout (all signed records are {"payload": {...}, "signature": base64})
     <root>/EW01-R1/slots/<A|B>/started.json          EW01_SLOT_START (unsigned, created exclusively)
     <root>/EW01-R1/slots/<A|B>/generation_receipt.json       EW01_GENERATION_RECEIPT
     <root>/EW01-R1/slots/<A|B>/preparation_attestation.json  EW01_PREPARATION_ATTESTATION
+    <root>/EW01-R1/sealed_cohort.json                EW01_SEALED_COHORT (the authority's signature over
+                                                     the seal record seal_cohort.py writes)
+    <root>/EW01-R1/scientific_run_authorization.json EW01_SCIENTIFIC_RUN_AUTHORIZATION
+    <root>/EW01-R1/scientific_attempt.json           EW01_SCIENTIFIC_ATTEMPT (unsigned, created exclusively)
 """
 from __future__ import annotations
 
@@ -87,6 +91,9 @@ PREPARATION_CLAIM = "EW01_PREPARATION_CLAIM"
 PREPARATION_ATTESTATION = "EW01_PREPARATION_ATTESTATION"
 REPLICA_COMPARISON = "EW01_REPLICA_COMPARISON"
 REFERENCE_CATALOG = "EW01_FRESHNESS_REFERENCE_CATALOG"
+SEALED_COHORT = "EW01_SEALED_COHORT"
+SCIENTIFIC_RUN_AUTHORIZATION = "EW01_SCIENTIFIC_RUN_AUTHORIZATION"
+SCIENTIFIC_ATTEMPT = "EW01_SCIENTIFIC_ATTEMPT"
 
 GENERATION_WITNESS_METHODS = ("WITNESSED_EXECUTION", "INDEPENDENT_REEXECUTION")
 PREPARATION_VERIFICATION_METHODS = ("INDEPENDENT_REPRODUCTION",)
@@ -221,6 +228,18 @@ class Registry:
 
     def attestation(self, replica: str) -> Path:
         return self.slot(replica) / "preparation_attestation.json"
+
+    @property
+    def sealed_cohort(self) -> Path:
+        return self.construction / "sealed_cohort.json"
+
+    @property
+    def run_authorization(self) -> Path:
+        return self.construction / "scientific_run_authorization.json"
+
+    @property
+    def scientific_attempt(self) -> Path:
+        return self.construction / "scientific_attempt.json"
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -380,20 +399,47 @@ def _git(*args: str) -> bytes:
     return res.stdout
 
 
-def source_inventory() -> dict[str, str]:
-    return {p: sha256_bytes(read_regular_file(REPO_ROOT / p, f"construction source {p}")) for p in CONSTRUCTION_SOURCES}
+def read_sources(paths: tuple[str, ...] = CONSTRUCTION_SOURCES) -> dict[str, bytes]:
+    return {p: read_regular_file(REPO_ROOT / p, f"source {p}") for p in paths}
 
 
-def verify_sources(expected: dict, commit: str) -> None:
-    """Code on disk, the authorized commit and HEAD must all be the approved source inventory."""
-    require_keys(expected, set(CONSTRUCTION_SOURCES), "authorized source inventory")
-    require_hex(commit, HEX40, "authorized preparation commit")
+def source_inventory(paths: tuple[str, ...] = CONSTRUCTION_SOURCES) -> dict[str, str]:
+    return {p: sha256_bytes(b) for p, b in read_sources(paths).items()}
+
+
+def verify_sources(expected: dict, commit: str, paths: tuple[str, ...] = CONSTRUCTION_SOURCES,
+                   what: str = "preparation commit") -> dict[str, bytes]:
+    """Code on disk, the authorized commit and HEAD must all be the approved source inventory.
+    Returns the verified bytes, so callers use exactly what was checked."""
+    require_keys(expected, set(paths), "authorized source inventory")
+    require_hex(commit, HEX40, f"authorized {what}")
     head = _git("rev-parse", "HEAD").decode().strip()
-    require_equal(head, commit, "repository HEAD vs authorized preparation commit")
-    actual = source_inventory()
-    for p in CONSTRUCTION_SOURCES:
-        require_equal(actual[p], expected[p], f"source {p} on disk")
-        require_equal(sha256_bytes(_git("cat-file", "blob", f"{commit}:{p}")), expected[p], f"source {p} at {commit}")
+    require_equal(head, commit, f"repository HEAD vs authorized {what}")
+    actual = read_sources(paths)
+    for p in paths:
+        require_equal(sha256_bytes(actual[p]), expected[p], f"source {p} on disk")
+        digest, size = committed_content(commit, p)
+        require_equal(digest, expected[p], f"source {p} at {commit}")
+        if size is not None:
+            require_equal(len(actual[p]), size, f"source {p} size vs its Git LFS pointer")
+    return actual
+
+
+LFS_POINTER = re.compile(rb"version https://git-lfs\.github\.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n")
+
+
+def committed_content(commit: str, path: str) -> tuple[str, int | None]:
+    """sha256 of the content a commit records for path. A Git LFS pointer records its object by sha256
+    and size, so for a pointer blob those are returned; any other blob is hashed as it is."""
+    blob = _git("cat-file", "blob", f"{commit}:{path}")
+    m = LFS_POINTER.fullmatch(blob)
+    return (m[1].decode(), int(m[2])) if m else (sha256_bytes(blob), None)
+
+
+def require_clean_tree() -> None:
+    status = _git("status", "--porcelain").decode()
+    if status.strip():
+        raise Blocked(f"BLOCKED: the working tree is not clean: {status.splitlines()[:5]}")
 
 
 # --------------------------------------------------------------------------- inventories and snapshots
@@ -479,6 +525,13 @@ def check_output_path(path: Path | str, what: str, forbidden: tuple[Path, ...] =
     return p
 
 
+def require_outside_repository(path: Path | str, what: str) -> None:
+    p = Path(os.path.abspath(path))
+    resolved = p.parent.resolve() / p.name
+    if _inside(resolved, REPO_ROOT.resolve()) or _inside(p, REPO_ROOT):
+        raise Blocked(f"BLOCKED: {what} must be outside the repository: {p}")
+
+
 def create_exclusive(path: Path, data: bytes, mode: int = 0o444) -> None:
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "wb") as f:
@@ -489,6 +542,21 @@ def create_exclusive(path: Path, data: bytes, mode: int = 0o444) -> None:
 
 
 # --------------------------------------------------------------------------- authorization
+
+
+SEALED_COHORT_KEYS = frozenset({"record_type", "experiment", "construction", "selected_replica", "sealed_dir", "cohort",
+                                "authorization_digest", "seed_reservation_digest", "generation_seed",
+                                "trust_anchor_sha256", "registry_root", "slot_starts", "generation_receipts",
+                                "preparation_attestations", "comparison_attestation_digest", "preparation_commit",
+                                "environment", "freshness"})
+
+
+def cohort_artifact_digest(inv: dict) -> str:
+    """sha256 over "name:sha256\\n" lines of an inventory, in name order (the seal manifest's cohort digest)."""
+    h = hashlib.sha256()
+    for f in sorted(inv["files"], key=lambda f: f["path"]):
+        h.update(f["path"].encode() + b":" + f["sha256"].encode() + b"\n")
+    return h.hexdigest()
 
 
 def expected_preparation_config() -> dict:
