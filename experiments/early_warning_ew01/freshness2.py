@@ -60,9 +60,18 @@ def read_csv_bytes(data: bytes, columns: list[str], what: str) -> pd.DataFrame:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         raise Blocked(f"BLOCKED: {what} is not UTF-8") from None
-    if not text.endswith("\n") or text.split("\n", 1)[0] != ",".join(columns):
+    lines = text.split("\n")
+    if lines[-1] != "" or lines[0] != ",".join(columns):
         raise Blocked(f"BLOCKED: {what} header must be exactly {','.join(columns)} and the file must end in a newline")
-    df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False, na_filter=False)
+    commas = len(columns) - 1
+    if len(lines) < 3 or any(line.count(",") != commas for line in lines[1:-1]):
+        raise Blocked(f"BLOCKED: {what} has an empty body, a blank line or a row with the wrong number of fields")
+    try:
+        df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False, na_filter=False)
+    except (ValueError, pd.errors.ParserError) as e:
+        raise Blocked(f"BLOCKED: {what} is not parseable: {e}") from None
+    if len(df) != len(lines) - 2:
+        raise Blocked(f"BLOCKED: {what} row count changed while parsing")
     require_strings(df, what)
     return df
 
