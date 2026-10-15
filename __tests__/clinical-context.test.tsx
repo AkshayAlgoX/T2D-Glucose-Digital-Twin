@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import { PatientWorkspace } from '../src/components/digital-twin/PatientWorkspace';
+import { PatientWorkspace, isValidCalendarDate } from '../src/components/digital-twin/PatientWorkspace';
 import { ForecastResponseSchema } from '../src/lib/zod-schemas';
 import type { EhrContext, ForecastResponse } from '../src/types/forecast-response';
 import source from './fixtures/risk-audit-forecast.json';
@@ -92,28 +92,55 @@ describe('Clinical context source fidelity', () => {
     expect(context()).not.toHaveTextContent(/Metformin|9\.3 years/);
   });
 
-  it('uses the supplied date as synthetic cohort provenance, never as a measurement date', () => {
+  it('renders valid 2026-09-28 reference date with time element and exact wording', () => {
     const forecast = fixture();
+    forecast.ehr_context = { ...ehr, hba1c_date: '2026-09-28' };
     const { rerender } = render(workspace(forecast));
     const provenance = within(context()).getByText('Context provenance').closest('details')!;
     fireEvent.click(provenance.querySelector('summary')!);
     expect(provenance).toHaveAttribute('open');
     expect(provenance).toHaveTextContent('HbA1c reference date: 28 Sept 2026');
     expect(provenance).toHaveTextContent('Date assigned to synthetic cohort start, not a clinical measurement date.');
-    expect(provenance.querySelector('time')).toHaveAttribute('datetime', ehr.hba1c_date);
+    const timeEl = provenance.querySelector('time');
+    expect(timeEl).not.toBeNull();
+    expect(timeEl).toHaveAttribute('datetime', '2026-09-28');
+    expect(provenance).not.toHaveTextContent('HbA1c recorded');
+
     forecast.ehr_context = { ...ehr, hba1c_date: '2026-10-02' };
     rerender(workspace(forecast));
     expect(provenance.querySelector('time')).toHaveAttribute('datetime', '2026-10-02');
     expect(provenance).toHaveTextContent('02 Oct 2026');
-    expect(provenance).not.toHaveTextContent('HbA1c recorded');
   });
 
-  it.each([undefined, null, '', 'not-a-date'])('does not fabricate a reference date for %p', date => {
+  it.each([
+    ['incomplete year', '2026'],
+    ['non-padded month', '2026-9-28'],
+    ['impossible date', '2026-02-31'],
+    ['empty string', ''],
+    ['undefined', undefined],
+    ['null', null],
+  ])('displays Unavailable and renders no time element for %s (%p)', (_label, date) => {
     const forecast = fixture();
     forecast.ehr_context = { ...ehr, hba1c_date: date } as unknown as EhrContext;
     render(workspace(forecast));
-    expect(context()).toHaveTextContent('HbA1c reference date: Unavailable');
-    expect(context().querySelector('time')).toBeNull();
+    const provenance = within(context()).getByText('Context provenance').closest('details')!;
+    expect(provenance).toHaveTextContent('HbA1c reference date: Unavailable');
+    expect(provenance).toHaveTextContent('Date assigned to synthetic cohort start, not a clinical measurement date.');
+    expect(provenance.querySelector('time')).toBeNull();
+  });
+
+  it('validates dates strictly without JavaScript automatic normalization', () => {
+    expect(isValidCalendarDate('2026-09-28')).toBe(true);
+    expect(isValidCalendarDate('2024-02-29')).toBe(true); // Leap year 2024
+    expect(isValidCalendarDate('2026-02-29')).toBe(false); // 2026 is not a leap year
+    expect(isValidCalendarDate('2026-02-31')).toBe(false); // Impossible date (Date constructor would normalize to Mar 3)
+    expect(isValidCalendarDate('2026-04-31')).toBe(false); // April has 30 days
+    expect(isValidCalendarDate('2026')).toBe(false);
+    expect(isValidCalendarDate('2026-9-28')).toBe(false);
+    expect(isValidCalendarDate('')).toBe(false);
+    expect(isValidCalendarDate(undefined)).toBe(false);
+    expect(isValidCalendarDate(null)).toBe(false);
+    expect(isValidCalendarDate('not-a-date')).toBe(false);
   });
 
   it('keeps both labels in loading state and replaces their placeholders with source values', () => {
