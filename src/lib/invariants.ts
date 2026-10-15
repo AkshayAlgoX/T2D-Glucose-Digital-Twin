@@ -24,13 +24,8 @@ export function checkInvariants(payload: ForecastResponse) {
          // But legitimately 0 is possible. We just ensure it's not faked.
       }
       
-      // If it's explicitly not calibrated, we shouldn't have a confident probability (unless it's just raw).
-      // The requirement: "If a fallback has no valid calibrated risk: risk = '—' not 0%."
-      // We will handle this in UI, or throw if the API sends 0 for uncalibrated when it shouldn't.
-      if (!risk.calibrated && risk.probability_120m === 0) {
-         // Some backends maliciously send 0 instead of null when uncalibrated.
-         risk.probability_120m = null; 
-      }
+      // Validation must preserve served values. Zero is contract-valid even when
+      // uncalibrated; the UI labels calibration separately from probability.
    }
 
    // 3. Fallback honesty

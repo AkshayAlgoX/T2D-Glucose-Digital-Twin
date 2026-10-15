@@ -1,32 +1,47 @@
-import React from 'react';
-import { Users, User, FileText, HelpCircle, Settings } from 'lucide-react';
+'use client';
 
-export function NavigationRail() {
-  const items = [
-    { icon: Users, id: 'cohort' },
-    { icon: User, id: 'patient', active: true },
-    { icon: FileText, id: 'evidence' },
-    { icon: HelpCircle, id: 'help', bottom: true },
-    { icon: Settings, id: 'settings', bottom: true }
-  ];
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Activity, Users, UserRound, FileText } from 'lucide-react';
+import { readLastSubject, rememberReceivedSubject, subjectFromPath, validSubjectId } from '@/lib/subject-navigation';
+
+export function NavigationRail({ active, selectedSubjectId }: { active?: 'cohort' | 'patient' | 'evidence'; selectedSubjectId?: string | null }) {
+  const pathname = usePathname?.() ?? '';
+  const [rememberedSubject, setRememberedSubject] = useState<string | null>(null);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+  useEffect(() => {
+    const reference = selectedSubjectId != null ? rememberReceivedSubject(selectedSubjectId) : readLastSubject();
+    setRememberedSubject(reference.subjectId);
+    setReferenceError(reference.error);
+  }, [pathname, selectedSubjectId]);
+  const selected = validSubjectId(selectedSubjectId) ?? subjectFromPath(pathname) ?? rememberedSubject;
+  const workspaceHref = selected ? '/patients/' + encodeURIComponent(selected) : '/cohort#subject-directory';
+  const workspaceHint = selected ? 'Open the current or last-viewed subject Workspace.' : 'Select a subject from the Cohort directory to open Workspace.';
+  const current = active ?? (pathname.startsWith('/patients/') ? 'patient'
+    : pathname === '/evidence' || pathname.startsWith('/evidence/') ? 'evidence'
+    : pathname === '/cohort' || pathname.startsWith('/cohort/') ? 'cohort' : undefined);
 
   return (
-    <nav className="w-[48px] border-r border-line bg-surface flex flex-col shrink-0 items-center py-4 justify-between h-full">
-      <div className="flex flex-col gap-4 w-full items-center">
-        {items.filter(i => !i.bottom).map(item => (
-          <div key={item.id} className="relative w-full flex justify-center py-2 cursor-pointer text-ink-3 hover:text-ink transition-colors">
-            {item.active && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-accent" />}
-            <item.icon size={16} className={item.active ? 'text-accent' : ''} />
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-col gap-4 w-full items-center mt-auto">
-        {items.filter(i => i.bottom).map(item => (
-          <div key={item.id} className="w-full flex justify-center py-2 cursor-pointer text-ink-3 hover:text-ink transition-colors">
-             <item.icon size={16} />
-          </div>
-        ))}
-      </div>
-    </nav>
+    <><header className="app-navigation">
+      <a href="#main-content" className="skip-navigation">Skip to main content</a>
+      <Link href="/cohort" className="app-brand" aria-label="Glucose Twin cohort">
+        <span className="brand-mark"><Activity size={18} aria-hidden="true" /></span>
+        <span>Glucose<span className="brand-secondary">Twin</span></span>
+      </Link>
+      <nav aria-label="Main navigation" className="navigation-links">
+        <Link href="/cohort" className="navigation-link" aria-current={current === 'cohort' ? 'page' : undefined}>
+          <Users size={15} aria-hidden="true" /> Cohort
+        </Link>
+        <Link href={workspaceHref} className="navigation-link" aria-current={current === 'patient' ? 'page' : undefined} aria-describedby="workspace-navigation-hint" title={workspaceHint}>
+          <UserRound size={15} aria-hidden="true" /> Workspace
+        </Link>
+        <Link href="/evidence" className="navigation-link" aria-current={current === 'evidence' ? 'page' : undefined}>
+          <FileText size={15} aria-hidden="true" /> Evidence
+        </Link>
+        <span id="workspace-navigation-hint" className="sr-only">{workspaceHint}</span>
+      </nav>
+      <span className="navigation-environment"><span className="environment-mark" aria-hidden="true" />Research prototype</span>
+    </header>{referenceError && <div className="navigation-notice" role="status">{referenceError}</div>}</>
   );
 }

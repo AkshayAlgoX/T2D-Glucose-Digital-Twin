@@ -1,30 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { TimeScrubber } from '../src/components/digital-twin/TimeScrubber';
-import { TimeProvider } from '../src/components/digital-twin/TimeContext';
 
-describe('TimeScrubber', () => {
-  it('renders slider without crashing', () => {
-    render(
-      <TimeProvider>
-        <TimeScrubber asOf="2026-10-04T12:00:00Z" />
-      </TimeProvider>
-    );
-    expect(screen.getByRole('slider')).toBeInTheDocument();
+describe('Unavailable pinned-time replay', () => {
+  it('reports replay as unavailable and exposes no slider or replay buttons', () => {
+    render(<TimeScrubber asOf="2026-10-04T12:00:00Z" />);
+    expect(screen.getByText('Pinned-time replay unavailable')).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+  it('remains honest before any timestamp or history is received', () => {
+    render(<TimeScrubber />);
+    expect(screen.getByRole('region', { name: 'Pinned-time replay' })).toBeInTheDocument();
+    expect(screen.getByText(/ordinary synthetic stream remains available/)).toBeInTheDocument();
   });
 });
-
-  it('never renders a rect with a negative width', () => {
-    // Render the scrubber
-    const { container } = render(
-      <TimeProvider>
-        <TimeScrubber />
-      </TimeProvider>
-    );
-    // Find all SVG rects
-    const rects = container.querySelectorAll('rect');
-    rects.forEach(rect => {
-      const width = parseFloat(rect.getAttribute('width') || '0');
-      expect(width).toBeGreaterThanOrEqual(0);
-    });
-  });

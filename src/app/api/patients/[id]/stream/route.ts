@@ -18,8 +18,9 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams;
   const asOf = searchParams.get('as_of');
   const speed = searchParams.get('speed') || '60';
+  const include = searchParams.get('include') || 'drivers,twin_state,ehr_context';
   
-  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}`;
+  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}&include=${encodeURIComponent(include)}`;
   if (asOf) {
     url += `&as_of=${encodeURIComponent(asOf)}`;
   }

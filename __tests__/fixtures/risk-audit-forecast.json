@@ -1,0 +1,494 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "cfd782f9-495a-4c17-b041-83f0120af4a1",
+  "generated_at": "2026-10-15T14:59:49.790480Z",
+  "as_of": "2026-09-28T11:55:00Z",
+  "subject": {
+    "subject_id": "19dba1b5-d8b3-5634-a184-aeb831ea6d36",
+    "synthetic": true,
+    "cohort": "synthetic-v2/train",
+    "simulator": {
+      "version": "generate_health_data_v2",
+      "seed": 101,
+      "param_set_id": "P0001"
+    }
+  },
+  "model": {
+    "name": "pr-tft",
+    "version": "0.1.0",
+    "run_id": "pr_tft_ablation_arm_d/stage2_observed-epoch=03-val_loss=0.2255",
+    "trained_at": "2026-10-03T13:33:25.200348Z",
+    "simulator_version": "generate_health_data_v2",
+    "calibration_id": "cal-9ae8ab2c61",
+    "alert_policy_version": "ap-1.0",
+    "fallback_used": null
+  },
+  "data_quality": {
+    "status": "ok",
+    "cgm_coverage_6h_pct": 100,
+    "last_cgm_at": "2026-09-28T11:55:00Z",
+    "staleness_min": 0,
+    "ood_score": 0.671,
+    "reasons": [
+      "no_recent_meal_logs"
+    ]
+  },
+  "current": {
+    "value_mg_dl": 117,
+    "flag": "in_range",
+    "measured_at": "2026-09-28T11:55:00Z",
+    "trend_mg_dl_per_min": 0.07,
+    "trend_arrow": "flat"
+  },
+  "forecast": {
+    "units": "mg/dL",
+    "step_min": 5,
+    "horizon_min": 120,
+    "conformal_adjusted": true,
+    "points": [
+      {
+        "offset_min": 5,
+        "t": "2026-09-28T12:00:00Z",
+        "p05": 112.3,
+        "p10": 113.8,
+        "p25": 115.8,
+        "p50": 118,
+        "p75": 120,
+        "p90": 121.8,
+        "p95": 123.7
+      },
+      {
+        "offset_min": 10,
+        "t": "2026-09-28T12:05:00Z",
+        "p05": 111.2,
+        "p10": 112.5,
+        "p25": 115.7,
+        "p50": 118.6,
+        "p75": 121.8,
+        "p90": 125.2,
+        "p95": 127.5
+      },
+      {
+        "offset_min": 15,
+        "t": "2026-09-28T12:10:00Z",
+        "p05": 110.9,
+        "p10": 112,
+        "p25": 115.8,
+        "p50": 119.1,
+        "p75": 123.2,
+        "p90": 128,
+        "p95": 130.8
+      },
+      {
+        "offset_min": 20,
+        "t": "2026-09-28T12:15:00Z",
+        "p05": 110.9,
+        "p10": 111.8,
+        "p25": 116.1,
+        "p50": 119.7,
+        "p75": 124.9,
+        "p90": 131.6,
+        "p95": 135.4
+      },
+      {
+        "offset_min": 25,
+        "t": "2026-09-28T12:20:00Z",
+        "p05": 110.9,
+        "p10": 111.7,
+        "p25": 116.5,
+        "p50": 120.3,
+        "p75": 127.9,
+        "p90": 137.8,
+        "p95": 143.9
+      },
+      {
+        "offset_min": 30,
+        "t": "2026-09-28T12:25:00Z",
+        "p05": 110.4,
+        "p10": 111.4,
+        "p25": 117,
+        "p50": 121.2,
+        "p75": 133.1,
+        "p90": 147.9,
+        "p95": 157.8
+      },
+      {
+        "offset_min": 35,
+        "t": "2026-09-28T12:30:00Z",
+        "p05": 110,
+        "p10": 111.4,
+        "p25": 117.7,
+        "p50": 122.1,
+        "p75": 139.4,
+        "p90": 158.4,
+        "p95": 171
+      },
+      {
+        "offset_min": 40,
+        "t": "2026-09-28T12:35:00Z",
+        "p05": 110.3,
+        "p10": 111.9,
+        "p25": 118.9,
+        "p50": 123.3,
+        "p75": 146.3,
+        "p90": 168.8,
+        "p95": 183.3
+      },
+      {
+        "offset_min": 45,
+        "t": "2026-09-28T12:40:00Z",
+        "p05": 111.1,
+        "p10": 113.2,
+        "p25": 120.8,
+        "p50": 125.1,
+        "p75": 154,
+        "p90": 179.3,
+        "p95": 195.2
+      },
+      {
+        "offset_min": 50,
+        "t": "2026-09-28T12:45:00Z",
+        "p05": 113,
+        "p10": 115.4,
+        "p25": 123.7,
+        "p50": 128,
+        "p75": 163.2,
+        "p90": 190.6,
+        "p95": 207.4
+      },
+      {
+        "offset_min": 55,
+        "t": "2026-09-28T12:50:00Z",
+        "p05": 115.3,
+        "p10": 118.2,
+        "p25": 127.6,
+        "p50": 131.9,
+        "p75": 173.2,
+        "p90": 202.3,
+        "p95": 219.7
+      },
+      {
+        "offset_min": 60,
+        "t": "2026-09-28T12:55:00Z",
+        "p05": 117.6,
+        "p10": 121.2,
+        "p25": 131.6,
+        "p50": 136.2,
+        "p75": 183,
+        "p90": 213.4,
+        "p95": 231.2
+      },
+      {
+        "offset_min": 65,
+        "t": "2026-09-28T13:00:00Z",
+        "p05": 120.1,
+        "p10": 124.2,
+        "p25": 135.8,
+        "p50": 140.9,
+        "p75": 191.4,
+        "p90": 222.7,
+        "p95": 240.7
+      },
+      {
+        "offset_min": 70,
+        "t": "2026-09-28T13:05:00Z",
+        "p05": 122.7,
+        "p10": 127.4,
+        "p25": 140.5,
+        "p50": 146.8,
+        "p75": 198.1,
+        "p90": 230,
+        "p95": 248.1
+      },
+      {
+        "offset_min": 75,
+        "t": "2026-09-28T13:10:00Z",
+        "p05": 125.4,
+        "p10": 130.9,
+        "p25": 145.8,
+        "p50": 154.5,
+        "p75": 204.4,
+        "p90": 236.9,
+        "p95": 255.6
+      },
+      {
+        "offset_min": 80,
+        "t": "2026-09-28T13:15:00Z",
+        "p05": 128.3,
+        "p10": 134.5,
+        "p25": 151.5,
+        "p50": 164.7,
+        "p75": 210.3,
+        "p90": 243.8,
+        "p95": 263.4
+      },
+      {
+        "offset_min": 85,
+        "t": "2026-09-28T13:20:00Z",
+        "p05": 129.2,
+        "p10": 136.1,
+        "p25": 156.1,
+        "p50": 196,
+        "p75": 213.6,
+        "p90": 248.7,
+        "p95": 274.1
+      },
+      {
+        "offset_min": 90,
+        "t": "2026-09-28T13:25:00Z",
+        "p05": 131.4,
+        "p10": 138.5,
+        "p25": 158,
+        "p50": 177.4,
+        "p75": 217.2,
+        "p90": 254.6,
+        "p95": 278.1
+      },
+      {
+        "offset_min": 95,
+        "t": "2026-09-28T13:30:00Z",
+        "p05": 133.6,
+        "p10": 140.6,
+        "p25": 158.7,
+        "p50": 170.9,
+        "p75": 218.6,
+        "p90": 254.7,
+        "p95": 276.6
+      },
+      {
+        "offset_min": 100,
+        "t": "2026-09-28T13:35:00Z",
+        "p05": 139.2,
+        "p10": 146.4,
+        "p25": 165.2,
+        "p50": 178.8,
+        "p75": 223.7,
+        "p90": 259.1,
+        "p95": 280.8
+      },
+      {
+        "offset_min": 105,
+        "t": "2026-09-28T13:40:00Z",
+        "p05": 144.3,
+        "p10": 151.6,
+        "p25": 171,
+        "p50": 185.8,
+        "p75": 228.1,
+        "p90": 263.2,
+        "p95": 284.7
+      },
+      {
+        "offset_min": 110,
+        "t": "2026-09-28T13:45:00Z",
+        "p05": 147.9,
+        "p10": 155.2,
+        "p25": 174.5,
+        "p50": 188.4,
+        "p75": 230.5,
+        "p90": 264.6,
+        "p95": 285.6
+      },
+      {
+        "offset_min": 115,
+        "t": "2026-09-28T13:50:00Z",
+        "p05": 150,
+        "p10": 157.5,
+        "p25": 176.5,
+        "p50": 189.7,
+        "p75": 231.7,
+        "p90": 264.8,
+        "p95": 285.2
+      },
+      {
+        "offset_min": 120,
+        "t": "2026-09-28T13:55:00Z",
+        "p05": 151.1,
+        "p10": 158.6,
+        "p25": 177.5,
+        "p50": 190.2,
+        "p75": 231.7,
+        "p90": 263.8,
+        "p95": 283.4
+      }
+    ]
+  },
+  "spike_risk": {
+    "probability_120m": 0.598,
+    "tier": "elevated",
+    "calibrated": true,
+    "spike_in_progress": false,
+    "definition": {
+      "threshold_mg_dl": 180,
+      "min_rise_mg_dl": 50,
+      "rise_window_min": 60,
+      "persistence_min": 15
+    },
+    "cumulative": [
+      {
+        "offset_min": 5,
+        "p": 0
+      },
+      {
+        "offset_min": 10,
+        "p": 0.001
+      },
+      {
+        "offset_min": 15,
+        "p": 0.001
+      },
+      {
+        "offset_min": 20,
+        "p": 0.003
+      },
+      {
+        "offset_min": 25,
+        "p": 0.01
+      },
+      {
+        "offset_min": 30,
+        "p": 0.05
+      },
+      {
+        "offset_min": 35,
+        "p": 0.148
+      },
+      {
+        "offset_min": 40,
+        "p": 0.267
+      },
+      {
+        "offset_min": 45,
+        "p": 0.372
+      },
+      {
+        "offset_min": 50,
+        "p": 0.449
+      },
+      {
+        "offset_min": 55,
+        "p": 0.501
+      },
+      {
+        "offset_min": 60,
+        "p": 0.535
+      },
+      {
+        "offset_min": 65,
+        "p": 0.557
+      },
+      {
+        "offset_min": 70,
+        "p": 0.572
+      },
+      {
+        "offset_min": 75,
+        "p": 0.581
+      },
+      {
+        "offset_min": 80,
+        "p": 0.587
+      },
+      {
+        "offset_min": 85,
+        "p": 0.591
+      },
+      {
+        "offset_min": 90,
+        "p": 0.594
+      },
+      {
+        "offset_min": 95,
+        "p": 0.595
+      },
+      {
+        "offset_min": 100,
+        "p": 0.597
+      },
+      {
+        "offset_min": 105,
+        "p": 0.597
+      },
+      {
+        "offset_min": 110,
+        "p": 0.598
+      },
+      {
+        "offset_min": 115,
+        "p": 0.598
+      },
+      {
+        "offset_min": 120,
+        "p": 0.598
+      }
+    ],
+    "onset_offset_min": {
+      "p25": 40,
+      "p50": 45,
+      "p75": 50
+    },
+    "peak_mg_dl": {
+      "p50": 213.4,
+      "p90": 257.8
+    },
+    "time_to_peak_min": 85
+  },
+  "alert": {
+    "state": "watch",
+    "alert_id": "88782302-68ef-5517-8a8d-96e58820d3e9",
+    "since": "2026-09-28T11:55:00Z",
+    "suppressed_until": "2026-09-28T13:55:00Z",
+    "message_key": "alert.spike.watch"
+  },
+  "drivers": [
+    {
+      "feature_key": "learned_correction",
+      "label_key": "driver.learned_correction",
+      "direction": "raises",
+      "impact_mg_dl": 58.3,
+      "source": "residual"
+    },
+    {
+      "feature_key": "logged_meals_absorbing",
+      "label_key": "driver.recent_meal",
+      "direction": "raises",
+      "impact_mg_dl": 20.2,
+      "source": "twin"
+    },
+    {
+      "feature_key": "expected_habitual_meal",
+      "label_key": "driver.expected_meal",
+      "direction": "raises",
+      "impact_mg_dl": 15.8,
+      "source": "twin"
+    },
+    {
+      "feature_key": "return_to_personal_baseline",
+      "label_key": "driver.return_to_baseline",
+      "direction": "lowers",
+      "impact_mg_dl": -15.4,
+      "source": "twin"
+    }
+  ],
+  "twin_state": {
+    "insulin_sensitivity_rel": 0.689,
+    "carbs_on_board_g": 0,
+    "insulin_on_board_u": null,
+    "unannounced_meal": {
+      "probability": 0.254,
+      "estimated_carbs_g": null,
+      "estimated_at": null
+    },
+    "last_calibrated_at": "2026-09-28T00:00:00Z"
+  },
+  "ehr_context": {
+    "age_years": 43,
+    "sex": "female",
+    "bmi": 30.2,
+    "hba1c_pct": 6.1,
+    "hba1c_date": "2026-09-28",
+    "t2d_duration_years": 0,
+    "egfr": 107,
+    "med_classes": []
+  },
+  "intended_use": "research_only_not_for_clinical_decisions"
+}

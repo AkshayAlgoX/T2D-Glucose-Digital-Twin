@@ -143,14 +143,14 @@ export default function DesignReview() {
 
   return (
     <TimeProvider>
-      <div className="flex flex-col h-screen w-screen bg-surface-2 overflow-hidden">
+      <div className="app-shell">
         
         {/* DEV TOOLBAR (OUTSIDE WORKSPACE) */}
-        <div className="h-12 bg-white border-b border-amber-300 flex items-center px-4 shrink-0 shadow-sm z-50">
+        <div className="min-h-12 bg-white border-b border-line flex flex-wrap items-center gap-y-2 px-4 py-2">
            <div className="text-[11px] font-bold text-amber-800 tracking-wider pr-4 border-r border-amber-200">
-             DESIGN REVIEW
+             DESIGN FIXTURES · NOT LIVE INFERENCE OR EVIDENCE
            </div>
-           <div className="flex gap-1 pl-4">
+           <div className="flex flex-wrap gap-1 pl-4">
              {['NORMAL', 'HIGH RISK', 'ALERT', 'STALE', 'INSUFFICIENT DATA', 'TWIN ONLY', 'WHAT-IF'].map(s => (
                 <button 
                   key={s} 
@@ -164,8 +164,8 @@ export default function DesignReview() {
         </div>
 
         {/* WORKSPACE FRAME */}
-        <div className="flex-1 flex w-full">
-          <div className="flex-1 flex bg-bg overflow-hidden border-t border-line">
+        <div className="w-full">
+          <div className="app-shell">
             <NavigationRail />
             
             <PatientWorkspace

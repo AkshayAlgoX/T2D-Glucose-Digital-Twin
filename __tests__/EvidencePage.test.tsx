@@ -114,4 +114,24 @@ describe('EvidencePage', () => {
     expect(screen.getByText('18.765')).toBeInTheDocument();
     expect(screen.getByText('0.823')).toBeInTheDocument();
   });
+
+  it('accepts the existing manifest checkpoint.path and file-keyed data hashes', async () => {
+    const manifest = { run_kind: 'full', checkpoint: { path: 'checkpoints/recorded.ckpt', sha256: 'b'.repeat(64) } };
+    const report = {
+      ...VALID_REPORT,
+      schema: 'pr_tft_evaluation/v1',
+      provenance: { ...VALID_REPORT.provenance, data_sha256: { 'patients_ehr.csv': 'c'.repeat(64), 'patient_cgm_telemetry.csv': 'd'.repeat(64) } },
+    };
+    (fs.readFile as jest.Mock).mockImplementation(async filePath => {
+      if (filePath.endsWith('run_manifest.json')) return JSON.stringify(manifest);
+      if (filePath.endsWith('evaluation_report.json')) return JSON.stringify(report);
+      throw new Error('Unexpected artifact');
+    });
+    render(await EvidencePage());
+    expect(screen.getByText('checkpoints/recorded.ckpt')).toBeInTheDocument();
+    expect(screen.getByText('patients_ehr.csv')).toBeInTheDocument();
+    expect(screen.getByText('d'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByText('Recorded artifact · review required')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid or incomplete evaluation artifacts')).not.toBeInTheDocument();
+  });
 });
