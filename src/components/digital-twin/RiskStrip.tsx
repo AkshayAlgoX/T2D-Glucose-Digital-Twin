@@ -1,158 +1,60 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
-import { useTime } from './TimeContext';
+import { formatDateTime, formatPct, formatTime } from '@/lib/formatters/date';
+import type { ForecastResponse } from '@/types/forecast-response';
+import type { SubjectStore } from '@/lib/types';
 
-import { ForecastResponse } from "@/types/forecast-response";
-import { SubjectStore } from "@/lib/types";
-
-export function RiskStrip({ forecast, cache }: { forecast: ForecastResponse | null; cache?: SubjectStore }) {
-  const timeCtx = useTime();
-  const contextAsOf = timeCtx?.asOf;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 800 });
-
+export function RiskStrip({ forecast, cache, isLoading }: { forecast: ForecastResponse | null; cache?: SubjectStore; isLoading?: boolean }) {
+  const containerRef = useRef<HTMLElement>(null);
+  const [plotWidth, setPlotWidth] = useState(720);
+  const plotHeight = 70;
   useEffect(() => {
-    if (!containerRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      if (!entries[0]) return;
-      const width = entries[0].contentRect.width;
-      if (width > 0) setSize({ width });
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    // Observe the persistent card's content box, including while history is empty.
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry && entry.contentRect.width > 0) setPlotWidth(entry.contentRect.width);
     });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, []);
-
-  const cumulative = forecast?.spike_risk?.cumulative || [];
-  const riskHistory = cache?.risk_history || [];
-  
-  const baseAsOf = forecast?.as_of ? new Date(forecast.as_of).getTime() : 1704067200000;
-  const anchorTime = contextAsOf ? new Date(contextAsOf).getTime() : baseAsOf;
-  const start = anchorTime - 6 * 3600000;
-  const end = anchorTime + 2 * 3600000;
-
-  const margin = { left: 40, right: 96 };
-  const width = size.width;
-
-  const xScale = d3Scale.scaleUtc()
-    .domain([start, end])
-    .range([margin.left, Math.max(margin.left, width - margin.right)]);
-
-  const yScale = d3Scale.scaleLinear().domain([0, 1]).range([40, 8]);
-
-  const lineRisk = d3Shape.line<any>()
-    .x(d => xScale(new Date(d.t).getTime()))
-    .y(d => yScale(d.p))
-    .curve(d3Shape.curveStepAfter);
-    
-  const areaRisk = d3Shape.area<any>()
-    .x(d => xScale(new Date(d.t).getTime()))
-    .y0(40)
-    .y1(d => yScale(d.p))
-    .curve(d3Shape.curveStepAfter);
-
-  const forecastData = useMemo(() => {
-    return cumulative.map((pt: { offset_min: number; p: number }) => ({
-      t: anchorTime + pt.offset_min * 60000,
-      p: pt.p
-    }));
-  }, [cumulative, anchorTime]);
-  
-  const historyData = useMemo(() => {
-    return riskHistory.map((pt: { t: string; p: number; alert?: string; onset?: boolean }) => ({
-      t: new Date(pt.t).getTime(),
-      alert: pt.alert,
-      onset: pt.alert === 'onset' || pt.onset,
-      p: pt.p
-    }));
-  }, [riskHistory]);
+  // The telemetry hook writes cache.risk; risk_history is legacy presentation data.
+  const history = (cache?.risk?.length ? cache.risk : cache?.risk_history ?? [])
+    .filter(point => Number.isFinite(point.p) && Number.isFinite(Date.parse(point.t)));
+  const cumulative: ReadonlyArray<{ offset_min: number; p: number }> = forecast?.spike_risk?.cumulative ?? [];
+  const checkpoints = cumulative.filter(point => point.offset_min === 30 || point.offset_min === 60 || point.offset_min === 120);
+  const plotRight = Math.max(12, plotWidth - 12);
+  const x = d3Scale.scaleUtc().domain(history.length > 1 ? [new Date(history[0].t), new Date(history[history.length - 1].t)] : [0, 1]).range([12, plotRight]);
+  const y = d3Scale.scaleLinear().domain([0, 1]).range([plotHeight - 8, 8]);
+  const line = d3Shape.line<{ t: string; p: number }>().x(point => x(new Date(point.t))).y(point => y(point.p)).curve(d3Shape.curveStepAfter);
+  const snapshots = <table className="snapshot-table">
+    <caption>Received observations · no intermediate values inferred</caption>
+    <thead><tr><th scope="col">Recorded forecast anchor (UTC)</th><th scope="col">120-min risk</th></tr></thead>
+    <tbody>{history.map((point, index) => <tr key={`${point.t}-${index}`}>
+      <th scope="row"><time dateTime={point.t}>{formatDateTime(point.t).replace(' UTC', '')}</time></th>
+      <td title={`Source probability: ${point.p}`}>{formatPct(point.p, 1)}</td>
+    </tr>)}</tbody>
+  </table>;
 
   return (
-    <div ref={containerRef} className="w-full h-full relative text-[12px]">
-      <svg className="w-full h-full absolute inset-0">
-        <defs>
-          <pattern id="hatch-risk" width="4" height="4" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="4" stroke="var(--color-line)" strokeWidth="1" />
-          </pattern>
-        </defs>
-
-        {/* Labels Left */}
-        <text x={8} y={24} className="fill-ink-2 font-medium" alignmentBaseline="middle">Risk</text>
-        
-        <g>
-          {/* Missing History Hatch */}
-          {!riskHistory.length && (
-            <>
-              <rect 
-                x={xScale(start)} 
-                y={8} 
-                width={Math.max(0, xScale(anchorTime) - xScale(start))} 
-                height={32} 
-                fill="url(#hatch-risk)" 
-              />
-              <text 
-                x={(xScale(start) + xScale(anchorTime)) / 2} 
-                y={24} 
-                className="fill-ink-3 italic" 
-                textAnchor="middle" 
-                alignmentBaseline="middle"
-              >
-                History not available
-              </text>
-            </>
-          )}
-
-          {/* 35% Threshold Line */}
-          <line x1={xScale(start)} x2={xScale(end)} y1={yScale(0.35)} y2={yScale(0.35)} stroke="var(--color-ink-2)" strokeWidth="1" strokeDasharray="2 2" />
-
-          {/* History Data */}
-          {historyData.length > 0 && (
-            <>
-               <path d={areaRisk(historyData) || ''} fill="var(--color-amber)" fillOpacity={0.15} />
-               <path d={lineRisk(historyData) || ''} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
-            </>
-          )}
-
-          {/* Forecast Data */}
-          {forecastData.length > 0 && (
-            <>
-               <path d={areaRisk([{t: anchorTime, p: forecastData[0]?.p || 0}, ...forecastData]) || ''} fill="var(--color-amber)" fillOpacity={0.15} />
-               <path d={lineRisk([{t: anchorTime, p: forecastData[0]?.p || 0}, ...forecastData]) || ''} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} strokeDasharray="2 2" />
-            </>
-          )}
-
-          {/* Alert Triangles from history */}
-          {riskHistory.filter((r: any) => r.alert).map((r, i) => {
-            const cx = xScale(new Date(r.t).getTime());
-            return (
-              <polygon 
-                key={i}
-                points={`${cx},8 ${cx - 4},0 ${cx + 4},0`}
-                fill="var(--color-amber)"
-              />
-            );
-          })}
-          
-          {/* Onset Ticks from history */}
-          {riskHistory.filter((r: any) => r.onset).map((r, i) => {
-            const cx = xScale(new Date(r.t).getTime());
-            return (
-              <line 
-                key={i}
-                x1={cx} x2={cx} y1={8} y2={0}
-                stroke="var(--color-ink)" strokeWidth={1.5}
-              />
-            );
-          })}
-        </g>
-        
-        {/* Right Label */}
-        {forecastData.length > 0 && (
-          <text x={Math.max(margin.left, width - margin.right) + 16} y={24} className="fill-ink-3 font-medium" alignmentBaseline="middle">
-             {(cumulative[cumulative.length - 1].p * 100).toFixed(0)}%
-          </text>
-        )}
-      </svg>
-    </div>
+    <section ref={containerRef} className="risk-history panel" aria-labelledby="risk-history-heading">
+      <div className="section-heading"><h2 id="risk-history-heading">Risk history</h2><span className="fine-print">{history.length} received {history.length === 1 ? 'snapshot' : 'snapshots'}</span></div>
+      <p className="fine-print">Each snapshot is the model's 120-minute onset probability at that time. Markers show received snapshots; connecting steps are visual guides.</p>
+      {isLoading ? (
+        <div className="skeleton-risk-strip" aria-busy="true" aria-label="Loading risk history">
+          <span className="skeleton skeleton-history-bar" aria-hidden="true" />
+        </div>
+      ) : history.length > 1 ? <>
+        <svg viewBox={`0 0 ${plotWidth} ${plotHeight}`} width="100%" height={plotHeight} preserveAspectRatio="none" className="risk-history-chart" role="img" aria-label="Received risk snapshots; probability scale zero to one">
+          <line data-testid="risk-reference-line" x1={12} x2={plotRight} y1={y(0.35)} y2={y(0.35)} stroke="var(--color-line-control)" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
+          <path data-testid="risk-history-path" d={line(history) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          {history.map((point, index) => <circle key={`${point.t}-${index}`} data-testid="risk-snapshot-marker" cx={x(new Date(point.t))} cy={y(point.p)} r={3} fill="var(--color-surface)" stroke="var(--color-forecast)" strokeWidth={1.5} vectorEffect="non-scaling-stroke"><title>{`${point.t} · onset probability ${point.p}`}</title></circle>)}
+        </svg>
+        <div className="history-time-labels"><time dateTime={history[0].t} title={formatDateTime(history[0].t)}>{formatTime(history[0].t)} UTC</time><span>35% reference</span><span>Latest recorded <time dateTime={history[history.length - 1].t} title={formatDateTime(history[history.length - 1].t)}>{formatTime(history[history.length - 1].t)} UTC</time></span></div>
+        <p className="history-scale">Fixed probability scale: 0–100%. Flat steps indicate similar received estimates, not additional observations.</p>
+        {history.length <= 5 ? snapshots : <details className="snapshot-details"><summary>View all {history.length} received snapshots</summary>{snapshots}</details>}
+      </> : <div className="history-empty">{history.length === 1 ? <><strong>{formatPct(history[0].p, 1)}</strong> at <time dateTime={history[0].t}>{formatDateTime(history[0].t)}</time><p className="fine-print">One snapshot received. History accumulates as updates arrive.</p></> : 'No risk snapshots received. Historical risk is not backfilled.'}</div>}
+      {!!checkpoints.length && <div className="cumulative-summary"><span>Current forecast · cumulative onset probability</span>{forecast?.as_of && <p className="cumulative-as-of">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}<dl>{checkpoints.map(point => <div key={point.offset_min}><dt>By {point.offset_min} min</dt><dd title={`Source probability: ${point.p}`}>{formatPct(point.p, 1)}</dd></div>)}</dl></div>}
+    </section>
   );
 }

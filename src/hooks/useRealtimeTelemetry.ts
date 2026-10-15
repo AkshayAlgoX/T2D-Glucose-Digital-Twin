@@ -39,14 +39,8 @@ export function useRealtimeTelemetry(patientId: string) {
     lastEventTimeRef.current = Date.now();
 
     const checkStaleness = () => {
-       // Cadence-aware staleness (P0-8)
-       // If no data received for 2x the normal stream cadence (assume 1min for real time, but speed 60 means 1s).
-       // Actually, the Opus report freshness formula:
-       // For a stream with expected interval T, stale if elapsed > 2*T. We don't have T here.
-       // The prompt says: "Implement the freshness formula from the Opus report."
-       // Wait, I don't know the exact formula, but typically it checks `Date.now() - lastEventTime > threshold`.
-       // Let's use 30 seconds for real time as a safe default if no `asOf` is provided, 
-       // but wait, if it's a replay (asOf present), it's a one-off!
+       if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
+       // Transport freshness only; clinical reading staleness comes from data_quality.
        if (asOf) {
           setIsStale(false); // Replay is not stale, it is historical.
        } else {
@@ -68,6 +62,7 @@ export function useRealtimeTelemetry(patientId: string) {
     const fetchData = async () => {
       try {
         const res = await fetch(endpoint, { signal: ac.signal });
+        if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setIsConnected(true);
 
@@ -82,7 +77,7 @@ export function useRealtimeTelemetry(patientId: string) {
                lastData = line.slice(6);
              }
           }
-          if (lastData && currentEpoch === epochRef.current) {
+          if (lastData && currentEpoch === epochRef.current && !ac.signal.aborted) {
              const parsed = StreamEventSchema.parse(JSON.parse(lastData));
              const raw = (parsed.event === 'forecast.updated'
                  ? ForecastResponseSchema.parse(parsed.payload)
@@ -105,6 +100,7 @@ export function useRealtimeTelemetry(patientId: string) {
 
         while (true) {
           const { done, value } = await reader.read();
+          if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
           if (done) break;
           
           buffer += decoder.decode(value, { stream: true });
@@ -116,18 +112,13 @@ export function useRealtimeTelemetry(patientId: string) {
             buffer = buffer.slice(boundaryIndex + sepLen);
 
             const lines = block.split(/\r?\n/);
-            let eventName = '';
             let eventData = '';
 
             for (const line of lines) {
-              if (line.startsWith('event: ')) eventName = line.slice(7);
-              else if (line.startsWith('data: ')) eventData += line.slice(6) + '\n';
+              if (line.startsWith('data: ')) eventData += line.slice(6) + '\n';
             }
 
             if (eventData && currentEpoch === epochRef.current) {
-              lastEventTimeRef.current = Date.now();
-              setIsStale(false);
-              
               try {
                 const parsedEvent = StreamEventSchema.parse(JSON.parse(eventData.trim()));
                 const raw = (parsedEvent.event === 'forecast.updated' 
@@ -139,6 +130,8 @@ export function useRealtimeTelemetry(patientId: string) {
                 }
 
                 checkInvariants(raw);
+                lastEventTimeRef.current = Date.now();
+                setIsStale(false);
 
                 setForecastResponse(raw);
                 
@@ -175,16 +168,16 @@ export function useRealtimeTelemetry(patientId: string) {
                 });
               } catch (err: unknown) {
                  console.error("Stream parse error or invariant failure", err);
-                 setError(new Error("contract-invalid"));
-                 setIsConnected(false);
-                 break;
+                 // Stop consuming a rejected stream, including events in this chunk.
+                 try { await reader.cancel(); } catch { /* Preserve the contract error. */ }
+                 throw new Error('contract-invalid');
               }
             }
           }
         }
       } catch (err: unknown) {
         if ((err as Error).name === 'AbortError') return;
-        if (currentEpoch === epochRef.current) {
+        if (currentEpoch === epochRef.current && !ac.signal.aborted) {
            if ((err as Error)?.message?.includes('404')) {
              setError(new Error('patient-not-found'));
            } else if ((err as Error)?.message?.includes('contract-invalid')) {
@@ -195,6 +188,13 @@ export function useRealtimeTelemetry(patientId: string) {
              setError(new Error('unavailable'));
            }
            setIsConnected(false);
+        }
+      } finally {
+        // EOF is a closed connection even when the last valid forecast remains visible.
+        // A superseded or unmounted request must not change the current stream's status.
+        if (currentEpoch === epochRef.current && !ac.signal.aborted) {
+          clearInterval(checkStaleTimerRef.current);
+          setIsConnected(false);
         }
       }
     };
@@ -207,5 +207,15 @@ export function useRealtimeTelemetry(patientId: string) {
     };
   }, [patientId, asOf]);
 
-  return { forecast: forecastResponse, cache, isConnected, isStale, isReplay: !!asOf, error };
+  // Effects clear the previous subject after render. Never expose that subject's
+  // values during the intervening render of a newly selected subject.
+  const currentSubject = cache.patientId === patientId;
+  return {
+    forecast: currentSubject && forecastResponse?.subject.subject_id === patientId ? forecastResponse : null,
+    cache: currentSubject ? cache : { patientId, cgm: [], risk: [], alerts: [], dataQuality: [] },
+    isConnected: currentSubject && isConnected,
+    isStale: currentSubject && isStale,
+    isReplay: !!asOf,
+    error: currentSubject ? error : null,
+  };
 }

@@ -38,7 +38,7 @@ describe('PatientDashboard', () => {
 
     render(<PatientDashboard />);
     
-    expect(screen.getByText(/State: insufficient/i)).toBeInTheDocument();
+    expect(screen.getByText(/Data quality: Insufficient data/i)).toBeInTheDocument();
   });
 
   it('displays stale/disconnected state', () => {
@@ -63,7 +63,7 @@ describe('PatientDashboard', () => {
     render(<PatientDashboard />);
     
     expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
-    expect(screen.getByText(/Stale/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Stale$/i)).toBeInTheDocument();
   });
 
   it('renders alert message from actual alert.message_key', () => {

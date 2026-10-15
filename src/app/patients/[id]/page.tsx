@@ -14,9 +14,9 @@ export default function PatientDashboard() {
 
   return (
     <TimeProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-bg text-[13px] leading-[20px] text-ink">
+      <div className="app-shell">
         {/* Rail */}
-        <NavigationRail />
+        <NavigationRail active="patient" selectedSubjectId={!error && forecast?.subject?.subject_id === patientId ? patientId : null} />
         <PatientWorkspace
           patientId={patientId}
           forecast={forecast}

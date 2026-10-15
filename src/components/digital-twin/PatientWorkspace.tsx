@@ -1,135 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
+import { ArrowUpRight, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
 import { ScenarioEditor } from './ScenarioEditor';
 import { RiskPanel } from './RiskPanel';
 import { RiskStrip } from './RiskStrip';
 import { TimeScrubber } from './TimeScrubber';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { formatTime, formatDate } from '@/lib/formatters/date';
-import { ForecastResponse } from '@/types/forecast-response';
-import { SubjectStore } from '@/lib/types';
+import { formatTime, formatDate, formatPct } from '@/lib/formatters/date';
+import type { ForecastResponse } from '@/types/forecast-response';
+import type { SubjectStore } from '@/lib/types';
 
-interface NowBarProps {
-  forecast: ForecastResponse | null;
-  isConnected: boolean;
-  isStale: boolean;
+const compactContextQuery = '(max-width: 640px)';
+function subscribeToContextLayout(onChange: () => void) {
+  if (typeof window.matchMedia !== 'function') return () => {};
+  const query = window.matchMedia(compactContextQuery);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
 }
-
-function NowBar({ forecast, isConnected, isStale }: NowBarProps) {
-  const current = forecast?.current;
-  const asOf = forecast?.as_of;
-  const isReplay = !!asOf;
-  const status = forecast?.data_quality?.status;
-
-  return (
-    <header className="h-[56px] border-b border-line px-4 flex items-center justify-between shrink-0 bg-surface">
-      <div className="flex items-center gap-6">
-        <div className="flex items-baseline gap-1">
-          <span className="text-[32px] leading-none font-medium tabular-nums">{current?.value_mg_dl ?? '—'}</span>
-          <span className="text-[13px] text-ink-3">mg/dL</span>
-          {current?.trend_arrow && <span className="text-ink-2 ml-2">{current.trend_arrow}</span>}
-        </div>
-        
-        <div className="flex flex-col justify-center">
-          <div className="flex items-center gap-2 text-[12px] font-medium">
-            <span className={isReplay ? 'text-amber' : isStale ? 'text-amber' : 'text-forecast'}>
-               {isReplay ? 'Replay' : isStale ? 'Stale' : 'Live'}
-            </span>
-            <span className="text-ink-3">&middot;</span>
-            <span className="text-ink-2 uppercase tracking-wide">
-               {asOf ? `${formatDate(asOf)} ${formatTime(asOf)} UTC` : '—'}
-            </span>
-          </div>
-          {!isConnected && (
-            <div className="text-[11px] text-danger">Disconnected</div>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="px-2 py-1 bg-surface-2 border border-line rounded-sm text-[11px] uppercase tracking-wide text-ink-2">
-          {forecast?.model?.fallback_used === 'twin_only' ? 'Physics Baseline' : 
-           forecast?.model?.fallback_used === 'xgboost' ? 'XGBoost Fallback' :
-           forecast?.model?.fallback_used === 'persistence' ? 'Persistence Fallback' :
-           !forecast ? 'Unavailable' : 'Full Pipeline'}
-        </div>
-        <div className="px-2 py-1 bg-surface-2 border border-line rounded-sm text-[11px] uppercase tracking-wide text-ink-2">
-          State: {status || 'Unknown'}
-        </div>
-      </div>
-    </header>
-  );
+function compactContext() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(compactContextQuery).matches;
 }
-
-function Storyboard({ patientId, forecast }: { patientId: string, forecast: ForecastResponse | null }) {
-  const ehr = forecast?.ehr_context;
-  const twin = forecast?.twin_state; // Typecast because twin_state is loose or has specific fields
-  
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(patientId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <aside aria-label="Patient Identity" className="w-[280px] border-r border-line bg-surface shrink-0 p-4 flex flex-col gap-6 overflow-y-auto">
-      <div>
-        <div className="text-[12px] font-medium text-ink-2 mb-1">Identity</div>
-        <div 
-          className="font-mono text-[18px] leading-tight cursor-pointer hover:text-forecast transition-colors" 
-          onClick={handleCopy}
-          title="Click to copy"
-        >
-          {patientId}
-        </div>
-        {copied && <div className="text-[11px] text-forecast mt-1">Copied!</div>}
-      </div>
-
-      {ehr && (
-        <div>
-          <div className="text-[12px] font-medium text-ink-2 mb-2">Clinical Context</div>
-          <div className="text-[13px] space-y-1.5">
-            <div className="flex justify-between"><span className="text-ink-3">Age</span> <span>{ehr.age_years}</span></div>
-            <div className="flex justify-between"><span className="text-ink-3">Sex</span> <span className="capitalize">{ehr.sex}</span></div>
-            <div className="flex justify-between"><span className="text-ink-3">BMI</span> <span>{ehr.bmi}</span></div>
-            <div className="flex justify-between"><span className="text-ink-3">HbA1c</span> <span>{ehr.hba1c_pct}%</span></div>
-            <div className="flex justify-between"><span className="text-ink-3">eGFR</span> <span>{ehr.egfr ?? 'Not available'}</span></div>
-          </div>
-        </div>
-      )}
-
-      {twin && (
-        <div>
-           <div className="text-[12px] font-medium text-ink-2 mb-2">Twin State</div>
-           <div className="text-[13px] space-y-1.5">
-             <div className="flex justify-between"><span className="text-ink-3">Insulin Sens.</span> <span>{twin.insulin_sensitivity_rel != null ? twin.insulin_sensitivity_rel.toFixed(2) : '—'}</span></div>
-             <div className="flex justify-between"><span className="text-ink-3">Beta Cell</span> <span>{twin.beta_cell_rel != null ? twin.beta_cell_rel.toFixed(2) : '—'}</span></div>
-             <div className="flex justify-between"><span className="text-ink-3">Carbs on Board</span> <span>{twin.carbs_on_board_g != null ? twin.carbs_on_board_g + 'g' : '—'}</span></div>
-             <div className="flex justify-between"><span className="text-ink-3">Insulin on Board</span> <span>{twin.insulin_on_board_u != null ? twin.insulin_on_board_u + 'u' : '—'}</span></div>
-           </div>
-        </div>
-      )}
-      
-      {twin?.unannounced_meal && twin.unannounced_meal.probability > 0.5 && (
-        <div className="p-3 bg-amber/10 border border-amber/20 rounded-sm">
-           <div className="text-[11px] font-semibold text-amber uppercase tracking-wide mb-1">Unlogged Meal Detected</div>
-           <div className="text-[12px] text-ink">
-             Probability: {(twin.unannounced_meal.probability * 100).toFixed(0)}%
-           </div>
-        </div>
-      )}
-
-      <div className="mt-auto pt-4 border-t border-line">
-         <div className="text-[12px] text-ink-3 leading-snug">
-           {forecast?.intended_use === 'research_only_not_for_clinical_decisions' 
-             ? 'Research Only (Not for clinical decisions)' 
-             : forecast?.intended_use || '—'}
-         </div>
-      </div>
-    </aside>
-  );
-}
+const serverContext = () => false;
 
 export interface PatientWorkspaceProps {
   patientId: string;
@@ -140,82 +33,140 @@ export interface PatientWorkspaceProps {
   error?: Error | null;
 }
 
-export function PatientWorkspace({ patientId, forecast, cache, isConnected, isStale, error }: PatientWorkspaceProps) {
+function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'patientId' | 'forecast'>) {
+  const ehr = forecast?.ehr_context;
+  const twin = forecast?.twin_state;
+  const fields = [
+    ['Age', ehr ? ehr.age_years + ' years' : '—'],
+    ['Sex', ehr?.sex ?? '—'],
+    ['BMI', ehr?.bmi ?? '—'],
+    ['HbA1c', ehr ? ehr.hba1c_pct + '%' : '—'],
+    ['eGFR', ehr?.egfr != null ? ehr.egfr + ' mL/min/1.73 m²' : '—'],
+  ];
   return (
-    <div className="flex flex-1 min-w-0 min-h-0 bg-bg text-[13px] leading-[20px] text-ink">
-      <Storyboard patientId={patientId} forecast={forecast} />
+    <aside className="clinical-panel panel" aria-label="Patient Identity">
+      <div className="identity-section">
+        <div className="identity-mark"><UserRound size={21} aria-hidden="true" /><strong>{forecast?.subject?.simulator?.param_set_id ?? 'Subject'}</strong></div>
+        <span className="status-badge">{forecast?.subject?.synthetic ? 'Synthetic subject' : 'Metadata pending'}</span>
+        <SubjectIdentifier key={patientId} subjectId={patientId} label={forecast?.subject?.simulator?.param_set_id} />
+        <p className="fine-print">{forecast?.subject?.cohort ?? 'Awaiting cohort metadata'}</p>
+      </div>
+      <section className="clinical-context" aria-labelledby="clinical-heading">
+        <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical Context</h2>
+        {!forecast ? (
+          <dl className="clinical-fields" aria-label="Loading clinical context" aria-busy="true">
+            <div><dt>Age</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
+            <div><dt>Sex</dt><dd><span className="skeleton skeleton-field-sm" aria-hidden="true" /></dd></div>
+            <div><dt>BMI</dt><dd><span className="skeleton skeleton-field-sm" aria-hidden="true" /></dd></div>
+            <div><dt>HbA1c</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
+            <div><dt>eGFR</dt><dd><span className="skeleton skeleton-field-lg" aria-hidden="true" /></dd></div>
+          </dl>
+        ) : (
+          <dl className="clinical-fields">
+            {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+        )}
+        {!forecast ? (
+          <p className="fine-print"><span className="skeleton skeleton-text" aria-hidden="true" /></p>
+        ) : !ehr ? (
+          <p className="fine-print">EHR context has not been received.</p>
+        ) : (
+          <details className="context-details"><summary>Context provenance</summary><p className="fine-print">HbA1c recorded <time dateTime={ehr.hba1c_date}>{Number.isFinite(Date.parse(ehr.hba1c_date)) ? formatDate(ehr.hba1c_date) : ehr.hba1c_date}</time>. EHR-derived context, not a clinical assessment.</p></details>
+        )}
+      </section>
+      {twin && <section className="twin-context" aria-labelledby="twin-heading">
+        <h2 id="twin-heading" className="panel-heading">Physiological state</h2>
+        <dl className="clinical-fields">
+          <div><dt>Insulin sensitivity</dt><dd>{twin.insulin_sensitivity_rel?.toFixed(2) ?? '—'}<small> relative</small></dd></div>
+          <div><dt>Beta-cell function</dt><dd>{twin.beta_cell_rel?.toFixed(2) ?? '—'}<small> relative</small></dd></div>
+          <div><dt>Carbs on board</dt><dd>{twin.carbs_on_board_g != null ? twin.carbs_on_board_g + ' g' : '—'}</dd></div>
+        </dl>
+        {twin.unannounced_meal && <details className="context-details"><summary>Model estimate details</summary><p className="fine-print">Unannounced-meal heuristic: {formatPct(twin.unannounced_meal.probability, 0)}. This is a model estimate.</p></details>}
+      </section>}
+    </aside>
+  );
+}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 flex min-h-0">
-          
-          
-          <main className="flex-1 flex flex-col min-w-0 h-full relative">
-            {error && (
-              <div className="absolute inset-0 z-50 bg-bg flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="text-danger font-bold text-lg mb-2">
-                    {error.message === 'patient-not-found' ? 'Patient Not Found' : 
-                     error.message === 'contract-invalid' ? 'Contract Invalid (Malformed Data)' : 
-                     'Service Unavailable'}
-                  </div>
-                  <div className="text-ink-2 text-sm">
-                    {error.message === 'patient-not-found' ? 'The specified subject ID does not exist in the database.' : 
-                     error.message === 'contract-invalid' ? 'The stream yielded data that violates the strict Zod schema validation.' : 
-                     'The backend service could not be reached or connection was lost.'}
-                  </div>
-                </div>
-              </div>
-            )}
-            
+function DataAvailability({ forecast, cache }: Pick<PatientWorkspaceProps, 'forecast' | 'cache'>) {
+  const quality = forecast?.data_quality;
+  const received = cache?.cgm?.length ?? 0;
+  return (
+    <section className="data-availability panel" aria-labelledby="availability-heading">
+      <div className="section-heading"><h2 id="availability-heading"><Database size={15} aria-hidden="true" />Data coverage</h2><span className="fine-print">Observable inputs</span></div>
+      {!forecast ? (
+        <dl className="coverage-metrics" aria-busy="true" aria-label="Loading data coverage">
+          <div><dt>CGM · past 6 hours</dt><dd><span className="skeleton skeleton-coverage-val" aria-hidden="true" /></dd></div>
+          <div><dt>Reading staleness</dt><dd><span className="skeleton skeleton-coverage-val" aria-hidden="true" /></dd></div>
+          <div><dt>Received observations</dt><dd><span className="skeleton skeleton-coverage-val" aria-hidden="true" /></dd></div>
+        </dl>
+      ) : (
+        <dl className="coverage-metrics">
+          <div><dt>CGM · past 6 hours</dt><dd>{quality?.cgm_coverage_6h_pct != null ? formatPct(quality.cgm_coverage_6h_pct / 100, 1) : '—'}</dd></div>
+          <div><dt>Reading staleness</dt><dd>{quality?.staleness_min != null ? quality.staleness_min + ' min' : '—'}</dd></div>
+          <div><dt>Received observations</dt><dd>{received}</dd></div>
+        </dl>
+      )}
+      <div className="availability-row"><span className="availability-label">CGM / EHR</span><span>{!forecast ? <span className="skeleton skeleton-badge-line" aria-hidden="true" /> : `${forecast?.current?.value_mg_dl != null ? 'CGM received' : 'CGM pending'} · ${forecast?.ehr_context ? 'EHR received' : 'EHR pending'}`}</span></div>
+      <div className="availability-row"><span className="availability-label">Meals · Activity · Heart rate · Sleep</span><span>Not exposed by this stream</span></div>
+      <p className="fine-print">Unavailable streams are not zero measurements. The chart contains observations received during this connection.</p>
+      {!!quality?.reasons?.length && <p className="quality-reasons">Reported quality flags: {quality.reasons.map(reason => reason.replace(/_/g, ' ')).join(' · ')}</p>}
+    </section>
+  );
+}
 
-            <NowBar forecast={forecast} isConnected={isConnected} isStale={isStale} />
-            
-            <div className="flex-1 min-h-[200px] border-b border-line p-0 shrink relative bg-surface">
-              <ErrorBoundary fallbackText="Forecast Canvas Error">
-                <ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} />
-              </ErrorBoundary>
+export function PatientWorkspace({ patientId, forecast, cache, isConnected, isStale, error }: PatientWorkspaceProps) {
+  const compact = useSyncExternalStore(subscribeToContextLayout, compactContext, serverContext);
+  const [contextExpanded, setContextExpanded] = useState(false);
+  const fallback = forecast?.model?.fallback_used;
+  const mode = !forecast ? 'Awaiting model' : fallback === 'twin_only' ? 'Physics baseline' : fallback === 'persistence' ? 'Persistence fallback' : fallback === 'xgboost' ? 'XGBoost fallback' : 'PR-TFT + physiological twin';
+  return (
+    <main id="main-content" className="workspace-page">
+      <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
+      <header className="workspace-heading">
+        <div><div className="eyebrow">Patient workspace</div><h1>{forecast?.subject?.simulator?.param_set_id ?? 'Glucose trajectory'}</h1><p>Personalized forecasting from observable clinical and sensor context.</p></div>
+        <div className="workspace-status" role="status"><span className={'status-badge ' + (isConnected && !isStale ? 'status-connected' : '')}><Radio size={12} aria-hidden="true" />{isConnected ? 'Synthetic stream connected' : 'Disconnected'}</span>{isStale && <span className="status-badge status-watch">Stale</span>}</div>
+      </header>
+      {error && <div role="alert" className="workspace-error"><strong>{error.message === 'patient-not-found' ? 'Patient Not Found' : error.message === 'contract-invalid' ? 'Contract Invalid (Malformed Data)' : 'Service Unavailable'}</strong><p>{error.message === 'contract-invalid' ? 'The received stream failed contract validation.' : 'The subject stream could not be loaded. No missing values have been substituted.'}</p></div>}
+      <details className="patient-context" open={!compact || contextExpanded}>
+        <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
+          <span>Patient context</span><span>Clinical & physiological data</span>
+        </summary>
+        <ClinicalContext patientId={patientId} forecast={forecast} />
+      </details>
+      <div className="workspace-grid">
+        <section className="trajectory-panel panel" aria-labelledby="trajectory-heading">
+          <div className="trajectory-header">
+            <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
+            <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
+          </div>
+          {!forecast ? (
+            <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
+              <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
+              <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
             </div>
-
-            <div className="h-[112px] flex flex-col border-b border-line bg-surface shrink-0 text-[12px]">
-              <div className="flex-1 border-b border-line ml-[40px] mr-[96px] flex items-center justify-between">
-                <span className="text-ink-2 font-medium">Meals</span>
-                <span className="text-ink-3 italic">Not available</span>
-              </div>
-              <div className="flex-1 border-b border-line ml-[40px] mr-[96px] flex items-center justify-between">
-                <span className="text-ink-2 font-medium">Activity</span>
-                <span className="text-ink-3 italic">Not available</span>
-              </div>
-              <div className="flex-1 border-b border-line ml-[40px] mr-[96px] flex items-center justify-between">
-                <span className="text-ink-2 font-medium">Heart Rate</span>
-                <span className="text-ink-3 italic">Not available</span>
-              </div>
-              <div className="flex-1 ml-[40px] mr-[96px] flex items-center justify-between bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wLDRMMCw0TDQsMEw0LDBaIiBzdHJva2U9IiNlNWU3ZWIiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==')]">
-                <span className="text-ink-2 font-medium bg-surface pr-2">Sleep</span>
-                <span className="text-ink-3 italic bg-surface pl-2">Not available</span>
-              </div>
+          ) : (
+            <div className="current-summary">
+              <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
+              <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
             </div>
+          )}
+          <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
+          <div className="model-caption"><span>{mode}</span><span>Data quality: {forecast?.data_quality?.status === 'ok' ? 'OK' : forecast?.data_quality?.status === 'degraded' ? 'Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : 'Unavailable'}</span></div>
+        </section>
 
-            <div className="h-[64px] shrink-0 border-b border-line bg-surface">
-              <RiskStrip forecast={forecast} />
-            </div>
-          </main>
-
-          <aside aria-label="Insights & Scenarios" className="w-[344px] border-l border-line bg-surface shrink-0 flex flex-col overflow-y-auto relative">
-             <ErrorBoundary fallbackText="Risk Panel Error">
-               <RiskPanel forecast={forecast} />
-             </ErrorBoundary>
-             <ErrorBoundary fallbackText="Scenario Editor Error">
-               <ScenarioEditor patientId={patientId} currentForecast={forecast} />
-             </ErrorBoundary>
-          </aside>
-        </div>
-
-        <div className="h-[96px] border-t border-line bg-surface shrink-0 relative">
-           <ErrorBoundary fallbackText="Timeline Error">
-             <TimeScrubber cache={cache} asOf={forecast?.as_of} />
-           </ErrorBoundary>
+        <aside className="insights-panel panel" aria-label="Risk and model contributions">
+        <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
+        </aside>
+        <div className="workspace-support">
+          <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>
+          <DataAvailability forecast={forecast} cache={cache} />
         </div>
       </div>
-    </div>
+      <div className="workspace-limitations" aria-label="Prototype limitations">
+        <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+        <TimeScrubber cache={cache} asOf={forecast?.as_of} />
+      </div>
+      <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
+    </main>
   );
 }
