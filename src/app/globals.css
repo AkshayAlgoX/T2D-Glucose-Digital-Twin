@@ -551,6 +551,7 @@ p.fine-print { margin: 10px 0 0; }
 .workspace-page .clinical-context, .workspace-page .twin-context { border-top: 0; border-left: 1px solid var(--color-line); }
 .workspace-page .clinical-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, 1.5fr); gap: 12px; margin: 12px 0 0; }
 .workspace-page .clinical-fields > div { display: block; }
+.workspace-page .clinical-context .context-medications { grid-column: span 4; }
 .workspace-page .clinical-fields dt { font-size: 12px; }
 .workspace-page .clinical-fields dd { margin-top: 5px; text-align: left; font-family: var(--font-sans); font-size: 14px; font-weight: 500; line-height: 1.4; }
 .workspace-page .clinical-fields small { font-size: 11px; font-weight: 400; }
@@ -623,7 +624,7 @@ p.fine-print { margin: 10px 0 0; }
   .workspace-page .identity-section .subject-id-control { margin: 0; }
   .workspace-page .clinical-context { border-left: 0; border-top: 1px solid var(--color-line); padding: 14px 16px; }
   .workspace-page .clinical-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-  .workspace-page .clinical-context .clinical-fields > div:last-child { grid-column: span 2; }
+  .workspace-page .clinical-context .context-egfr, .workspace-page .clinical-context .context-medications { grid-column: span 2; }
   .workspace-page .twin-context { display: block; padding: 14px 16px; }
   .workspace-page .twin-context .clinical-fields { margin-top: 10px; }
   .workspace-page .twin-context .context-details { max-width: none; margin-top: 8px; }
