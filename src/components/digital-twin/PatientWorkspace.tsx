@@ -45,6 +45,34 @@ const medicationClassLabels: Record<MedClass, string> = {
   corticosteroid: 'Corticosteroid',
 };
 
+export function isValidCalendarDate(dateString: unknown): dateString is string {
+  if (typeof dateString !== 'string') return false;
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.exec(dateString);
+  if (!match) return false;
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [
+    31,
+    isLeapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  return day <= daysInMonth[month - 1];
+}
+
 function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'patientId' | 'forecast'>) {
   const ehr = forecast?.ehr_context;
   const twin = forecast?.twin_state;
@@ -90,7 +118,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         ) : !ehr ? (
           <p className="fine-print">EHR context has not been received.</p>
         ) : (
-          <details className="context-details"><summary>Context provenance</summary><p className="fine-print">HbA1c reference date: {ehr.hba1c_date && Number.isFinite(Date.parse(ehr.hba1c_date)) ? <time dateTime={ehr.hba1c_date}>{formatDate(ehr.hba1c_date)}</time> : 'Unavailable'}. Date assigned to synthetic cohort start, not a clinical measurement date. EHR-derived context, not a clinical assessment.</p></details>
+          <details className="context-details"><summary>Context provenance</summary><p className="fine-print">HbA1c reference date: {isValidCalendarDate(ehr.hba1c_date) ? <time dateTime={ehr.hba1c_date}>{formatDate(ehr.hba1c_date)}</time> : 'Unavailable'}. Date assigned to synthetic cohort start, not a clinical measurement date. EHR-derived context, not a clinical assessment.</p></details>
         )}
       </section>
       {twin && <section className="twin-context" aria-labelledby="twin-heading">
