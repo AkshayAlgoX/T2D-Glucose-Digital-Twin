@@ -197,6 +197,9 @@ p.fine-print { margin: 10px 0 0; }
 .workspace-error { border-color: #efc5be; }
 .workspace-error strong { color: var(--color-danger); }
 .workspace-error p, .evidence-notice p { margin: 7px 0 0; }
+.workspace-error-actions { margin-top: 12px; }
+.retry-connection-btn { padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 4px; border: 1px solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink); }
+.retry-connection-btn:hover { background: var(--color-surface-2); border-color: var(--color-ink-2); }
 .cohort-directory { overflow: hidden; }
 .directory-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border-bottom: 1px solid var(--color-line); }
 .directory-guidance { margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--color-line); background: var(--color-bg); color: var(--color-ink-2); font-size: 12px; }
