@@ -57,7 +57,10 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
   const stabilityTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const retryCountRef = useRef(0);
-  const eventsOnCurrentConnectionRef = useRef(0);
+  // Counts only forecast.updated events on the current connection.
+  // Companion events (alert, data_quality, twin.recalibrated) are intentionally excluded
+  // so that a forecast+companion pair on every brief connection cannot defeat bounded retries.
+  const forecastEventsOnCurrentConnectionRef = useRef(0);
 
   const retry = useCallback(() => {
     if (retryTimerRef.current) {
@@ -68,7 +71,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
       clearTimeout(stabilityTimerRef.current);
       stabilityTimerRef.current = undefined;
     }
-    eventsOnCurrentConnectionRef.current = 0;
+    forecastEventsOnCurrentConnectionRef.current = 0;
     retryCountRef.current = 0;
     setRetryAttempt(0);
     setError(null);
@@ -177,13 +180,14 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                   const dqPayload = DataQualitySchema.parse(parsed.payload);
                   setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
                 } else if (parsed.event === 'twin.recalibrated') {
-                  if (typeof parsed.payload !== 'object' || parsed.payload === null) {
+                  if (typeof parsed.payload !== 'object' || parsed.payload === null || Array.isArray(parsed.payload)) {
                     throw new Error('contract-invalid');
                   }
                 }
               }
             } catch (err: unknown) {
               console.error("Replay parse error or invariant failure", err);
+              throw new Error('contract-invalid');
             }
           }
           setConnectionStatus('disconnected');
@@ -198,7 +202,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         setConnectionStatus('connected');
         setError(null);
 
-        eventsOnCurrentConnectionRef.current = 0;
+        forecastEventsOnCurrentConnectionRef.current = 0;
         if (stabilityTimerRef.current) {
           clearTimeout(stabilityTimerRef.current);
           stabilityTimerRef.current = undefined;
@@ -206,9 +210,11 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
 
         // Sustainable healthy connection timer: if connection stays open and receives data
         // for stableDurationMs, it also satisfies stability and resets the retry budget.
+        // Requires at least one valid forecast event to prevent a stream of companion-only
+        // events from satisfying the duration-based stability condition.
         if (stableDurationMs > 0 && !asOf) {
           stabilityTimerRef.current = setTimeout(() => {
-            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && eventsOnCurrentConnectionRef.current > 0) {
+            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && forecastEventsOnCurrentConnectionRef.current > 0) {
               retryCountRef.current = 0;
               setRetryAttempt(0);
               setError(null);
@@ -358,7 +364,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                   }
 
                   case 'twin.recalibrated': {
-                    if (typeof parsedEvent.payload !== 'object' || parsedEvent.payload === null) {
+                    if (typeof parsedEvent.payload !== 'object' || parsedEvent.payload === null || Array.isArray(parsedEvent.payload)) {
                       throw new Error('contract-invalid');
                     }
                     // Supported per contract: ignore payload safely in UI without mutating state
@@ -370,16 +376,20 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
 
-                // Stability condition: require at least stableEventsThreshold consecutive valid
-                // events on this connection before resetting the failure budget.
-                eventsOnCurrentConnectionRef.current += 1;
-                if (eventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
-                  retryCountRef.current = 0;
-                  setRetryAttempt(0);
-                  setError(null);
-                  if (stabilityTimerRef.current) {
-                    clearTimeout(stabilityTimerRef.current);
-                    stabilityTimerRef.current = undefined;
+                // Event-count stability: only forecast.updated events count toward the
+                // stableEventsThreshold budget. Companion events (alert, data_quality,
+                // twin.recalibrated) are excluded so that a forecast+companion pair on
+                // every brief, flapping connection cannot reset the retry budget indefinitely.
+                if (parsedEvent.event === 'forecast.updated') {
+                  forecastEventsOnCurrentConnectionRef.current += 1;
+                  if (forecastEventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
+                    retryCountRef.current = 0;
+                    setRetryAttempt(0);
+                    setError(null);
+                    if (stabilityTimerRef.current) {
+                      clearTimeout(stabilityTimerRef.current);
+                      stabilityTimerRef.current = undefined;
+                    }
                   }
                 }
               } catch (err: unknown) {
