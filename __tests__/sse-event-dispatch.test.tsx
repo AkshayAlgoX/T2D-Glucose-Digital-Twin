@@ -1056,4 +1056,99 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
     expect(result.current.error).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  describe('whole-response pinned replay validation', () => {
+    const asOf = '2026-10-16T12:00:00Z';
+    const replayEvent = (event: string, payload: unknown, eventId = '000002-replay') => ({
+      event, event_id: eventId, subject_id: subjectA, emitted_at: asOf, payload,
+    });
+    const replayWrapper = ({ children }: { children: React.ReactNode }) => (
+      <TimeContext.Provider value={{ asOf, setAsOf: () => {} }}>{children}</TimeContext.Provider>
+    );
+    const invalidEvents = [
+      ['malformed JSON', '{BROKEN JSON}'],
+      ['invalid envelope', JSON.stringify(replayEvent('unknown.event', {}))],
+      ['invalid forecast', JSON.stringify(replayEvent('forecast.updated', { malformed: true }))],
+      ['array recalibration', JSON.stringify(replayEvent('twin.recalibrated', []))],
+      ['null recalibration', JSON.stringify(replayEvent('twin.recalibrated', null))],
+      ['primitive recalibration', JSON.stringify(replayEvent('twin.recalibrated', 42))],
+      ['invalid alert', JSON.stringify(replayEvent('alert.raised', { state: 'invalid' }))],
+      ['invalid quality', JSON.stringify(replayEvent('data_quality.changed', { status: 'ok' }))],
+    ];
+
+    describe.each(['before', 'after'])('invalid event %s a valid forecast', position => {
+      it.each(invalidEvents)('rejects %s without accepting any forecast or retrying', async (_label, invalid) => {
+        jest.useFakeTimers();
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        const valid = JSON.stringify(replayEvent('forecast.updated', validFixture()));
+        const events = position === 'before' ? [invalid, valid] : [valid, invalid];
+        const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+          ok: true,
+          text: async () => events.map(data => `data: ${data}\n\n`).join(''),
+        } as unknown as Response);
+        const committedForecasts: (ForecastResponse | null)[] = [];
+        const { result, unmount } = renderHook(() => {
+          const state = useRealtimeTelemetry(subjectA);
+          React.useEffect(() => { committedForecasts.push(state.forecast); }, [state.forecast]);
+          return state;
+        }, { wrapper: replayWrapper });
+
+        try {
+          await act(async () => {});
+          expect(result.current.connectionStatus).toBe('disconnected');
+          expect(result.current.error?.message).toBe('contract-invalid');
+          expect(result.current.forecast).toBeNull();
+          expect(committedForecasts.every(value => value === null)).toBe(true);
+          expect(result.current.cache.cgm).toEqual([]);
+          // Advance beyond the full automatic-backoff window, not merely one tick.
+          await act(async () => { jest.advanceTimersByTime(60_000); });
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+          expect(result.current.connectionStatus).toBe('disconnected');
+          expect(result.current.error?.message).toBe('contract-invalid');
+        } finally {
+          unmount();
+          jest.useRealTimers();
+        }
+      });
+    });
+
+    it.each(['forecast.updated', 'alert.raised', 'alert.cleared', 'data_quality.changed', 'twin.recalibrated'])(
+      'retains last-event selection when the final valid event is %s', async finalType => {
+        const first = validFixture();
+        const last = validFixture({ request_id: '123e4567-e89b-12d3-a456-426614174099' });
+        const payload = finalType === 'forecast.updated' ? last
+          : finalType === 'alert.raised' ? { state: 'watch', since: asOf }
+          : finalType === 'alert.cleared' ? { state: 'none' }
+          : finalType === 'data_quality.changed' ? first.data_quality
+          : {}; // Generic recalibration objects have no additional required fields.
+        const body = [replayEvent('forecast.updated', first, '000001-forecast'), replayEvent(finalType, payload)]
+          .map(event => `data: ${JSON.stringify(event)}\n\n`).join('');
+        const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => body } as unknown as Response);
+        const { result } = renderHook(() => useRealtimeTelemetry(subjectA), { wrapper: replayWrapper });
+
+        await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+        expect(result.current.error).toBeNull();
+        expect(result.current.forecast).toEqual(finalType === 'forecast.updated' ? last : null);
+        expect(result.current.cache.cgm).toEqual([]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it.each(['\n', '\r\n'])('parses event boundaries, metadata, comments and multiline data with %j', async newline => {
+      const first = replayEvent('twin.recalibrated', {});
+      const last = replayEvent('forecast.updated', validFixture());
+      const body = [
+        ': keepalive', '',
+        'id: 000001-recal', 'event: twin.recalibrated', `data:${JSON.stringify(first)}`, '',
+        ': forecast follows', 'id: 000002-forecast', 'event: forecast.updated',
+        ...JSON.stringify(last, null, 2).split('\n').map(line => `data: ${line}`), '', '',
+      ].join(newline);
+      jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => body } as unknown as Response);
+      const { result } = renderHook(() => useRealtimeTelemetry(subjectA), { wrapper: replayWrapper });
+
+      await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+      expect(result.current.error).toBeNull();
+      expect(result.current.forecast).toEqual(last.payload);
+    });
+  });
 });
