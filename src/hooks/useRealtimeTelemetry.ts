@@ -177,12 +177,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
 
         const reader = res.body?.getReader();
         if (!reader) {
-          setConnectionStatus('disconnected');
-          if (checkStaleTimerRef.current) {
-            clearInterval(checkStaleTimerRef.current);
-            checkStaleTimerRef.current = undefined;
-          }
-          return;
+          throw new Error('missing-body');
         }
         activeReaderRef.current = reader;
         setConnectionStatus('connected');
