@@ -1,4 +1,4 @@
-import { validateStreamEvent, validateForecastResponse } from './schema-validator';
+import { validateStreamEvent } from './schema-validator';
 
 export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint8Array> {
   const decoder = new TextDecoder();
@@ -42,31 +42,25 @@ export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint
           try {
             const parsed = JSON.parse(dataString) as any;
             if (validateStreamEvent(parsed)) {
-              let isPayloadValid = true;
-              if ((parsed as any).event === 'forecast.updated' && !validateForecastResponse((parsed as any).payload)) {
-                isPayloadValid = false;
-              }
-              if (isPayloadValid) {
-                let out = '';
-                if (currentEventId) out += `id: ${currentEventId}\n`;
-                if (currentEventName) out += `event: ${currentEventName}\n`;
-                out += `data: ${JSON.stringify(parsed)}\n\n`;
-                controller.enqueue(encoder.encode(out));
-              }
+              let out = '';
+              if (currentEventId) out += `id: ${currentEventId}\n`;
+              if (currentEventName) out += `event: ${currentEventName}\n`;
+              out += `data: ${JSON.stringify(parsed)}\n\n`;
+              controller.enqueue(encoder.encode(out));
             } else {
               let out = '';
               if (currentEventId) out += `id: ${currentEventId}\n`;
               if (currentEventName) out += `event: ${currentEventName}\n`;
-              out += `data: ${dataString}\n\n`;
+              out += currentData.map(d => `data: ${d}`).join('\n') + '\n\n';
               controller.enqueue(encoder.encode(out));
             }
           } catch (e) {
             // Not JSON, pass through safely as per P0-1
             let out = '';
-              if (currentEventId) out += `id: ${currentEventId}\n`;
-              if (currentEventName) out += `event: ${currentEventName}\n`;
-              out += `data: ${dataString}\n\n`;
-              controller.enqueue(encoder.encode(out));
+            if (currentEventId) out += `id: ${currentEventId}\n`;
+            if (currentEventName) out += `event: ${currentEventName}\n`;
+            out += currentData.map(d => `data: ${d}`).join('\n') + '\n\n';
+            controller.enqueue(encoder.encode(out));
           }
         }
 
