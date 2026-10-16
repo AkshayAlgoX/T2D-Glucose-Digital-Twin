@@ -78,6 +78,34 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('strictly bounds automatic retries across repeated HTTP-200 responses with immediate stream-read failures', async () => {
+    let fetchCount = 0;
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      fetchCount++;
+      const failingReader = {
+        read: jest.fn().mockRejectedValue(new Error('Immediate stream-read disconnect')),
+        cancel: jest.fn(),
+      };
+      return { ok: true, body: { getReader: () => failingReader } } as unknown as Response;
+    });
+
+    const maxRetries = 2;
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries, baseDelayMs: 25 }));
+
+    // With maxRetries = 2:
+    // Call 1: initial connection attempt (fails on read())
+    // Call 2: retry 1 (fails on read())
+    // Call 3: retry 2 (fails on read(), retries exhausted!)
+    // Total fetch calls must be exactly 1 + maxRetries = 3, then transitions to disconnected.
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 1500 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(fetchCount).toBe(3);
+
+    // Ensure no additional reconnection occurs after exhaustion
+    await new Promise(r => setTimeout(r, 100));
+    expect(fetchCount).toBe(3);
+  });
+
   it('resumes using Last-Event-ID header on stream reconnection', async () => {
     const forecast = validFixture();
     const eventPayload = {
@@ -131,30 +159,171 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('cancels scheduled retries and active stream when the subject changes', async () => {
-    let resolveFirstFetch!: (val: Response) => void;
-    const firstFetchPromise = new Promise<Response>(res => { resolveFirstFetch = res; });
-    const readerB = deferredRead();
+  it('confirms automatic retry attempts never exceed the configured bound (maxRetries: 3)', async () => {
+    let fetchCount = 0;
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      fetchCount++;
+      const failingReader = {
+        read: jest.fn().mockRejectedValue(new Error('Immediate socket failure')),
+        cancel: jest.fn(),
+      };
+      return { ok: true, body: { getReader: () => failingReader } } as unknown as Response;
+    });
+
+    const maxRetries = 3;
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries, baseDelayMs: 20 }));
+
+    // Initial attempt (1) + 3 retries = exactly 4 fetches before exhausting
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(fetchCount).toBe(4);
+
+    await new Promise(r => setTimeout(r, 80));
+    expect(fetchCount).toBe(4);
+  });
+
+  it('resets retry counter upon receiving valid events and bounds subsequent retries on later failure', async () => {
+    const forecast = validFixture();
+    const eventPayload = {
+      event: 'forecast.updated',
+      event_id: '000001-forecast',
+      subject_id: subjectA,
+      emitted_at: forecast.generated_at,
+      payload: forecast,
+    };
+
+    // First connection succeeds and delivers an event, then drops
+    const firstReader = {
+      read: jest.fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload)}\n\n`)),
+        })
+        .mockRejectedValueOnce(new Error('Stream dropped after valid delivery')),
+      cancel: jest.fn(),
+    };
+
+    // Subsequent reconnections return 200 but fail immediately on read()
+    let reconnectCount = 0;
+    jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => firstReader } } as unknown as Response)
+      .mockImplementation(async () => {
+        reconnectCount++;
+        const reconnectReader = {
+          read: jest.fn().mockRejectedValue(new Error('Reconnect socket dropped')),
+          cancel: jest.fn(),
+        };
+        return { ok: true, body: { getReader: () => reconnectReader } } as unknown as Response;
+      });
+
+    const maxRetries = 2;
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries, baseDelayMs: 25 }));
+
+    // Valid event delivered and parsed: resets retry counter
+    await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
+
+    // Stream drops; attempts reconnection with bounded retries (reconnect 1, reconnect 2 -> exhausted)
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 1500 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(reconnectCount).toBe(2); // strictly maxRetries
+
+    // Verify forecast is preserved even after retries exhaust
+    expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+  });
+
+  it('handles clean EOF under finite-stream contract without retrying or marking transport failure', async () => {
+    const forecast = validFixture();
+    const eventPayload = {
+      event: 'forecast.updated',
+      event_id: '000001-forecast',
+      subject_id: subjectA,
+      emitted_at: forecast.generated_at,
+      payload: forecast,
+    };
+
+    // Replay streams finite events and ends cleanly with { done: true }
+    const finiteReader = {
+      read: jest.fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload)}\n\n`)),
+        })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+      cancel: jest.fn(),
+    };
 
     const fetchMock = jest.spyOn(global, 'fetch')
-      .mockReturnValueOnce(firstFetchPromise)
-      .mockResolvedValueOnce({ ok: true, body: { getReader: () => readerB } } as unknown as Response);
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => finiteReader } } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 20 }));
+
+    // Forecast arrives
+    await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
+
+    // Normal finite completion reached: status becomes disconnected, error remains null
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.isConnected).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.forecast).not.toBeNull();
+
+    // No auto-reconnection loop: fetch should be called exactly once
+    await new Promise(r => setTimeout(r, 60));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles empty clean EOF (replay already at end of data) without retrying or erroring', async () => {
+    const emptyReader = {
+      read: jest.fn().mockResolvedValueOnce({ done: true, value: undefined }),
+      cancel: jest.fn(),
+    };
+
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => emptyReader } } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 20 }));
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.isConnected).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    // No retry scheduled
+    await new Promise(r => setTimeout(r, 60));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('prevents duplicate concurrent connections and stale updates during subject switching', async () => {
+    const oldReader = deferredRead();
+    const newReader = deferredRead();
+
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => oldReader } } as unknown as Response)
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => newReader } } as unknown as Response);
 
     const { result, rerender } = renderHook(
       ({ id }) => useRealtimeTelemetry(id, { maxRetries: 3, baseDelayMs: 50 }),
       { initialProps: { id: subjectA } }
     );
 
-    expect(result.current.connectionStatus).toBe('connecting');
+    await waitFor(() => expect(result.current.connectionStatus).toBe('connected'));
+    expect(result.current.cache.patientId).toBe(subjectA);
 
-    // Switch subject while fetch for subjectA is still unresolved
+    // Switch subject to Subject B
     rerender({ id: subjectB });
 
-    // Subject B starts immediately
+    // State immediately isolates to Subject B
     expect(result.current.cache.patientId).toBe(subjectB);
     expect(result.current.forecast).toBeNull();
-    await waitFor(() => expect(result.current.connectionStatus).toBe('connected'));
+
+    await waitFor(() => expect(newReader.read).toHaveBeenCalledTimes(1));
+
+    // Old reader completes after subject has switched: must NOT affect subject B
+    await act(async () => {
+      oldReader.finish({ done: true });
+    });
+
+    expect(result.current.connectionStatus).toBe('connected');
     expect(result.current.isConnected).toBe(true);
+    expect(result.current.cache.patientId).toBe(subjectB);
   });
 
   it('preserves existing populated forecast data during transient reconnection', async () => {

@@ -157,18 +157,32 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         activeReaderRef.current = reader;
         setConnectionStatus('connected');
         setError(null);
-        retryCountRef.current = 0;
-        setRetryAttempt(0);
+        // Do NOT reset retryCountRef here! Receiving an HTTP 200 header does not prove
+        // the stream has delivered a valid event or remained healthy. Resetting here allows
+        // repeated 200 + immediate stream errors to retry unboundedly.
+        // The retry counter is reset only after a validated event is processed below.
 
         const decoder = new TextDecoder();
         let buffer = '';
 
+        // Clean EOF vs premature completion note:
+        // The backend replay stream terminates naturally when all cohort readings up to pc.ps.n
+        // are delivered, resolving reader.read() with { done: true, value: undefined }.
+        // The existing protocol does not transmit an application-level 'stream.completed' event.
+        // A clean EOF with 0 events is indistinguishable at the transport level from an upstream
+        // proxy closing an idle stream. Per specification, clean EOF is treated as expected
+        // normal completion (error: null, disconnected) rather than a transport error, avoiding
+        // tight reconnect loops. Genuine transport errors (read() throwing) are bounded to maxRetries.
         while (true) {
           const { done, value } = await reader.read();
           if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
           if (done) {
             activeReaderRef.current = null;
             setConnectionStatus('disconnected');
+            // Clean EOF is a legitimate stream completion, not a transport error.
+            // Reset any transient retry tracking and ensure no error banner is displayed.
+            retryCountRef.current = 0;
+            setRetryAttempt(0);
             break;
           }
 
@@ -207,6 +221,12 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                 lastEventIdRef.current = parsedEvent.event_id || currentBlockId;
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
+
+                // Stream delivery health verified: reset consecutive failure counter only after
+                // a valid event has been received, parsed, and checked for invariants.
+                retryCountRef.current = 0;
+                setRetryAttempt(0);
+                setError(null);
 
                 setForecastResponse(raw);
 
