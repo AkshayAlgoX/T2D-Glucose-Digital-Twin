@@ -558,4 +558,116 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
     expect(screen.getByText('Patient Not Found')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Retry stream connection/i })).not.toBeInTheDocument();
   });
+
+  describe('HTTP 200 with Missing Response Body', () => {
+    it('treats missing body as transient stream failure, bounds retries, and exposes manual recovery', async () => {
+      let fetchCount = 0;
+      jest.spyOn(global, 'fetch').mockImplementation(async () => {
+        fetchCount++;
+        return { ok: true, body: null } as unknown as Response;
+      });
+
+      const maxRetries = 2;
+      const { result } = renderHook(() =>
+        useRealtimeTelemetry(subjectA, { maxRetries, baseDelayMs: 60 })
+      );
+
+      // Attempt 1 fails on body: null, enters reconnecting (retry 1)
+      await waitFor(() => expect(result.current.connectionStatus).toBe('reconnecting'));
+      expect(result.current.retryCount).toBe(1);
+
+      // Attempts 2 and 3 fail on body: null; exhausts retries (1 initial + 2 retries = 3 fetches)
+      await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+      expect(result.current.error?.message).toBe('unavailable');
+      expect(fetchCount).toBe(3);
+
+      // Verify no further automatic retries are dispatched
+      await new Promise(r => setTimeout(r, 60));
+      expect(fetchCount).toBe(3);
+
+      // Manual recovery: clicking retry() triggers fresh connection attempt
+      const recoveryReader = deferredRead();
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        body: { getReader: () => recoveryReader },
+      } as unknown as Response);
+
+      act(() => {
+        result.current.retry();
+      });
+
+      await waitFor(() => expect(result.current.connectionStatus).toBe('connected'));
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.error).toBeNull();
+      expect(jest.mocked(global.fetch)).toHaveBeenCalledTimes(4);
+    });
+
+    it('preserves valid forecast and clinical context when reconnection encounters missing body', async () => {
+      const forecast = validFixture();
+      const eventPayload = {
+        event: 'forecast.updated',
+        event_id: '000001-forecast',
+        subject_id: subjectA,
+        emitted_at: forecast.generated_at,
+        payload: forecast,
+      };
+
+      // First connection delivers valid forecast, then drops
+      const firstReader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload)}\n\n`)),
+          })
+          .mockRejectedValueOnce(new Error('Connection dropped after forecast')),
+        cancel: jest.fn(),
+      };
+
+      // Subsequent reconnection returns HTTP 200 with missing body
+      jest.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: true, body: { getReader: () => firstReader } } as unknown as Response)
+        .mockImplementation(async () => ({ ok: true, body: null } as unknown as Response));
+
+      const { result } = renderHook(() =>
+        useRealtimeTelemetry(subjectA, { maxRetries: 2, baseDelayMs: 20 })
+      );
+
+      // Wait for forecast to be parsed and displayed
+      await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
+
+      // Connection drops, enters reconnecting on missing body: forecast data remains preserved
+      await waitFor(() => expect(result.current.connectionStatus).toBe('reconnecting'));
+      expect(result.current.forecast).not.toBeNull();
+      expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+
+      // Retries exhaust to disconnected: forecast data is STILL preserved
+      await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+      expect(result.current.forecast).not.toBeNull();
+      expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+      expect(result.current.error?.message).toBe('unavailable');
+    });
+
+    it('cleans up retry timers and prevents duplicate requests when unmounted during missing body retries', async () => {
+      let fetchCount = 0;
+      jest.spyOn(global, 'fetch').mockImplementation(async () => {
+        fetchCount++;
+        return { ok: true, body: null } as unknown as Response;
+      });
+
+      const { result, unmount } = renderHook(() =>
+        useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 80 })
+      );
+
+      // Attempt 1 fails on missing body, enters reconnecting with an 80ms backoff timer
+      await waitFor(() => expect(result.current.connectionStatus).toBe('reconnecting'));
+      expect(fetchCount).toBe(1);
+
+      // Unmount while retry timer is pending
+      unmount();
+
+      // Wait past the timer delay to ensure the timer was cleared and did not execute
+      await new Promise(r => setTimeout(r, 120));
+      expect(fetchCount).toBe(1);
+    });
+  });
 });
