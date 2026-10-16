@@ -11,19 +11,38 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'di
 export interface UseRealtimeTelemetryOptions {
   maxRetries?: number;
   baseDelayMs?: number;
+  stableEventsThreshold?: number;
+  stableDurationMs?: number;
+  stalenessThresholdMs?: number;
+  stalenessIntervalMs?: number;
 }
 
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_BASE_DELAY_MS = process.env.NODE_ENV === 'test' ? 25 : 1000;
+const DEFAULT_STABLE_EVENTS_THRESHOLD = 2;
+const DEFAULT_STABLE_DURATION_MS = 10000;
+const DEFAULT_STALENESS_THRESHOLD_MS = 15000;
+const DEFAULT_STALENESS_INTERVAL_MS = 5000;
 
 export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTelemetryOptions) {
   const { asOf } = useTime() || {}; 
   const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
   const baseDelayMs = options?.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const stableEventsThreshold = options?.stableEventsThreshold ?? DEFAULT_STABLE_EVENTS_THRESHOLD;
+  const stableDurationMs = options?.stableDurationMs ?? DEFAULT_STABLE_DURATION_MS;
+  const stalenessThresholdMs = options?.stalenessThresholdMs ?? DEFAULT_STALENESS_THRESHOLD_MS;
+  const stalenessIntervalMs = options?.stalenessIntervalMs ?? DEFAULT_STALENESS_INTERVAL_MS;
 
   const [forecastResponse, setForecastResponse] = useState<ForecastResponse | null>(null);
   const [cache, setCache] = useState<SubjectStore>({ patientId, cgm: [], risk: [], alerts: [], dataQuality: [] });
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [connectionStatus, setConnectionStatusState] = useState<ConnectionStatus>('connecting');
+  const connectionStatusRef = useRef<ConnectionStatus>('connecting');
+
+  const setConnectionStatus = useCallback((status: ConnectionStatus) => {
+    connectionStatusRef.current = status;
+    setConnectionStatusState(status);
+  }, []);
+
   const [isStale, setIsStale] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
@@ -35,20 +54,27 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
   const lastEventIdRef = useRef<string | null>(null);
   const checkStaleTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const retryTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const stabilityTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const retryCountRef = useRef(0);
+  const eventsOnCurrentConnectionRef = useRef(0);
 
   const retry = useCallback(() => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = undefined;
     }
+    if (stabilityTimerRef.current) {
+      clearTimeout(stabilityTimerRef.current);
+      stabilityTimerRef.current = undefined;
+    }
+    eventsOnCurrentConnectionRef.current = 0;
     retryCountRef.current = 0;
     setRetryAttempt(0);
     setError(null);
     setConnectionStatus('connecting');
     setManualRetryNonce(n => n + 1);
-  }, []);
+  }, [setConnectionStatus]);
 
   useEffect(() => {
     if (cache.patientId !== patientId) {
@@ -91,7 +117,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
       if (asOf) {
         setIsStale(false);
       } else {
-        if (Date.now() - lastEventTimeRef.current > 15000) {
+        if (Date.now() - lastEventTimeRef.current > stalenessThresholdMs) {
           setIsStale(true);
         }
       }
@@ -99,7 +125,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
 
     if (!asOf) {
       clearInterval(checkStaleTimerRef.current);
-      checkStaleTimerRef.current = setInterval(checkStaleness, 5000);
+      checkStaleTimerRef.current = setInterval(checkStaleness, stalenessIntervalMs);
     }
 
     const endpoint = asOf 
@@ -152,15 +178,33 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         const reader = res.body?.getReader();
         if (!reader) {
           setConnectionStatus('disconnected');
+          if (checkStaleTimerRef.current) {
+            clearInterval(checkStaleTimerRef.current);
+            checkStaleTimerRef.current = undefined;
+          }
           return;
         }
         activeReaderRef.current = reader;
         setConnectionStatus('connected');
         setError(null);
-        // Do NOT reset retryCountRef here! Receiving an HTTP 200 header does not prove
-        // the stream has delivered a valid event or remained healthy. Resetting here allows
-        // repeated 200 + immediate stream errors to retry unboundedly.
-        // The retry counter is reset only after a validated event is processed below.
+
+        eventsOnCurrentConnectionRef.current = 0;
+        if (stabilityTimerRef.current) {
+          clearTimeout(stabilityTimerRef.current);
+          stabilityTimerRef.current = undefined;
+        }
+
+        // Sustainable healthy connection timer: if connection stays open and receives data
+        // for stableDurationMs, it also satisfies stability and resets the retry budget.
+        if (stableDurationMs > 0 && !asOf) {
+          stabilityTimerRef.current = setTimeout(() => {
+            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && eventsOnCurrentConnectionRef.current > 0) {
+              retryCountRef.current = 0;
+              setRetryAttempt(0);
+              setError(null);
+            }
+          }, stableDurationMs);
+        }
 
         const decoder = new TextDecoder();
         let buffer = '';
@@ -180,9 +224,17 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
             activeReaderRef.current = null;
             setConnectionStatus('disconnected');
             // Clean EOF is a legitimate stream completion, not a transport error.
-            // Reset any transient retry tracking and ensure no error banner is displayed.
+            // Reset transient retry tracking and clean up timers without exposing an error banner.
             retryCountRef.current = 0;
             setRetryAttempt(0);
+            if (stabilityTimerRef.current) {
+              clearTimeout(stabilityTimerRef.current);
+              stabilityTimerRef.current = undefined;
+            }
+            if (checkStaleTimerRef.current) {
+              clearInterval(checkStaleTimerRef.current);
+              checkStaleTimerRef.current = undefined;
+            }
             break;
           }
 
@@ -222,11 +274,20 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
 
-                // Stream delivery health verified: reset consecutive failure counter only after
-                // a valid event has been received, parsed, and checked for invariants.
-                retryCountRef.current = 0;
-                setRetryAttempt(0);
-                setError(null);
+                // Stability condition: require at least stableEventsThreshold consecutive valid
+                // events on this connection before resetting the failure budget.
+                // A single event followed by immediate failure does NOT reset the budget,
+                // strictly preventing infinite flapping/reconnection loops.
+                eventsOnCurrentConnectionRef.current += 1;
+                if (eventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
+                  retryCountRef.current = 0;
+                  setRetryAttempt(0);
+                  setError(null);
+                  if (stabilityTimerRef.current) {
+                    clearTimeout(stabilityTimerRef.current);
+                    stabilityTimerRef.current = undefined;
+                  }
+                }
 
                 setForecastResponse(raw);
 
@@ -283,6 +344,14 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
           setConnectionStatus('disconnected');
           retryCountRef.current = 0;
           setRetryAttempt(0);
+          if (stabilityTimerRef.current) {
+            clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = undefined;
+          }
+          if (checkStaleTimerRef.current) {
+            clearInterval(checkStaleTimerRef.current);
+            checkStaleTimerRef.current = undefined;
+          }
           return;
         }
 
@@ -291,6 +360,14 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
           setConnectionStatus('disconnected');
           retryCountRef.current = 0;
           setRetryAttempt(0);
+          if (stabilityTimerRef.current) {
+            clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = undefined;
+          }
+          if (checkStaleTimerRef.current) {
+            clearInterval(checkStaleTimerRef.current);
+            checkStaleTimerRef.current = undefined;
+          }
           return;
         }
 
@@ -299,6 +376,12 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
           retryCountRef.current = attempt;
           setRetryAttempt(attempt);
           setConnectionStatus('reconnecting');
+          if (stabilityTimerRef.current) {
+            clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = undefined;
+          }
+          // Note: checkStaleTimerRef is INTENTIONALLY preserved during reconnecting
+          // so that staleness is actively detected if reconnection exceeds stalenessThresholdMs.
           const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), 8000);
           retryTimerRef.current = setTimeout(() => {
             if (currentEpoch === epochRef.current && !ac.signal.aborted) {
@@ -308,10 +391,25 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         } else {
           setError(new Error('unavailable'));
           setConnectionStatus('disconnected');
+          if (stabilityTimerRef.current) {
+            clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = undefined;
+          }
+          if (checkStaleTimerRef.current) {
+            clearInterval(checkStaleTimerRef.current);
+            checkStaleTimerRef.current = undefined;
+          }
         }
       } finally {
-        if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current === null && connectionStatus !== 'reconnecting') {
-          clearInterval(checkStaleTimerRef.current);
+        if (currentEpoch === epochRef.current && !ac.signal.aborted) {
+          // Check live status via connectionStatusRef to avoid stale closure references.
+          // In 'reconnecting', staleness monitoring remains operational.
+          if (connectionStatusRef.current === 'disconnected' && activeReaderRef.current === null) {
+            if (checkStaleTimerRef.current) {
+              clearInterval(checkStaleTimerRef.current);
+              checkStaleTimerRef.current = undefined;
+            }
+          }
         }
       }
     };
@@ -328,12 +426,27 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         clearInterval(checkStaleTimerRef.current);
         checkStaleTimerRef.current = undefined;
       }
+      if (stabilityTimerRef.current) {
+        clearTimeout(stabilityTimerRef.current);
+        stabilityTimerRef.current = undefined;
+      }
       if (activeReaderRef.current) {
         try { activeReaderRef.current.cancel(); } catch { /* ignore */ }
         activeReaderRef.current = null;
       }
     };
-  }, [patientId, asOf, manualRetryNonce, maxRetries, baseDelayMs]);
+  }, [
+    patientId,
+    asOf,
+    manualRetryNonce,
+    maxRetries,
+    baseDelayMs,
+    stableEventsThreshold,
+    stableDurationMs,
+    stalenessThresholdMs,
+    stalenessIntervalMs,
+    setConnectionStatus,
+  ]);
 
   const currentSubject = cache.patientId === patientId;
   const isConnected = currentSubject && connectionStatus === 'connected';

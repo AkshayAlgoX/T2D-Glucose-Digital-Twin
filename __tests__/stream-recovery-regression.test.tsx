@@ -182,7 +182,122 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
     expect(fetchCount).toBe(4);
   });
 
-  it('resets retry counter upon receiving valid events and bounds subsequent retries on later failure', async () => {
+  it('exhausts retry budget under adversarial flapping stream (repeated HTTP-200 delivering 1 event then failing)', async () => {
+    const forecast = validFixture();
+    let connectionAttempts = 0;
+
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      connectionAttempts++;
+      const currentAttempt = connectionAttempts;
+      const eventPayload = {
+        event: 'forecast.updated',
+        event_id: `00000${currentAttempt}-forecast`,
+        subject_id: subjectA,
+        emitted_at: forecast.generated_at,
+        payload: forecast,
+      };
+
+      const flappingReader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload)}\n\n`)),
+          })
+          .mockRejectedValueOnce(new Error(`Adversarial stream read drop on connection ${currentAttempt}`)),
+        cancel: jest.fn(),
+      };
+
+      return { ok: true, body: { getReader: () => flappingReader } } as unknown as Response;
+    });
+
+    const maxRetries = 2;
+    const { result } = renderHook(() =>
+      useRealtimeTelemetry(subjectA, {
+        maxRetries,
+        baseDelayMs: 20,
+        stableEventsThreshold: 2, // requires 2 events for stability
+      })
+    );
+
+    // With maxRetries = 2 and stableEventsThreshold = 2:
+    // Attempt 1: delivers 1 event, then throws (1 < 2 events: retryCount becomes 1, reconnects)
+    // Attempt 2: delivers 1 event, then throws (1 < 2 events: retryCount becomes 2, reconnects)
+    // Attempt 3: delivers 1 event, then throws (1 < 2 events: retryCount exhausted >= maxRetries)
+    // Must terminate at 'disconnected' with 'unavailable' error and exactly 3 connection attempts.
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(connectionAttempts).toBe(3);
+
+    // Verify it stays disconnected and does not restart indefinitely
+    await new Promise(r => setTimeout(r, 80));
+    expect(connectionAttempts).toBe(3);
+    // Forecast from the last event remains visible
+    expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+  });
+
+  it('resets retry budget when a connection reaches stability (multiple valid events)', async () => {
+    const forecast = validFixture();
+    const eventPayload1 = {
+      event: 'forecast.updated',
+      event_id: '000001-forecast',
+      subject_id: subjectA,
+      emitted_at: forecast.generated_at,
+      payload: forecast,
+    };
+    const eventPayload2 = {
+      event: 'forecast.updated',
+      event_id: '000002-forecast',
+      subject_id: subjectA,
+      emitted_at: forecast.generated_at,
+      payload: forecast,
+    };
+
+    // First connection delivers 2 valid events (reaching stability threshold), then drops
+    const stableReader = {
+      read: jest.fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload1)}\n\n`)),
+        })
+        .mockResolvedValueOnce({
+          done: false,
+          value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload2)}\n\n`)),
+        })
+        .mockRejectedValueOnce(new Error('Stream dropped after stability')),
+      cancel: jest.fn(),
+    };
+
+    let reconnectAttempts = 0;
+    jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => stableReader } } as unknown as Response)
+      .mockImplementation(async () => {
+        reconnectAttempts++;
+        const reconnectReader = {
+          read: jest.fn().mockRejectedValue(new Error('Reconnect socket dropped')),
+          cancel: jest.fn(),
+        };
+        return { ok: true, body: { getReader: () => reconnectReader } } as unknown as Response;
+      });
+
+    const maxRetries = 2;
+    const { result } = renderHook(() =>
+      useRealtimeTelemetry(subjectA, {
+        maxRetries,
+        baseDelayMs: 25,
+        stableEventsThreshold: 2,
+      })
+    );
+
+    // First connection reaches stability
+    await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
+
+    // After dropping, because it reached stability, it is granted the full retry budget (2 retries)
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 1500 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(reconnectAttempts).toBe(2);
+  });
+
+  it('confirms stale-data detection remains operational during reconnection and timers are cleaned up', async () => {
     const forecast = validFixture();
     const eventPayload = {
       event: 'forecast.updated',
@@ -192,43 +307,50 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
       payload: forecast,
     };
 
-    // First connection succeeds and delivers an event, then drops
+    let resolveReconnectionFetch!: (val: Response) => void;
+    const reconnectionPromise = new Promise<Response>(res => { resolveReconnectionFetch = res; });
+
+    // Initial connection delivers 1 event, then drops
     const firstReader = {
       read: jest.fn()
         .mockResolvedValueOnce({
           done: false,
           value: new Uint8Array(Buffer.from(`data: ${JSON.stringify(eventPayload)}\n\n`)),
         })
-        .mockRejectedValueOnce(new Error('Stream dropped after valid delivery')),
+        .mockRejectedValueOnce(new Error('Connection dropped')),
       cancel: jest.fn(),
     };
 
-    // Subsequent reconnections return 200 but fail immediately on read()
-    let reconnectCount = 0;
     jest.spyOn(global, 'fetch')
       .mockResolvedValueOnce({ ok: true, body: { getReader: () => firstReader } } as unknown as Response)
-      .mockImplementation(async () => {
-        reconnectCount++;
-        const reconnectReader = {
-          read: jest.fn().mockRejectedValue(new Error('Reconnect socket dropped')),
-          cancel: jest.fn(),
-        };
-        return { ok: true, body: { getReader: () => reconnectReader } } as unknown as Response;
-      });
+      .mockReturnValueOnce(reconnectionPromise);
 
-    const maxRetries = 2;
-    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries, baseDelayMs: 25 }));
+    // Configure staleness thresholds: 60ms threshold, 20ms check interval
+    const { result, unmount } = renderHook(() =>
+      useRealtimeTelemetry(subjectA, {
+        maxRetries: 3,
+        baseDelayMs: 10,
+        stalenessThresholdMs: 60,
+        stalenessIntervalMs: 20,
+      })
+    );
 
-    // Valid event delivered and parsed: resets retry counter
+    // Initial event loads forecast, isStale is false
     await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
+    expect(result.current.isStale).toBe(false);
 
-    // Stream drops; attempts reconnection with bounded retries (reconnect 1, reconnect 2 -> exhausted)
-    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 1500 });
-    expect(result.current.error?.message).toBe('unavailable');
-    expect(reconnectCount).toBe(2); // strictly maxRetries
+    // Stream drops and enters reconnecting
+    await waitFor(() => expect(result.current.connectionStatus).toBe('reconnecting'));
+    expect(result.current.isStale).toBe(false);
 
-    // Verify forecast is preserved even after retries exhaust
-    expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+    // While reconnecting, staleness timer remains active and flags staleness once threshold is exceeded
+    await waitFor(() => expect(result.current.isStale).toBe(true), { timeout: 1000 });
+    expect(result.current.connectionStatus).toBe('reconnecting');
+    expect(result.current.forecast).not.toBeNull();
+
+    // Unmount hook: verifies timers and reader cancel cleanly
+    unmount();
+    resolveReconnectionFetch({ ok: false, status: 503 } as Response);
   });
 
   it('handles clean EOF under finite-stream contract without retrying or marking transport failure', async () => {
