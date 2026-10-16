@@ -10,7 +10,7 @@ import { PatientWorkspace } from '@/components/digital-twin/PatientWorkspace';
 export default function PatientDashboard() {
   const params = useParams();
   const patientId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string) || '';
-  const { forecast, cache, isConnected, isStale, error } = useRealtimeTelemetry(patientId);
+  const { forecast, cache, isConnected, isStale, error, connectionStatus, retryCount, retry } = useRealtimeTelemetry(patientId);
 
   return (
     <TimeProvider>
@@ -24,6 +24,9 @@ export default function PatientDashboard() {
           isConnected={isConnected}
           isStale={isStale}
           error={error}
+          connectionStatus={connectionStatus}
+          retryCount={retryCount}
+          onRetry={retry}
         />
       </div>
     </TimeProvider>

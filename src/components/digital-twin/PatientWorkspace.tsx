@@ -31,6 +31,9 @@ export interface PatientWorkspaceProps {
   isConnected: boolean;
   isStale: boolean;
   error?: Error | null;
+  connectionStatus?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+  retryCount?: number;
+  onRetry?: () => void;
 }
 
 const medicationClassLabels: Record<MedClass, string> = {
@@ -161,19 +164,83 @@ function DataAvailability({ forecast, cache }: Pick<PatientWorkspaceProps, 'fore
   );
 }
 
-export function PatientWorkspace({ patientId, forecast, cache, isConnected, isStale, error }: PatientWorkspaceProps) {
+export function PatientWorkspace({
+  patientId,
+  forecast,
+  cache,
+  isConnected,
+  isStale,
+  error,
+  connectionStatus,
+  retryCount,
+  onRetry,
+}: PatientWorkspaceProps) {
   const compact = useSyncExternalStore(subscribeToContextLayout, compactContext, serverContext);
   const [contextExpanded, setContextExpanded] = useState(false);
   const fallback = forecast?.model?.fallback_used;
   const mode = !forecast ? 'Awaiting model' : fallback === 'twin_only' ? 'Physics baseline' : fallback === 'persistence' ? 'Persistence fallback' : fallback === 'xgboost' ? 'XGBoost fallback' : 'PR-TFT + physiological twin';
+  const effectiveStatus = connectionStatus ?? (isConnected ? 'connected' : 'disconnected');
+  const isConnectedState = effectiveStatus === 'connected';
+  const isReconnecting = effectiveStatus === 'reconnecting';
+  const isConnecting = effectiveStatus === 'connecting';
   return (
     <main id="main-content" className="workspace-page">
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
       <header className="workspace-heading">
         <div><div className="eyebrow">Patient workspace</div><h1>{forecast?.subject?.simulator?.param_set_id ?? 'Glucose trajectory'}</h1><p>Personalized forecasting from observable clinical and sensor context.</p></div>
-        <div className="workspace-status" role="status"><span className={'status-badge ' + (isConnected && !isStale ? 'status-connected' : '')}><Radio size={12} aria-hidden="true" />{isConnected ? 'Synthetic stream connected' : 'Disconnected'}</span>{isStale && <span className="status-badge status-watch">Stale</span>}</div>
+        <div className="workspace-status" role="status">
+          <span
+            className={
+              'status-badge ' +
+              (isConnectedState && !isStale
+                ? 'status-connected'
+                : isReconnecting
+                ? 'status-watch'
+                : '')
+            }
+          >
+            <Radio size={12} aria-hidden="true" />
+            {isConnectedState
+              ? 'Synthetic stream connected'
+              : isReconnecting
+              ? `Reconnecting${retryCount ? ` (${retryCount})` : '...'}`
+              : isConnecting
+              ? 'Connecting'
+              : 'Disconnected'}
+          </span>
+          {isStale && <span className="status-badge status-watch">Stale</span>}
+        </div>
       </header>
-      {error && <div role="alert" className="workspace-error"><strong>{error.message === 'patient-not-found' ? 'Patient Not Found' : error.message === 'contract-invalid' ? 'Contract Invalid (Malformed Data)' : 'Service Unavailable'}</strong><p>{error.message === 'contract-invalid' ? 'The received stream failed contract validation.' : 'The subject stream could not be loaded. No missing values have been substituted.'}</p></div>}
+      {error && (
+        <div role="alert" className="workspace-error">
+          <strong>
+            {error.message === 'patient-not-found'
+              ? 'Patient Not Found'
+              : error.message === 'contract-invalid'
+              ? 'Contract Invalid (Malformed Data)'
+              : 'Service Unavailable'}
+          </strong>
+          <p>
+            {error.message === 'contract-invalid'
+              ? 'The received stream failed contract validation.'
+              : error.message === 'patient-not-found'
+              ? 'The requested patient could not be found.'
+              : 'The subject stream could not be loaded. No missing values have been substituted.'}
+          </p>
+          {onRetry && error.message !== 'patient-not-found' && error.message !== 'contract-invalid' && (
+            <div className="workspace-error-actions">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="secondary-button retry-connection-btn"
+                aria-label="Retry stream connection"
+              >
+                Retry connection
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <details className="patient-context" open={!compact || contextExpanded}>
         <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
           <span>Patient context</span><span>Clinical & physiological data</span>
