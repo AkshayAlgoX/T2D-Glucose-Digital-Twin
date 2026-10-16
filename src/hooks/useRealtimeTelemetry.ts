@@ -57,9 +57,8 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
   const stabilityTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const retryCountRef = useRef(0);
-  // Counts only forecast.updated events on the current connection.
-  // Companion events (alert, data_quality, twin.recalibrated) are intentionally excluded
-  // so that a forecast+companion pair on every brief connection cannot defeat bounded retries.
+  // Counts distinct forward forecast progress on the current connection.
+  // Duplicates and companion packets must not manufacture connection stability.
   const forecastEventsOnCurrentConnectionRef = useRef(0);
 
   const retry = useCallback(() => {
@@ -134,6 +133,11 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
     const endpoint = asOf 
       ? `/api/patients/${patientId}/stream?as_of=${encodeURIComponent(asOf)}`
       : `/api/patients/${patientId}/stream`;
+
+    // Automatic reconnects must not count already received forecasts as progress.
+    // A new effect (subject/time change or explicit retry) starts a fresh session.
+    const seenForecastIds = new Set<string>();
+    let latestForecastAnchor = -Infinity;
 
     const connect = async () => {
       try {
@@ -222,6 +226,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         setError(null);
 
         forecastEventsOnCurrentConnectionRef.current = 0;
+        let receivedForecast = false;
         if (stabilityTimerRef.current) {
           clearTimeout(stabilityTimerRef.current);
           stabilityTimerRef.current = undefined;
@@ -233,7 +238,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         // events from satisfying the duration-based stability condition.
         if (stableDurationMs > 0 && !asOf) {
           stabilityTimerRef.current = setTimeout(() => {
-            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && forecastEventsOnCurrentConnectionRef.current > 0) {
+            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && receivedForecast) {
               retryCountRef.current = 0;
               setRetryAttempt(0);
               setError(null);
@@ -302,6 +307,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                   continue;
                 }
 
+                let madeForecastProgress = false;
                 switch (parsedEvent.event) {
                   case 'forecast.updated': {
                     const forecastPayload = ForecastResponseSchema.parse(parsedEvent.payload) as unknown as ForecastResponse;
@@ -309,6 +315,13 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                       continue;
                     }
                     checkInvariants(forecastPayload);
+                    receivedForecast = true;
+                    const forecastEventId = parsedEvent.event_id || currentBlockId;
+                    const anchor = Date.parse(forecastPayload.as_of);
+                    madeForecastProgress = (!forecastEventId || !seenForecastIds.has(forecastEventId))
+                      && anchor > latestForecastAnchor;
+                    if (forecastEventId) seenForecastIds.add(forecastEventId);
+                    if (madeForecastProgress) latestForecastAnchor = anchor;
                     setForecastResponse(forecastPayload);
 
                     setCache(prev => {
@@ -395,11 +408,9 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
 
-                // Event-count stability: only forecast.updated events count toward the
-                // stableEventsThreshold budget. Companion events (alert, data_quality,
-                // twin.recalibrated) are excluded so that a forecast+companion pair on
-                // every brief, flapping connection cannot reset the retry budget indefinitely.
-                if (parsedEvent.event === 'forecast.updated') {
+                // IDs are opaque: require a previously unseen ID (when supplied)
+                // and a later anchor, not merely another valid forecast packet.
+                if (madeForecastProgress) {
                   forecastEventsOnCurrentConnectionRef.current += 1;
                   if (forecastEventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
                     retryCountRef.current = 0;

@@ -237,6 +237,13 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
 
   it('resets retry budget when a connection reaches stability (multiple valid events)', async () => {
     const forecast = validFixture();
+    const nextForecast = validFixture();
+    nextForecast.as_of = new Date(Date.parse(forecast.as_of) + 5 * 60_000).toISOString();
+    nextForecast.current.measured_at = nextForecast.as_of;
+    nextForecast.data_quality.last_cgm_at = nextForecast.as_of;
+    nextForecast.forecast?.points.forEach(point => {
+      point.t = new Date(Date.parse(nextForecast.as_of) + point.offset_min * 60_000).toISOString();
+    });
     const eventPayload1 = {
       event: 'forecast.updated',
       event_id: '000001-forecast',
@@ -249,7 +256,7 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
       event_id: '000002-forecast',
       subject_id: subjectA,
       emitted_at: forecast.generated_at,
-      payload: forecast,
+      payload: nextForecast,
     };
 
     // First connection delivers 2 valid events (reaching stability threshold), then drops

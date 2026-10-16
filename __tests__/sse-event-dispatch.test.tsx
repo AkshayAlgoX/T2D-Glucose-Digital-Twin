@@ -579,6 +579,20 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
 
   it('only forecast.updated events count toward event-count stability; a connection with two forecast events achieves stability', async () => {
     const forecast = validFixture();
+    const nextForecast = validFixture();
+    nextForecast.as_of = new Date(Date.parse(forecast.as_of) + 5 * 60_000).toISOString();
+    nextForecast.current.measured_at = nextForecast.as_of;
+    nextForecast.data_quality.last_cgm_at = nextForecast.as_of;
+    nextForecast.forecast?.points.forEach(point => {
+      point.t = new Date(Date.parse(nextForecast.as_of) + point.offset_min * 60_000).toISOString();
+    });
+    const laterForecast = validFixture();
+    laterForecast.as_of = new Date(Date.parse(nextForecast.as_of) + 5 * 60_000).toISOString();
+    laterForecast.current.measured_at = laterForecast.as_of;
+    laterForecast.data_quality.last_cgm_at = laterForecast.as_of;
+    laterForecast.forecast?.points.forEach(point => {
+      point.t = new Date(Date.parse(laterForecast.as_of) + point.offset_min * 60_000).toISOString();
+    });
     const forecastEvent1 = {
       event: 'forecast.updated',
       event_id: '000001-forecast',
@@ -591,7 +605,12 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
       event_id: '000002-forecast',
       subject_id: subjectA,
       emitted_at: '2026-10-16T12:01:00Z',
-      payload: forecast,
+      payload: nextForecast,
+    };
+    const forecastEvent3 = {
+      ...forecastEvent2,
+      event_id: '000003-forecast',
+      payload: laterForecast,
     };
     const alertEvent = {
       event: 'alert.raised',
@@ -619,11 +638,11 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
         return { ok: true, body: { getReader: () => reader } } as unknown as Response;
       }
       if (connectionAttempts === 2) {
-        // Second connection: delivers 2 forecast events -> achieves stability!
+        // Second connection: delivers 2 previously unseen, forward forecasts.
         const reader = {
           read: jest.fn()
-            .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent1) })
             .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent2) })
+            .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent3) })
             .mockReturnValue(new Promise(() => {})), // stays connected
           cancel: jest.fn().mockResolvedValue(undefined),
         };
@@ -1055,6 +1074,140 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
     await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
     expect(result.current.error).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  describe('distinct forecast stability', () => {
+    function forecastAt(minutes: number) {
+      const forecast = validFixture();
+      forecast.as_of = new Date(Date.parse(forecast.as_of) + minutes * 60_000).toISOString();
+      forecast.current.measured_at = forecast.as_of;
+      forecast.data_quality.last_cgm_at = forecast.as_of;
+      forecast.forecast?.points.forEach(point => {
+        point.t = new Date(Date.parse(forecast.as_of) + point.offset_min * 60_000).toISOString();
+      });
+      return forecast;
+    }
+    const forecastEvent = (eventId: string, minutes: number) => ({
+      event: 'forecast.updated', event_id: eventId, subject_id: subjectA,
+      emitted_at: source.generated_at, payload: forecastAt(minutes),
+    });
+
+    it.each([
+      { name: 'identical packets', packets: [['A', 0], ['A', 0]], threshold: 2 },
+      { name: 'a reused ID with a later anchor', packets: [['A', 0], ['A', 5]], threshold: 2 },
+      { name: 'different IDs at the same anchor', packets: [['A', 0], ['B', 0]], threshold: 2 },
+      { name: 'an older anchor with a new ID', packets: [['A', 0], ['B', -5]], threshold: 2 },
+      { name: 'non-adjacent ID reuse', packets: [['A', 0], ['B', 5], ['A', 10]], threshold: 3 },
+      { name: 'the same progressing pair replayed on every reconnect', packets: [['A', 0], ['B', 5]], threshold: 2 },
+    ])('exhausts the budget after three requests for $name', async ({ packets, threshold }) => {
+      jest.useFakeTimers();
+      let attempts = 0;
+      const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async () => {
+        // Bound the defective implementation too, so failure cannot hang the test.
+        if (++attempts > 5) return { ok: false, status: 500 } as Response;
+        const events = packets.map(([eventId, minutes]) => forecastEvent(String(eventId), Number(minutes)));
+        let next = 0;
+        return { ok: true, body: { getReader: () => ({
+          read: async () => {
+            if (next < events.length) return { done: false, value: ssePacket(events[next++]) };
+            throw new Error('Short-lived duplicate stream');
+          },
+          cancel: async () => {},
+        }) } } as unknown as Response;
+      });
+      const { result, unmount } = renderHook(() => useRealtimeTelemetry(subjectA, {
+        maxRetries: 2, baseDelayMs: 1, stableEventsThreshold: threshold, stableDurationMs: 0,
+      }));
+      try {
+        await act(async () => { await jest.advanceTimersByTimeAsync(60_000); });
+        expect(result.current.connectionStatus).toBe('disconnected');
+        expect(result.current.error?.message).toBe('unavailable');
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        if (packets.every(([, minutes]) => minutes === 0)) {
+          expect(result.current.cache.cgm).toHaveLength(1);
+          expect(result.current.cache.risk).toHaveLength(1);
+        }
+        await act(async () => { await jest.advanceTimersByTimeAsync(60_000); });
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+      } finally {
+        unmount();
+        jest.useRealTimers();
+      }
+    });
+
+    it('resets the budget for two distinct forward forecasts after a failed connection', async () => {
+      jest.useFakeTimers();
+      let drop!: (reason: Error) => void;
+      const pending = new Promise((_, reject) => { drop = reject; });
+      const reader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent('A', 0)) })
+          .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent('B', 5)) })
+          .mockReturnValue(pending),
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+      const fetchMock = jest.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 500 } as Response)
+        .mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } } as unknown as Response)
+        .mockResolvedValue({ ok: false, status: 500 } as Response);
+      const { result, unmount } = renderHook(() => useRealtimeTelemetry(subjectA, {
+        maxRetries: 2, baseDelayMs: 1, stableEventsThreshold: 2, stableDurationMs: 0,
+      }));
+      try {
+        await act(async () => { await jest.advanceTimersByTimeAsync(5); });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(result.current.connectionStatus).toBe('connected');
+        expect(result.current.retryCount).toBe(0);
+        expect(result.current.cache.cgm).toHaveLength(2);
+        await act(async () => { drop(new Error('Drop after genuine progress')); });
+        await act(async () => { await jest.advanceTimersByTimeAsync(60_000); });
+        expect(fetchMock).toHaveBeenCalledTimes(4); // Full two-retry budget restored.
+        expect(result.current.error?.message).toBe('unavailable');
+      } finally {
+        unmount();
+        jest.useRealTimers();
+      }
+    });
+
+    it.each(['none', 'new', 'cached'])('duration stability with %s forecast', async mode => {
+      jest.useFakeTimers();
+      const withForecast = mode !== 'none';
+      const event = withForecast ? forecastEvent('A', 0) : {
+        event: 'twin.recalibrated', event_id: 'A', subject_id: subjectA,
+        emitted_at: source.generated_at, payload: {},
+      };
+      const reader = {
+        read: jest.fn().mockResolvedValueOnce({ done: false, value: ssePacket(event) })
+          .mockReturnValue(new Promise(() => {})),
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+      const fetchMock = jest.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(mode === 'cached' ? {
+          ok: true, body: { getReader: () => ({
+            read: jest.fn()
+              .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent('A', 0)) })
+              .mockRejectedValueOnce(new Error('Drop before duration stability')),
+          }) },
+        } as unknown as Response : { ok: false, status: 500 } as Response)
+        .mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } } as unknown as Response);
+      const { result, unmount } = renderHook(() => useRealtimeTelemetry(subjectA, {
+        maxRetries: 2, baseDelayMs: 1, stableEventsThreshold: 2, stableDurationMs: 25,
+      }));
+      try {
+        await act(async () => { await jest.advanceTimersByTimeAsync(5); });
+        expect(result.current.retryCount).toBe(1);
+        await act(async () => { await jest.advanceTimersByTimeAsync(30); });
+        expect(result.current.connectionStatus).toBe('connected');
+        expect(result.current.retryCount).toBe(withForecast ? 0 : 1);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      } finally {
+        unmount();
+        await act(async () => { await jest.advanceTimersByTimeAsync(60_000); });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(reader.cancel).toHaveBeenCalledTimes(1);
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe('whole-response pinned replay validation', () => {
