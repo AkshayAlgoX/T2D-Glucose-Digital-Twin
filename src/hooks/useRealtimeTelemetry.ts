@@ -4,7 +4,7 @@ import { ForecastResponse } from '@/types/forecast-response';
 import { StreamEvent } from '@/types/stream-event';
 import { SubjectStore } from '@/lib/types';
 import { checkInvariants } from '@/lib/invariants';
-import { ForecastResponseSchema, StreamEventSchema } from '@/lib/zod-schemas';
+import { ForecastResponseSchema, StreamEventSchema, AlertSchema, DataQualitySchema } from '@/lib/zod-schemas';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
@@ -161,14 +161,29 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
             }
           }
           if (lastData && currentEpoch === epochRef.current && !ac.signal.aborted) {
-            const parsed = StreamEventSchema.parse(JSON.parse(lastData));
-            const raw = (parsed.event === 'forecast.updated'
-              ? ForecastResponseSchema.parse(parsed.payload)
-              : parsed.payload) as ForecastResponse;
-
-            if (raw?.subject?.subject_id === patientId) {
-              checkInvariants(raw);
-              setForecastResponse(raw);
+            try {
+              const parsed = StreamEventSchema.parse(JSON.parse(lastData));
+              if (parsed.subject_id === patientId) {
+                if (parsed.event === 'forecast.updated') {
+                  const raw = ForecastResponseSchema.parse(parsed.payload) as unknown as ForecastResponse;
+                  if (raw?.subject?.subject_id === patientId) {
+                    checkInvariants(raw);
+                    setForecastResponse(raw);
+                  }
+                } else if (parsed.event === 'alert.raised' || parsed.event === 'alert.cleared') {
+                  const alertPayload = AlertSchema.parse(parsed.payload);
+                  setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
+                } else if (parsed.event === 'data_quality.changed') {
+                  const dqPayload = DataQualitySchema.parse(parsed.payload);
+                  setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
+                } else if (parsed.event === 'twin.recalibrated') {
+                  if (typeof parsed.payload !== 'object' || parsed.payload === null) {
+                    throw new Error('contract-invalid');
+                  }
+                }
+              }
+            } catch (err: unknown) {
+              console.error("Replay parse error or invariant failure", err);
             }
           }
           setConnectionStatus('disconnected');
@@ -256,23 +271,107 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
             if (eventData && currentEpoch === epochRef.current && !ac.signal.aborted) {
               try {
                 const parsedEvent = StreamEventSchema.parse(JSON.parse(eventData.trim()));
-                const raw = (parsedEvent.event === 'forecast.updated' 
-                  ? ForecastResponseSchema.parse(parsedEvent.payload)
-                  : parsedEvent.payload) as ForecastResponse;
 
-                if (raw?.subject?.subject_id !== patientId) {
+                // Envelope subject validation: ignore events for other subjects
+                if (parsedEvent.subject_id !== patientId) {
                   continue;
                 }
 
-                checkInvariants(raw);
+                switch (parsedEvent.event) {
+                  case 'forecast.updated': {
+                    const forecastPayload = ForecastResponseSchema.parse(parsedEvent.payload) as unknown as ForecastResponse;
+                    if (forecastPayload.subject?.subject_id !== patientId) {
+                      continue;
+                    }
+                    checkInvariants(forecastPayload);
+                    setForecastResponse(forecastPayload);
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const newCache = { ...prev };
+
+                      if (forecastPayload.current?.measured_at && forecastPayload.current.value_mg_dl != null) {
+                        const t = forecastPayload.current.measured_at;
+                        if (!newCache.cgm.some(c => c.t === t)) {
+                          newCache.cgm = [...prev.cgm, { t, value: forecastPayload.current.value_mg_dl, trend: forecastPayload.current.trend_arrow || '' }];
+                        }
+                      }
+
+                      if (forecastPayload.spike_risk?.probability_120m !== undefined && forecastPayload.as_of) {
+                        if (!newCache.risk.some(r => r.t === forecastPayload.as_of)) {
+                          newCache.risk = [...prev.risk, { t: forecastPayload.as_of, p: forecastPayload.spike_risk.probability_120m }];
+                        }
+                      }
+
+                      if (forecastPayload.alert?.state && forecastPayload.as_of) {
+                        if (!newCache.alerts.some(a => a.t === forecastPayload.as_of)) {
+                          newCache.alerts = [...prev.alerts, { t: forecastPayload.as_of, state: forecastPayload.alert.state }];
+                        }
+                      }
+
+                      if (forecastPayload.data_quality?.status && forecastPayload.as_of) {
+                        if (!newCache.dataQuality.some(q => q.t === forecastPayload.as_of)) {
+                          newCache.dataQuality = [...prev.dataQuality, { t: forecastPayload.as_of, status: forecastPayload.data_quality.status }];
+                        }
+                      }
+
+                      return newCache;
+                    });
+                    break;
+                  }
+
+                  case 'alert.raised':
+                  case 'alert.cleared': {
+                    const alertPayload = AlertSchema.parse(parsedEvent.payload);
+                    setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const t = alertPayload.since || parsedEvent.emitted_at;
+                      if (!prev.alerts.some(a => a.t === t && a.state === alertPayload.state)) {
+                        return {
+                          ...prev,
+                          alerts: [...prev.alerts, { t, state: alertPayload.state }],
+                        };
+                      }
+                      return prev;
+                    });
+                    break;
+                  }
+
+                  case 'data_quality.changed': {
+                    const dqPayload = DataQualitySchema.parse(parsedEvent.payload);
+                    setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const t = dqPayload.last_cgm_at || parsedEvent.emitted_at;
+                      if (!prev.dataQuality.some(q => q.t === t && q.status === dqPayload.status)) {
+                        return {
+                          ...prev,
+                          dataQuality: [...prev.dataQuality, { t, status: dqPayload.status }],
+                        };
+                      }
+                      return prev;
+                    });
+                    break;
+                  }
+
+                  case 'twin.recalibrated': {
+                    if (typeof parsedEvent.payload !== 'object' || parsedEvent.payload === null) {
+                      throw new Error('contract-invalid');
+                    }
+                    // Supported per contract: ignore payload safely in UI without mutating state
+                    break;
+                  }
+                }
+
                 lastEventIdRef.current = parsedEvent.event_id || currentBlockId;
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
 
                 // Stability condition: require at least stableEventsThreshold consecutive valid
                 // events on this connection before resetting the failure budget.
-                // A single event followed by immediate failure does NOT reset the budget,
-                // strictly preventing infinite flapping/reconnection loops.
                 eventsOnCurrentConnectionRef.current += 1;
                 if (eventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
                   retryCountRef.current = 0;
@@ -283,40 +382,6 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                     stabilityTimerRef.current = undefined;
                   }
                 }
-
-                setForecastResponse(raw);
-
-                setCache(prev => {
-                  if (prev.patientId !== patientId) return prev;
-                  const newCache = { ...prev };
-
-                  if (raw.current?.measured_at && raw.current.value_mg_dl != null) {
-                    const t = raw.current.measured_at;
-                    if (!newCache.cgm.some(c => c.t === t)) {
-                      newCache.cgm = [...prev.cgm, { t, value: raw.current.value_mg_dl, trend: raw.current.trend_arrow || '' }];
-                    }
-                  }
-
-                  if (raw.spike_risk?.probability_120m !== undefined && raw.as_of) {
-                    if (!newCache.risk.some(r => r.t === raw.as_of)) {
-                      newCache.risk = [...prev.risk, { t: raw.as_of, p: raw.spike_risk.probability_120m }];
-                    }
-                  }
-
-                  if (raw.alert?.state && raw.as_of) {
-                    if (!newCache.alerts.some(a => a.t === raw.as_of)) {
-                      newCache.alerts = [...prev.alerts, { t: raw.as_of, state: raw.alert.state }];
-                    }
-                  }
-
-                  if (raw.data_quality?.status && raw.as_of) {
-                    if (!newCache.dataQuality.some(q => q.t === raw.as_of)) {
-                      newCache.dataQuality = [...prev.dataQuality, { t: raw.as_of, status: raw.data_quality.status }];
-                    }
-                  }
-
-                  return newCache;
-                });
               } catch (err: unknown) {
                 console.error("Stream parse error or invariant failure", err);
                 try { await reader.cancel(); } catch { /* ignore */ }
