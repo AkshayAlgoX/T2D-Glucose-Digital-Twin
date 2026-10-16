@@ -1,6 +1,8 @@
+import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { TextDecoder } from 'node:util';
 import { useRealtimeTelemetry } from '../src/hooks/useRealtimeTelemetry';
+import { TimeContext } from '../src/components/digital-twin/TimeContext';
 import { ForecastResponse } from '../src/types/forecast-response';
 import { ForecastResponseSchema } from '../src/lib/zod-schemas';
 import source from './fixtures/risk-audit-forecast.json';
@@ -575,16 +577,23 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('non-forecast valid events contribute to connection stability budget', async () => {
+  it('only forecast.updated events count toward event-count stability; a connection with two forecast events achieves stability', async () => {
     const forecast = validFixture();
-    const event1 = {
+    const forecastEvent1 = {
       event: 'forecast.updated',
       event_id: '000001-forecast',
       subject_id: subjectA,
       emitted_at: '2026-10-16T12:00:00Z',
       payload: forecast,
     };
-    const event2 = {
+    const forecastEvent2 = {
+      event: 'forecast.updated',
+      event_id: '000002-forecast',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:01:00Z',
+      payload: forecast,
+    };
+    const alertEvent = {
       event: 'alert.raised',
       event_id: '000001-alert',
       subject_id: subjectA,
@@ -599,21 +608,22 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
     jest.spyOn(global, 'fetch').mockImplementation(async () => {
       connectionAttempts++;
       if (connectionAttempts === 1) {
-        // First connection: delivers 1 event, then drops (not stable yet, maxRetries = 2)
+        // First connection: delivers 1 forecast + 1 alert, then drops (only 1 forecast < 2 threshold)
         const reader = {
           read: jest.fn()
-            .mockResolvedValueOnce({ done: false, value: ssePacket(event1) })
+            .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent1) })
+            .mockResolvedValueOnce({ done: false, value: ssePacket(alertEvent) })
             .mockRejectedValueOnce(new Error('Drop 1')),
           cancel: jest.fn().mockResolvedValue(undefined),
         };
         return { ok: true, body: { getReader: () => reader } } as unknown as Response;
       }
       if (connectionAttempts === 2) {
-        // Second connection: delivers 2 events (forecast + alert) -> achieves stability!
+        // Second connection: delivers 2 forecast events -> achieves stability!
         const reader = {
           read: jest.fn()
-            .mockResolvedValueOnce({ done: false, value: ssePacket(event1) })
-            .mockResolvedValueOnce({ done: false, value: ssePacket(event2) })
+            .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent1) })
+            .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent2) })
             .mockReturnValue(new Promise(() => {})), // stays connected
           cancel: jest.fn().mockResolvedValue(undefined),
         };
@@ -631,8 +641,419 @@ describe('SSE Event Contract Correctness & Dispatch', () => {
     );
 
     await waitFor(() => expect(result.current.connectionStatus).toBe('connected'));
-    // Retry count was reset upon reaching 2 events on connection 2
+    // Retry count was reset upon reaching 2 forecast.updated events on connection 2
     expect(result.current.retryCount).toBe(0);
     expect(result.current.error).toBeNull();
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Finding 1 — Companion events must not defeat bounded retries
+  // ─────────────────────────────────────────────────────────────────
+
+  it('F1: repeated connections each emitting forecast+companion then failing terminate after exactly maxRetries+1 total attempts', async () => {
+    // Regression: with maxRetries=2, each short-lived connection emits 1 forecast.updated
+    // and 1 alert.raised before failing. Because companion events do NOT count toward
+    // the event-count stability threshold, each connection sees only 1 forecast event
+    // (< stableEventsThreshold=2), so the retry budget is never reset, and the hook
+    // must terminate after exactly 3 connection attempts (initial + 2 retries).
+    const forecast = validFixture();
+    let connectionAttempts = 0;
+
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      connectionAttempts++;
+      const forecastEvent = {
+        event: 'forecast.updated',
+        event_id: `00000${connectionAttempts}-forecast`,
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: forecast,
+      };
+      const companionAlert = {
+        event: 'alert.raised',
+        event_id: `00000${connectionAttempts}-alert`,
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:01Z',
+        payload: {
+          state: 'watch',
+          alert_id: '123e4567-e89b-12d3-a456-426614174099',
+          since: '2026-10-16T12:00:00Z',
+          suppressed_until: null,
+          message_key: 'alert.spike.watch',
+        },
+      };
+      const reader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({ done: false, value: ssePacket(forecastEvent) })
+          .mockResolvedValueOnce({ done: false, value: ssePacket(companionAlert) })
+          .mockRejectedValueOnce(new Error(`Flap drop on connection ${connectionAttempts}`)),
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+      return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+    });
+
+    const { result } = renderHook(() =>
+      useRealtimeTelemetry(subjectA, {
+        maxRetries: 2,
+        baseDelayMs: 20,
+        stableEventsThreshold: 2,
+      })
+    );
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+    expect(result.current.error?.message).toBe('unavailable');
+    // Exactly 3 total connection requests: initial + 2 retries
+    expect(connectionAttempts).toBe(3);
+
+    // Verify no further automatic retries are dispatched
+    await new Promise(r => setTimeout(r, 80));
+    expect(connectionAttempts).toBe(3);
+  });
+
+  it('F1: companion-only connections (no forecast.updated) do not reset retry budget and terminate after maxRetries', async () => {
+    // Edge case: every connection delivers only alert and data_quality events with no
+    // forecast.updated at all. The retry budget must never be reset.
+    let connectionAttempts = 0;
+    jest.spyOn(global, 'fetch').mockImplementation(async () => {
+      connectionAttempts++;
+      const alertEvent = {
+        event: 'alert.raised',
+        event_id: `00000${connectionAttempts}-alert`,
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: {
+          state: 'watch',
+          alert_id: '123e4567-e89b-12d3-a456-426614174099',
+          since: '2026-10-16T12:00:00Z',
+          suppressed_until: null,
+          message_key: 'alert.spike.watch',
+        },
+      };
+      const reader = {
+        read: jest.fn()
+          .mockResolvedValueOnce({ done: false, value: ssePacket(alertEvent) })
+          .mockRejectedValueOnce(new Error('Drop without forecast')),
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+      return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+    });
+
+    const { result } = renderHook(() =>
+      useRealtimeTelemetry(subjectA, {
+        maxRetries: 2,
+        baseDelayMs: 20,
+        stableEventsThreshold: 1, // even threshold=1 must not be satisfied without forecast
+      })
+    );
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'), { timeout: 2000 });
+    expect(result.current.error?.message).toBe('unavailable');
+    expect(connectionAttempts).toBe(3);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Finding 2 — Reject arrays as twin.recalibrated payloads (streaming path)
+  // ─────────────────────────────────────────────────────────────────
+
+  it('F2: rejects array twin.recalibrated payload in streaming path with contract-invalid and does not advance event ID', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const arrayRecal = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:00:00Z',
+      payload: [{ schema_version: '1.0.0' }], // array — must be rejected
+    };
+
+    const reader = {
+      read: jest.fn().mockResolvedValueOnce({ done: false, value: ssePacket(arrayRecal) }),
+      cancel: jest.fn().mockResolvedValue(undefined),
+    };
+
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 20 }));
+
+    await waitFor(() => expect(result.current.error?.message).toBe('contract-invalid'));
+    expect(result.current.connectionStatus).toBe('disconnected');
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1); // non-transient: no retry
+  });
+
+  it('F2: rejects null twin.recalibrated payload in streaming path with contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const nullRecal = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:00:00Z',
+      payload: null,
+    };
+
+    const reader = {
+      read: jest.fn().mockResolvedValueOnce({ done: false, value: ssePacket(nullRecal) }),
+      cancel: jest.fn().mockResolvedValue(undefined),
+    };
+
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 20 }));
+
+    await waitFor(() => expect(result.current.error?.message).toBe('contract-invalid'));
+    expect(result.current.connectionStatus).toBe('disconnected');
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('F2: rejects primitive twin.recalibrated payload in streaming path with contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const primitiveRecal = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:00:00Z',
+      payload: 42, // number primitive — must be rejected
+    };
+
+    const reader = {
+      read: jest.fn().mockResolvedValueOnce({ done: false, value: ssePacket(primitiveRecal) }),
+      cancel: jest.fn().mockResolvedValue(undefined),
+    };
+
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA, { maxRetries: 3, baseDelayMs: 20 }));
+
+    await waitFor(() => expect(result.current.error?.message).toBe('contract-invalid'));
+    expect(result.current.connectionStatus).toBe('disconnected');
+    expect(reader.cancel).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Finding 2 — Reject arrays as twin.recalibrated payloads (replay path)
+  // ─────────────────────────────────────────────────────────────────
+
+  it('F2: rejects array twin.recalibrated payload in replay (asOf) path with contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const asOfSubjectA = '2026-10-16T12:00:00Z';
+    const arrayRecalEvent = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: asOfSubjectA,
+      payload: [{ schema_version: '1.0.0' }], // array — must be rejected
+    };
+
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(arrayRecalEvent)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: asOfSubjectA, setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F2: rejects null twin.recalibrated payload in replay path with contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const asOfSubjectA = '2026-10-16T12:00:00Z';
+    const nullRecalEvent = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: asOfSubjectA,
+      payload: null,
+    };
+
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(nullRecalEvent)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: asOfSubjectA, setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F2: rejects primitive twin.recalibrated payload in replay path with contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const asOfSubjectA = '2026-10-16T12:00:00Z';
+    const primRecalEvent = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: asOfSubjectA,
+      payload: 12345,
+    };
+
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(primRecalEvent)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: asOfSubjectA, setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Finding 3 — Replay validation errors must not be swallowed
+  // ─────────────────────────────────────────────────────────────────
+
+  it('F3: malformed replay JSON routes through contract-invalid and sets disconnected with error', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => 'data: {BROKEN JSON}\n\n',
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F3: invalid replay SSE envelope routes through contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const invalidEnvelope = { event: 'unknown.event', event_id: '1', subject_id: subjectA, emitted_at: '2026-10-16T12:00:00Z', payload: {} };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(invalidEnvelope)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F3: invalid replay forecast payload routes through contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const invalidForecastEnvelope = {
+      event: 'forecast.updated',
+      event_id: '000001-forecast',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:00:00Z',
+      payload: { malformed: true }, // not a valid ForecastResponse
+    };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(invalidForecastEnvelope)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F3: invalid replay recalibration payload (array) routes through contract-invalid', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const arrayRecalEnvelope = {
+      event: 'twin.recalibrated',
+      event_id: '000001-recal',
+      subject_id: subjectA,
+      emitted_at: '2026-10-16T12:00:00Z',
+      payload: [{ schema_version: '1.0.0' }], // array — must be rejected
+    };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => `data: ${JSON.stringify(arrayRecalEnvelope)}\n\n`,
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error?.message).toBe('contract-invalid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('F3: clean finite EOF in replay results in disconnected with null error and no retries', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => '', // clean EOF: no data
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useRealtimeTelemetry(subjectA), {
+      wrapper: ({ children }) => (
+        <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
+          {children}
+        </TimeContext.Provider>
+      ),
+    });
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+    expect(result.current.error).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
