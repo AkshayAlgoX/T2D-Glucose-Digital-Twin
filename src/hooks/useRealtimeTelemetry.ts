@@ -156,39 +156,58 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
           setConnectionStatus('connected');
           const text = await res.text();
           if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
-          const lines = text.split('\n');
-          let lastData = '';
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              lastData = line.slice(6);
-            }
-          }
-          if (lastData && currentEpoch === epochRef.current && !ac.signal.aborted) {
-            try {
-              const parsed = StreamEventSchema.parse(JSON.parse(lastData));
-              if (parsed.subject_id === patientId) {
-                if (parsed.event === 'forecast.updated') {
+          // Validate the entire finite response before applying its final event.
+          // Earlier forecasts must neither conceal invalid events nor change the
+          // existing last-event selection semantics when the final event is ancillary.
+          let applyLastEvent: (() => void) | undefined;
+          try {
+            for (const block of text.split(/\r?\n\r?\n/)) {
+              const data = block.split(/\r?\n/).flatMap(line => {
+                if (line === 'data') return [''];
+                if (!line.startsWith('data:')) return [];
+                const value = line.slice(5);
+                return [value.startsWith(' ') ? value.slice(1) : value];
+              });
+              if (data.length === 0) continue; // Comments and metadata are not data events.
+
+              const parsed = StreamEventSchema.parse(JSON.parse(data.join('\n')));
+              applyLastEvent = undefined;
+              switch (parsed.event) {
+                case 'forecast.updated': {
                   const raw = ForecastResponseSchema.parse(parsed.payload) as unknown as ForecastResponse;
-                  if (raw?.subject?.subject_id === patientId) {
-                    checkInvariants(raw);
-                    setForecastResponse(raw);
+                  checkInvariants(raw);
+                  if (parsed.subject_id === patientId && raw.subject.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(raw);
                   }
-                } else if (parsed.event === 'alert.raised' || parsed.event === 'alert.cleared') {
+                  break;
+                }
+                case 'alert.raised':
+                case 'alert.cleared': {
                   const alertPayload = AlertSchema.parse(parsed.payload);
-                  setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
-                } else if (parsed.event === 'data_quality.changed') {
+                  if (parsed.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
+                  }
+                  break;
+                }
+                case 'data_quality.changed': {
                   const dqPayload = DataQualitySchema.parse(parsed.payload);
-                  setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
-                } else if (parsed.event === 'twin.recalibrated') {
+                  if (parsed.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
+                  }
+                  break;
+                }
+                case 'twin.recalibrated': {
                   if (typeof parsed.payload !== 'object' || parsed.payload === null || Array.isArray(parsed.payload)) {
                     throw new Error('contract-invalid');
                   }
+                  break;
                 }
               }
-            } catch (err: unknown) {
-              console.error("Replay parse error or invariant failure", err);
-              throw new Error('contract-invalid');
             }
+            applyLastEvent?.();
+          } catch (err: unknown) {
+            console.error("Replay parse error or invariant failure", err);
+            throw new Error('contract-invalid');
           }
           setConnectionStatus('disconnected');
           return;
