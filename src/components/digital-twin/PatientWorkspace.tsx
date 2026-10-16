@@ -9,7 +9,7 @@ import { RiskStrip } from './RiskStrip';
 import { TimeScrubber } from './TimeScrubber';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { formatTime, formatDate, formatPct } from '@/lib/formatters/date';
-import type { ForecastResponse } from '@/types/forecast-response';
+import type { ForecastResponse, MedClass } from '@/types/forecast-response';
 import type { SubjectStore } from '@/lib/types';
 
 const compactContextQuery = '(max-width: 640px)';
@@ -33,15 +33,60 @@ export interface PatientWorkspaceProps {
   error?: Error | null;
 }
 
+const medicationClassLabels: Record<MedClass, string> = {
+  metformin: 'Metformin',
+  sglt2i: 'SGLT2 inhibitor',
+  glp1_ra: 'GLP-1 receptor agonist',
+  dpp4i: 'DPP-4 inhibitor',
+  sulfonylurea: 'Sulfonylurea',
+  tzd: 'Thiazolidinedione (TZD)',
+  basal_insulin: 'Basal insulin',
+  prandial_insulin: 'Prandial insulin',
+  corticosteroid: 'Corticosteroid',
+};
+
+export function isValidCalendarDate(dateString: unknown): dateString is string {
+  if (typeof dateString !== 'string') return false;
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.exec(dateString);
+  if (!match) return false;
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [
+    31,
+    isLeapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  return day <= daysInMonth[month - 1];
+}
+
 function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'patientId' | 'forecast'>) {
   const ehr = forecast?.ehr_context;
   const twin = forecast?.twin_state;
-  const fields = [
-    ['Age', ehr ? ehr.age_years + ' years' : '—'],
+  const fields: Array<[string, string | number, string?]> = [
+    ['Age', ehr?.age_years != null ? ehr.age_years + ' years' : '—'],
     ['Sex', ehr?.sex ?? '—'],
     ['BMI', ehr?.bmi ?? '—'],
-    ['HbA1c', ehr ? ehr.hba1c_pct + '%' : '—'],
-    ['eGFR', ehr?.egfr != null ? ehr.egfr + ' mL/min/1.73 m²' : '—'],
+    ['HbA1c', ehr?.hba1c_pct != null ? ehr.hba1c_pct + '%' : '—'],
+    ['eGFR', ehr?.egfr != null ? ehr.egfr + ' mL/min/1.73 m²' : '—', 'context-egfr'],
+    ['Diabetes duration', typeof ehr?.t2d_duration_years === 'number' && Number.isFinite(ehr.t2d_duration_years) && ehr.t2d_duration_years >= 0
+      ? `${ehr.t2d_duration_years} ${ehr.t2d_duration_years === 1 ? 'year' : 'years'}` : 'Unavailable'],
+    ['Medication classes (EHR)', ehr?.med_classes == null ? 'Unavailable'
+      : ehr.med_classes.length === 0 ? 'None listed'
+      : ehr.med_classes.map(med => medicationClassLabels[med]).join(', '), 'context-medications'],
   ];
   return (
     <aside className="clinical-panel panel" aria-label="Patient Identity">
@@ -59,11 +104,13 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
             <div><dt>Sex</dt><dd><span className="skeleton skeleton-field-sm" aria-hidden="true" /></dd></div>
             <div><dt>BMI</dt><dd><span className="skeleton skeleton-field-sm" aria-hidden="true" /></dd></div>
             <div><dt>HbA1c</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
-            <div><dt>eGFR</dt><dd><span className="skeleton skeleton-field-lg" aria-hidden="true" /></dd></div>
+            <div className="context-egfr"><dt>eGFR</dt><dd><span className="skeleton skeleton-field-lg" aria-hidden="true" /></dd></div>
+            <div><dt>Diabetes duration</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
+            <div className="context-medications"><dt>Medication classes (EHR)</dt><dd><span className="skeleton skeleton-field-lg" aria-hidden="true" /></dd></div>
           </dl>
         ) : (
           <dl className="clinical-fields">
-            {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            {fields.map(([label, value, className]) => <div key={label} className={className}><dt>{label}</dt><dd>{value}</dd></div>)}
           </dl>
         )}
         {!forecast ? (
@@ -71,7 +118,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         ) : !ehr ? (
           <p className="fine-print">EHR context has not been received.</p>
         ) : (
-          <details className="context-details"><summary>Context provenance</summary><p className="fine-print">HbA1c recorded <time dateTime={ehr.hba1c_date}>{Number.isFinite(Date.parse(ehr.hba1c_date)) ? formatDate(ehr.hba1c_date) : ehr.hba1c_date}</time>. EHR-derived context, not a clinical assessment.</p></details>
+          <details className="context-details"><summary>Context provenance</summary><p className="fine-print">HbA1c reference date: {isValidCalendarDate(ehr.hba1c_date) ? <time dateTime={ehr.hba1c_date}>{formatDate(ehr.hba1c_date)}</time> : 'Unavailable'}. Date assigned to synthetic cohort start, not a clinical measurement date. EHR-derived context, not a clinical assessment.</p></details>
         )}
       </section>
       {twin && <section className="twin-context" aria-labelledby="twin-heading">
