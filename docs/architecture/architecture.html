@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>T2D Glucose Digital Twin — System Architecture</title>
+  <style>
+    @page {
+      size: 297mm 210mm;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 20mm 24mm;
+    }
+    .container {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 24px 32px;
+    }
+    h1 {
+      font-size: 20pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 11pt;
+      color: #0284c7;
+      font-weight: 600;
+      margin-bottom: 18px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .tier {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .box {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 9.5pt;
+    }
+    .box h3 {
+      font-size: 10pt;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #0f172a;
+    }
+    .box p {
+      color: #475569;
+      line-height: 1.4;
+    }
+    .tier-label {
+      font-size: 9pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .arrow-down {
+      text-align: center;
+      font-size: 14pt;
+      color: #94a3b8;
+      font-weight: 800;
+      margin: -6px 0;
+    }
+    .highlight-physics { border-color: #3b82f6; background: #eff6ff; }
+    .highlight-ml { border-color: #8b5cf6; background: #f5f3ff; }
+    .highlight-proxy { border-color: #10b981; background: #ecfdf5; }
+    .highlight-warn { border-color: #f59e0b; background: #fffbeb; }
+    .footer {
+      margin-top: 14px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 8.5pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>T2D Glucose Digital Twin — System Architecture</h1>
+    <div class="subtitle">End-to-End Pipeline: Observable Ingestion &rarr; UKF S3 Prior &rarr; PR-TFT Residuals &rarr; SSE Proxy &rarr; Workstation</div>
+
+    <div class="flow-diagram">
+      <!-- Tier 1: Ingestion -->
+      <div>
+        <div class="tier-label">Tier 1: Multimodal Observable Ingestion (Contract S3)</div>
+        <div class="tier">
+          <div class="box">
+            <h3>Static EHR Context</h3>
+            <p>Age, BMI, HbA1c, eGFR, diabetes duration, medication flags (metformin, SGLT2i, GLP-1, insulin).</p>
+          </div>
+          <div class="box">
+            <h3>Dynamic CGM Telemetry</h3>
+            <p>5-minute continuous glucose readings (mg/dL), trend velocity (&Delta;mg/dL/min), sensor flag.</p>
+          </div>
+          <div class="box">
+            <h3>Cardiorespiratory Streams</h3>
+            <p>Heart rate (HR), Heart rate variability (HRV), resting HR warm-up calibration.</p>
+          </div>
+          <div class="box">
+            <h3>Behavioral & Dietary Logs</h3>
+            <p>Logged meal carbs (grams), meal timing, step counts, sleep duration/stages.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">&darr;</div>
+
+      <!-- Tier 2: Hybrid Modeling -->
+      <div>
+        <div class="tier-label">Tier 2: Hybrid Physiological & Deep Learning Engine</div>
+        <div class="tier">
+          <div class="box highlight-physics">
+            <h3>Mechanistic UKF S3</h3>
+            <p>2-compartment Bergman minimal model + gut absorption dynamics. Produces 120-min physiological prior.</p>
+          </div>
+          <div class="box highlight-ml">
+            <h3>PR-TFT Encoder/Decoder</h3>
+            <p>Variable selection networks, LSTM temporal encoder, causal multi-head self-attention.</p>
+          </div>
+          <div class="box highlight-ml">
+            <h3>Residual Quantile Heads</h3>
+            <p>Learns residual deltas over UKF prior. Outputs 7 quantiles (p05, p10, p25, p50, p75, p90, p95).</p>
+          </div>
+          <div class="box highlight-ml">
+            <h3>Spike Hazard Predictor</h3>
+            <p>Predicts discrete-time spike onset hazard over 120-minute horizon. Calibrated isotonic risk.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">&darr;</div>
+
+      <!-- Tier 3: Serving & Proxy -->
+      <div>
+        <div class="tier-label">Tier 3: Reliable Serving & Telemetry Proxy</div>
+        <div class="tier">
+          <div class="box">
+            <h3>FastAPI Inference Service</h3>
+            <p><code>serve_pr_tft.py</code> (port 8001). Generates <code>ForecastResponse</code> v1 and stateful alerts.</p>
+          </div>
+          <div class="box highlight-proxy">
+            <h3>Next.js SSE Proxy Route</h3>
+            <p><code>createSafeSSETransformStream</code> (port 3000). Chunk-invariant earliest-delimiter parser.</p>
+          </div>
+          <div class="box highlight-proxy">
+            <h3>Client Telemetry Hook</h3>
+            <p><code>useRealtimeTelemetry</code>. Bounded exponential backoff, envelope validation, contract enforcement.</p>
+          </div>
+          <div class="box highlight-warn">
+            <h3>What-If Simulation API</h3>
+            <p>Counterfactual meal/activity simulation via <code>/api/forecast</code>. UI editor explicitly disabled.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">&darr;</div>
+
+      <!-- Tier 4: Clinical Interface -->
+      <div>
+        <div class="tier-label">Tier 4: Clinical Workstation Dashboard</div>
+        <div class="tier">
+          <div class="box">
+            <h3>Cohort Directory</h3>
+            <p><code>/cohort</code> page. Search, filter by status (Healthy, Prediabetes, T2D), select subjects.</p>
+          </div>
+          <div class="box">
+            <h3>Patient Workspace</h3>
+            <p><code>/patients/[id]</code>. Visualizes glucose ribbon, current trend, and alert status.</p>
+          </div>
+          <div class="box">
+            <h3>Risk Waterfall</h3>
+            <p>Cumulative adverse event probability curve crossing clinical thresholds.</p>
+          </div>
+          <div class="box">
+            <h3>Model Contributions</h3>
+            <p>Arithmetic decomposition: UKF baseline, habitual meals, logged carbs, deep residuals.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Release Commit: <code>68f8cce84dee8a584982a8bb23113ed22bb3d01c</code></span>
+      <span>Happiest Health Digital Twin Challenge — Architecture Document</span>
+      <span>Investigational Research Prototype — Not for Clinical Decisions</span>
+    </div>
+  </div>
+</body>
+</html>
