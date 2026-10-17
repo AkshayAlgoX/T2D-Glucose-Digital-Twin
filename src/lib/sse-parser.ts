@@ -1,4 +1,4 @@
-import { validateStreamEvent, validateForecastResponse } from './schema-validator';
+import { validateStreamEvent } from './schema-validator';
 
 export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint8Array> {
   const decoder = new TextDecoder();
@@ -12,9 +12,25 @@ export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
       
-      let boundaryIndex;
-      while ((boundaryIndex = buffer.indexOf('\n\n')) !== -1 || (boundaryIndex = buffer.indexOf('\r\n\r\n')) !== -1) {
-        const sepLen = buffer.startsWith('\r\n\r\n', boundaryIndex) ? 4 : 2;
+      while (true) {
+        const lfIdx = buffer.indexOf('\n\n');
+        const crlfIdx = buffer.indexOf('\r\n\r\n');
+
+        if (lfIdx === -1 && crlfIdx === -1) {
+          break;
+        }
+
+        let boundaryIndex: number;
+        let sepLen: number;
+
+        if (crlfIdx !== -1 && (lfIdx === -1 || crlfIdx < lfIdx)) {
+          boundaryIndex = crlfIdx;
+          sepLen = 4;
+        } else {
+          boundaryIndex = lfIdx;
+          sepLen = 2;
+        }
+
         const block = buffer.slice(0, boundaryIndex);
         buffer = buffer.slice(boundaryIndex + sepLen);
 
@@ -42,31 +58,25 @@ export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint
           try {
             const parsed = JSON.parse(dataString) as any;
             if (validateStreamEvent(parsed)) {
-              let isPayloadValid = true;
-              if ((parsed as any).event === 'forecast.updated' && !validateForecastResponse((parsed as any).payload)) {
-                isPayloadValid = false;
-              }
-              if (isPayloadValid) {
-                let out = '';
-                if (currentEventId) out += `id: ${currentEventId}\n`;
-                if (currentEventName) out += `event: ${currentEventName}\n`;
-                out += `data: ${JSON.stringify(parsed)}\n\n`;
-                controller.enqueue(encoder.encode(out));
-              }
+              let out = '';
+              if (currentEventId) out += `id: ${currentEventId}\n`;
+              if (currentEventName) out += `event: ${currentEventName}\n`;
+              out += `data: ${JSON.stringify(parsed)}\n\n`;
+              controller.enqueue(encoder.encode(out));
             } else {
               let out = '';
               if (currentEventId) out += `id: ${currentEventId}\n`;
               if (currentEventName) out += `event: ${currentEventName}\n`;
-              out += `data: ${dataString}\n\n`;
+              out += currentData.map(d => `data: ${d}`).join('\n') + '\n\n';
               controller.enqueue(encoder.encode(out));
             }
           } catch (e) {
             // Not JSON, pass through safely as per P0-1
             let out = '';
-              if (currentEventId) out += `id: ${currentEventId}\n`;
-              if (currentEventName) out += `event: ${currentEventName}\n`;
-              out += `data: ${dataString}\n\n`;
-              controller.enqueue(encoder.encode(out));
+            if (currentEventId) out += `id: ${currentEventId}\n`;
+            if (currentEventName) out += `event: ${currentEventName}\n`;
+            out += currentData.map(d => `data: ${d}`).join('\n') + '\n\n';
+            controller.enqueue(encoder.encode(out));
           }
         }
 

@@ -4,7 +4,7 @@ import { ForecastResponse } from '@/types/forecast-response';
 import { StreamEvent } from '@/types/stream-event';
 import { SubjectStore } from '@/lib/types';
 import { checkInvariants } from '@/lib/invariants';
-import { ForecastResponseSchema, StreamEventSchema } from '@/lib/zod-schemas';
+import { ForecastResponseSchema, StreamEventSchema, AlertSchema, DataQualitySchema } from '@/lib/zod-schemas';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
@@ -57,7 +57,9 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
   const stabilityTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const activeReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const retryCountRef = useRef(0);
-  const eventsOnCurrentConnectionRef = useRef(0);
+  // Counts distinct forward forecast progress on the current connection.
+  // Duplicates and companion packets must not manufacture connection stability.
+  const forecastEventsOnCurrentConnectionRef = useRef(0);
 
   const retry = useCallback(() => {
     if (retryTimerRef.current) {
@@ -68,7 +70,7 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
       clearTimeout(stabilityTimerRef.current);
       stabilityTimerRef.current = undefined;
     }
-    eventsOnCurrentConnectionRef.current = 0;
+    forecastEventsOnCurrentConnectionRef.current = 0;
     retryCountRef.current = 0;
     setRetryAttempt(0);
     setError(null);
@@ -132,6 +134,11 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
       ? `/api/patients/${patientId}/stream?as_of=${encodeURIComponent(asOf)}`
       : `/api/patients/${patientId}/stream`;
 
+    // Automatic reconnects must not count already received forecasts as progress.
+    // A new effect (subject/time change or explicit retry) starts a fresh session.
+    const seenForecastIds = new Set<string>();
+    let latestForecastAnchor = -Infinity;
+
     const connect = async () => {
       try {
         const headers: Record<string, string> = {};
@@ -153,23 +160,58 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
           setConnectionStatus('connected');
           const text = await res.text();
           if (ac.signal.aborted || currentEpoch !== epochRef.current) return;
-          const lines = text.split('\n');
-          let lastData = '';
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              lastData = line.slice(6);
-            }
-          }
-          if (lastData && currentEpoch === epochRef.current && !ac.signal.aborted) {
-            const parsed = StreamEventSchema.parse(JSON.parse(lastData));
-            const raw = (parsed.event === 'forecast.updated'
-              ? ForecastResponseSchema.parse(parsed.payload)
-              : parsed.payload) as ForecastResponse;
+          // Validate the entire finite response before applying its final event.
+          // Earlier forecasts must neither conceal invalid events nor change the
+          // existing last-event selection semantics when the final event is ancillary.
+          let applyLastEvent: (() => void) | undefined;
+          try {
+            for (const block of text.split(/\r?\n\r?\n/)) {
+              const data = block.split(/\r?\n/).flatMap(line => {
+                if (line === 'data') return [''];
+                if (!line.startsWith('data:')) return [];
+                const value = line.slice(5);
+                return [value.startsWith(' ') ? value.slice(1) : value];
+              });
+              if (data.length === 0) continue; // Comments and metadata are not data events.
 
-            if (raw?.subject?.subject_id === patientId) {
-              checkInvariants(raw);
-              setForecastResponse(raw);
+              const parsed = StreamEventSchema.parse(JSON.parse(data.join('\n')));
+              applyLastEvent = undefined;
+              switch (parsed.event) {
+                case 'forecast.updated': {
+                  const raw = ForecastResponseSchema.parse(parsed.payload) as unknown as ForecastResponse;
+                  checkInvariants(raw);
+                  if (parsed.subject_id === patientId && raw.subject.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(raw);
+                  }
+                  break;
+                }
+                case 'alert.raised':
+                case 'alert.cleared': {
+                  const alertPayload = AlertSchema.parse(parsed.payload);
+                  if (parsed.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
+                  }
+                  break;
+                }
+                case 'data_quality.changed': {
+                  const dqPayload = DataQualitySchema.parse(parsed.payload);
+                  if (parsed.subject_id === patientId) {
+                    applyLastEvent = () => setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
+                  }
+                  break;
+                }
+                case 'twin.recalibrated': {
+                  if (typeof parsed.payload !== 'object' || parsed.payload === null || Array.isArray(parsed.payload)) {
+                    throw new Error('contract-invalid');
+                  }
+                  break;
+                }
+              }
             }
+            applyLastEvent?.();
+          } catch (err: unknown) {
+            console.error("Replay parse error or invariant failure", err);
+            throw new Error('contract-invalid');
           }
           setConnectionStatus('disconnected');
           return;
@@ -183,7 +225,8 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         setConnectionStatus('connected');
         setError(null);
 
-        eventsOnCurrentConnectionRef.current = 0;
+        forecastEventsOnCurrentConnectionRef.current = 0;
+        let receivedForecast = false;
         if (stabilityTimerRef.current) {
           clearTimeout(stabilityTimerRef.current);
           stabilityTimerRef.current = undefined;
@@ -191,9 +234,11 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
 
         // Sustainable healthy connection timer: if connection stays open and receives data
         // for stableDurationMs, it also satisfies stability and resets the retry budget.
+        // Requires at least one valid forecast event to prevent a stream of companion-only
+        // events from satisfying the duration-based stability condition.
         if (stableDurationMs > 0 && !asOf) {
           stabilityTimerRef.current = setTimeout(() => {
-            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && eventsOnCurrentConnectionRef.current > 0) {
+            if (currentEpoch === epochRef.current && !ac.signal.aborted && activeReaderRef.current !== null && receivedForecast) {
               retryCountRef.current = 0;
               setRetryAttempt(0);
               setError(null);
@@ -256,67 +301,127 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
             if (eventData && currentEpoch === epochRef.current && !ac.signal.aborted) {
               try {
                 const parsedEvent = StreamEventSchema.parse(JSON.parse(eventData.trim()));
-                const raw = (parsedEvent.event === 'forecast.updated' 
-                  ? ForecastResponseSchema.parse(parsedEvent.payload)
-                  : parsedEvent.payload) as ForecastResponse;
 
-                if (raw?.subject?.subject_id !== patientId) {
+                // Envelope subject validation: ignore events for other subjects
+                if (parsedEvent.subject_id !== patientId) {
                   continue;
                 }
 
-                checkInvariants(raw);
+                let madeForecastProgress = false;
+                switch (parsedEvent.event) {
+                  case 'forecast.updated': {
+                    const forecastPayload = ForecastResponseSchema.parse(parsedEvent.payload) as unknown as ForecastResponse;
+                    if (forecastPayload.subject?.subject_id !== patientId) {
+                      continue;
+                    }
+                    checkInvariants(forecastPayload);
+                    receivedForecast = true;
+                    const forecastEventId = parsedEvent.event_id || currentBlockId;
+                    const anchor = Date.parse(forecastPayload.as_of);
+                    madeForecastProgress = (!forecastEventId || !seenForecastIds.has(forecastEventId))
+                      && anchor > latestForecastAnchor;
+                    if (forecastEventId) seenForecastIds.add(forecastEventId);
+                    if (madeForecastProgress) latestForecastAnchor = anchor;
+                    setForecastResponse(forecastPayload);
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const newCache = { ...prev };
+
+                      if (forecastPayload.current?.measured_at && forecastPayload.current.value_mg_dl != null) {
+                        const t = forecastPayload.current.measured_at;
+                        if (!newCache.cgm.some(c => c.t === t)) {
+                          newCache.cgm = [...prev.cgm, { t, value: forecastPayload.current.value_mg_dl, trend: forecastPayload.current.trend_arrow || '' }];
+                        }
+                      }
+
+                      if (forecastPayload.spike_risk?.probability_120m !== undefined && forecastPayload.as_of) {
+                        if (!newCache.risk.some(r => r.t === forecastPayload.as_of)) {
+                          newCache.risk = [...prev.risk, { t: forecastPayload.as_of, p: forecastPayload.spike_risk.probability_120m }];
+                        }
+                      }
+
+                      if (forecastPayload.alert?.state && forecastPayload.as_of) {
+                        if (!newCache.alerts.some(a => a.t === forecastPayload.as_of)) {
+                          newCache.alerts = [...prev.alerts, { t: forecastPayload.as_of, state: forecastPayload.alert.state }];
+                        }
+                      }
+
+                      if (forecastPayload.data_quality?.status && forecastPayload.as_of) {
+                        if (!newCache.dataQuality.some(q => q.t === forecastPayload.as_of)) {
+                          newCache.dataQuality = [...prev.dataQuality, { t: forecastPayload.as_of, status: forecastPayload.data_quality.status }];
+                        }
+                      }
+
+                      return newCache;
+                    });
+                    break;
+                  }
+
+                  case 'alert.raised':
+                  case 'alert.cleared': {
+                    const alertPayload = AlertSchema.parse(parsedEvent.payload);
+                    setForecastResponse(prev => (prev ? { ...prev, alert: alertPayload } : null));
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const t = alertPayload.since || parsedEvent.emitted_at;
+                      if (!prev.alerts.some(a => a.t === t && a.state === alertPayload.state)) {
+                        return {
+                          ...prev,
+                          alerts: [...prev.alerts, { t, state: alertPayload.state }],
+                        };
+                      }
+                      return prev;
+                    });
+                    break;
+                  }
+
+                  case 'data_quality.changed': {
+                    const dqPayload = DataQualitySchema.parse(parsedEvent.payload);
+                    setForecastResponse(prev => (prev ? { ...prev, data_quality: dqPayload } : null));
+
+                    setCache(prev => {
+                      if (prev.patientId !== patientId) return prev;
+                      const t = dqPayload.last_cgm_at || parsedEvent.emitted_at;
+                      if (!prev.dataQuality.some(q => q.t === t && q.status === dqPayload.status)) {
+                        return {
+                          ...prev,
+                          dataQuality: [...prev.dataQuality, { t, status: dqPayload.status }],
+                        };
+                      }
+                      return prev;
+                    });
+                    break;
+                  }
+
+                  case 'twin.recalibrated': {
+                    if (typeof parsedEvent.payload !== 'object' || parsedEvent.payload === null || Array.isArray(parsedEvent.payload)) {
+                      throw new Error('contract-invalid');
+                    }
+                    // Supported per contract: ignore payload safely in UI without mutating state
+                    break;
+                  }
+                }
+
                 lastEventIdRef.current = parsedEvent.event_id || currentBlockId;
                 lastEventTimeRef.current = Date.now();
                 setIsStale(false);
 
-                // Stability condition: require at least stableEventsThreshold consecutive valid
-                // events on this connection before resetting the failure budget.
-                // A single event followed by immediate failure does NOT reset the budget,
-                // strictly preventing infinite flapping/reconnection loops.
-                eventsOnCurrentConnectionRef.current += 1;
-                if (eventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
-                  retryCountRef.current = 0;
-                  setRetryAttempt(0);
-                  setError(null);
-                  if (stabilityTimerRef.current) {
-                    clearTimeout(stabilityTimerRef.current);
-                    stabilityTimerRef.current = undefined;
+                // IDs are opaque: require a previously unseen ID (when supplied)
+                // and a later anchor, not merely another valid forecast packet.
+                if (madeForecastProgress) {
+                  forecastEventsOnCurrentConnectionRef.current += 1;
+                  if (forecastEventsOnCurrentConnectionRef.current >= stableEventsThreshold) {
+                    retryCountRef.current = 0;
+                    setRetryAttempt(0);
+                    setError(null);
+                    if (stabilityTimerRef.current) {
+                      clearTimeout(stabilityTimerRef.current);
+                      stabilityTimerRef.current = undefined;
+                    }
                   }
                 }
-
-                setForecastResponse(raw);
-
-                setCache(prev => {
-                  if (prev.patientId !== patientId) return prev;
-                  const newCache = { ...prev };
-
-                  if (raw.current?.measured_at && raw.current.value_mg_dl != null) {
-                    const t = raw.current.measured_at;
-                    if (!newCache.cgm.some(c => c.t === t)) {
-                      newCache.cgm = [...prev.cgm, { t, value: raw.current.value_mg_dl, trend: raw.current.trend_arrow || '' }];
-                    }
-                  }
-
-                  if (raw.spike_risk?.probability_120m !== undefined && raw.as_of) {
-                    if (!newCache.risk.some(r => r.t === raw.as_of)) {
-                      newCache.risk = [...prev.risk, { t: raw.as_of, p: raw.spike_risk.probability_120m }];
-                    }
-                  }
-
-                  if (raw.alert?.state && raw.as_of) {
-                    if (!newCache.alerts.some(a => a.t === raw.as_of)) {
-                      newCache.alerts = [...prev.alerts, { t: raw.as_of, state: raw.alert.state }];
-                    }
-                  }
-
-                  if (raw.data_quality?.status && raw.as_of) {
-                    if (!newCache.dataQuality.some(q => q.t === raw.as_of)) {
-                      newCache.dataQuality = [...prev.dataQuality, { t: raw.as_of, status: raw.data_quality.status }];
-                    }
-                  }
-
-                  return newCache;
-                });
               } catch (err: unknown) {
                 console.error("Stream parse error or invariant failure", err);
                 try { await reader.cancel(); } catch { /* ignore */ }
