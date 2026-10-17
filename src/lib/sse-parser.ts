@@ -12,9 +12,25 @@ export function createSafeSSETransformStream(): TransformStream<Uint8Array, Uint
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
       
-      let boundaryIndex;
-      while ((boundaryIndex = buffer.indexOf('\n\n')) !== -1 || (boundaryIndex = buffer.indexOf('\r\n\r\n')) !== -1) {
-        const sepLen = buffer.startsWith('\r\n\r\n', boundaryIndex) ? 4 : 2;
+      while (true) {
+        const lfIdx = buffer.indexOf('\n\n');
+        const crlfIdx = buffer.indexOf('\r\n\r\n');
+
+        if (lfIdx === -1 && crlfIdx === -1) {
+          break;
+        }
+
+        let boundaryIndex: number;
+        let sepLen: number;
+
+        if (crlfIdx !== -1 && (lfIdx === -1 || crlfIdx < lfIdx)) {
+          boundaryIndex = crlfIdx;
+          sepLen = 4;
+        } else {
+          boundaryIndex = lfIdx;
+          sepLen = 2;
+        }
+
         const block = buffer.slice(0, boundaryIndex);
         buffer = buffer.slice(boundaryIndex + sepLen);
 

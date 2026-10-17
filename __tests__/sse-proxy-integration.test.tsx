@@ -64,6 +64,26 @@ function mockProxiedResponse(rawSseText: string, closeStream: boolean = true): a
   };
 }
 
+function mockProxiedChunksResponse(chunks: string[], closeStream: boolean = true): any {
+  const stream = createSafeSSETransformStream();
+  const writer = stream.writable.getWriter();
+  const encoder = new TextEncoder();
+  (async () => {
+    for (const chunk of chunks) {
+      await writer.write(encoder.encode(chunk)).catch(() => {});
+    }
+    if (closeStream) {
+      await writer.close().catch(() => {});
+    }
+  })();
+
+  return {
+    ok: true,
+    status: 200,
+    body: stream.readable,
+  };
+}
+
 const replayWrapper = ({ children }: { children: React.ReactNode }) => (
   <TimeContext.Provider value={{ asOf: '2026-10-16T12:00:00Z', setAsOf: () => {} }}>
     {children}
@@ -332,6 +352,140 @@ describe('SSE Proxy to Consumer Integration (createSafeSSETransformStream -> use
 
       await waitFor(() => expect(result.current.forecast?.subject.subject_id).toBe(subjectA));
       expect(result.current.error).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // F. Mixed CRLF and LF delimiter chunking invariance (Tests E & F)
+  // ─────────────────────────────────────────────────────────────────
+  describe('F. Mixed CRLF and LF delimiter chunking invariance (Tests E & F)', () => {
+    it('Test E: processes both forecasts without error when CRLF and LF events are coalesced in one chunk', async () => {
+      const forecast1 = validFixture({ as_of: '2026-10-16T12:00:00Z', generated_at: '2026-10-16T12:00:00Z' });
+      const forecast2 = validFixture({ as_of: '2026-10-16T12:05:00Z', generated_at: '2026-10-16T12:05:00Z' });
+
+      const event1 = {
+        event: 'forecast.updated',
+        event_id: '000001-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: forecast1,
+      };
+
+      const event2 = {
+        event: 'forecast.updated',
+        event_id: '000002-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:05:00Z',
+        payload: forecast2,
+      };
+
+      // Event 1 is CRLF-terminated; Event 2 is LF-terminated. Both in a single chunk.
+      const rawWire = `id: 000001-forecast\r\nevent: forecast.updated\r\ndata: ${JSON.stringify(event1)}\r\n\r\n` +
+                      `id: 000002-forecast\nevent: forecast.updated\ndata: ${JSON.stringify(event2)}\n\n`;
+
+      jest.spyOn(global, 'fetch').mockImplementation(async () => mockProxiedResponse(rawWire, false));
+
+      const { result } = renderHook(() => useRealtimeTelemetry(subjectA));
+
+      // Hook should process both forecasts without error, settling on the second forecast
+      await waitFor(() => expect(result.current.forecast?.generated_at).toBe('2026-10-16T12:05:00Z'));
+      expect(result.current.forecast?.subject.subject_id).toBe(subjectA);
+      expect(result.current.error).toBeNull();
+      expect(result.current.connectionStatus).toBe('connected');
+    });
+
+    it('Test E: processes both forecasts without error when stream is delivered across arbitrary chunks', async () => {
+      const forecast1 = validFixture({ as_of: '2026-10-16T12:00:00Z', generated_at: '2026-10-16T12:00:00Z' });
+      const forecast2 = validFixture({ as_of: '2026-10-16T12:05:00Z', generated_at: '2026-10-16T12:05:00Z' });
+
+      const event1Wire = `id: 000001-forecast\r\nevent: forecast.updated\r\ndata: ${JSON.stringify({
+        event: 'forecast.updated',
+        event_id: '000001-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: forecast1,
+      })}\r\n\r\n`;
+
+      const event2Wire = `id: 000002-forecast\nevent: forecast.updated\ndata: ${JSON.stringify({
+        event: 'forecast.updated',
+        event_id: '000002-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:05:00Z',
+        payload: forecast2,
+      })}\n\n`;
+
+      // Split right in the middle of CRLF delimiter (\r\n | \r\n)
+      const splitPoint = event1Wire.length - 2;
+      const chunk1 = event1Wire.slice(0, splitPoint);
+      const chunk2 = event1Wire.slice(splitPoint) + event2Wire;
+
+      jest.spyOn(global, 'fetch').mockImplementation(async () => mockProxiedChunksResponse([chunk1, chunk2], false));
+
+      const { result } = renderHook(() => useRealtimeTelemetry(subjectA));
+
+      await waitFor(() => expect(result.current.forecast?.generated_at).toBe('2026-10-16T12:05:00Z'));
+      expect(result.current.error).toBeNull();
+      expect(result.current.connectionStatus).toBe('connected');
+    });
+
+    it('Test F: invalid forecast regression with mixed delimiters results in terminal contract-invalid (live-stream)', async () => {
+      const invalidEvent = {
+        event: 'forecast.updated',
+        event_id: '000001-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: { malformed_forecast: true },
+      };
+
+      const validEvent = {
+        event: 'forecast.updated',
+        event_id: '000002-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:05:00Z',
+        payload: validFixture(),
+      };
+
+      // CRLF invalid forecast followed by LF valid forecast in single coalesced chunk
+      const rawWire = `id: 000001-forecast\r\nevent: forecast.updated\r\ndata: ${JSON.stringify(invalidEvent)}\r\n\r\n` +
+                      `id: 000002-forecast\nevent: forecast.updated\ndata: ${JSON.stringify(validEvent)}\n\n`;
+
+      jest.spyOn(global, 'fetch').mockImplementation(async () => mockProxiedResponse(rawWire, false));
+
+      const { result } = renderHook(() => useRealtimeTelemetry(subjectA));
+
+      await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+      expect(result.current.error?.message).toBe('contract-invalid');
+      expect(result.current.forecast).toBeNull();
+    });
+
+    it('Test F: invalid forecast regression with mixed delimiters invalidates pinned replay (not clean EOF)', async () => {
+      const validEvent = {
+        event: 'forecast.updated',
+        event_id: '000001-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T11:55:00Z',
+        payload: validFixture(),
+      };
+
+      const invalidEvent = {
+        event: 'forecast.updated',
+        event_id: '000002-forecast',
+        subject_id: subjectA,
+        emitted_at: '2026-10-16T12:00:00Z',
+        payload: { corrupt_payload: 123 },
+      };
+
+      // LF valid forecast followed by CRLF invalid forecast in pinned replay
+      const rawWire = `id: 000001-forecast\nevent: forecast.updated\ndata: ${JSON.stringify(validEvent)}\n\n` +
+                      `id: 000002-forecast\r\nevent: forecast.updated\r\ndata: ${JSON.stringify(invalidEvent)}\r\n\r\n`;
+
+      jest.spyOn(global, 'fetch').mockImplementation(async () => mockProxiedResponse(rawWire, true));
+
+      const { result } = renderHook(() => useRealtimeTelemetry(subjectA), { wrapper: replayWrapper });
+
+      await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'));
+      expect(result.current.error?.message).toBe('contract-invalid');
+      expect(result.current.forecast).toBeNull();
     });
   });
 });
