@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 import train_pr_tft as T
-from serve_pr_tft import ServiceContext, ForecastRequest, build_forecast
+from serve_pr_tft import ServiceContext, ForecastRequest, build_forecast, ServiceError
 
 @pytest.fixture(scope="module")
 def run_dir():
@@ -51,7 +51,7 @@ def test_inference_equivalence(run_dir, tmp_path):
         # EXACT equality on past tensors? 
         np.testing.assert_array_equal(pc_dyn.past, pc_stat.past)
         
-        for as_of in [None, pc_dyn.ps.stamps[200]]:
+        for as_of in [None, pc_dyn.ps.stamps[300]]:
             req = ForecastRequest(schema_version="1.0.0", subject_id=str(sid), as_of=as_of.isoformat() + "Z" if as_of else None, request_id="00000000-0000-0000-0000-000000000123")
             res_dyn = build_forecast(ctx_dyn, req)
             res_stat = build_forecast(ctx_stat, req)
@@ -63,6 +63,24 @@ def test_inference_equivalence(run_dir, tmp_path):
             # Risk
             assert res_dyn["spike_risk"]["probability_120m"] == res_stat["spike_risk"]["probability_120m"]
             assert res_dyn["spike_risk"]["spike_in_progress"] == res_stat["spike_risk"]["spike_in_progress"]
+
+        # Explicitly verify warm-up contract (t < FIRST_ANCHOR)
+        # 1. Pinned as_of prior to FIRST_ANCHOR is rejected by anchor_index with ServiceError(422)
+        with pytest.raises(ServiceError) as exc_info:
+            ctx_dyn.anchor_index(pc_dyn, pc_dyn.ps.stamps[200])
+        assert exc_info.value.status == 422
+        assert exc_info.value.code == "AS_OF_OUT_OF_RANGE"
+
+        # 2. build_forecast under warm-up produces insufficient data quality and null forecasts
+        req_warmup = ForecastRequest(schema_version="1.0.0", subject_id=str(sid), as_of=pc_dyn.ps.stamps[200].isoformat() + "Z", request_id="00000000-0000-0000-0000-000000000124")
+        res_dyn_warmup = build_forecast(ctx_dyn, req_warmup, t_override=200)
+        res_stat_warmup = build_forecast(ctx_stat, req_warmup, t_override=200)
+        assert res_dyn_warmup["data_quality"]["status"] == "insufficient"
+        assert res_stat_warmup["data_quality"]["status"] == "insufficient"
+        assert res_dyn_warmup["data_quality"]["in_warmup"] is True
+        assert res_stat_warmup["data_quality"]["in_warmup"] is True
+        assert res_dyn_warmup["forecast"] is None and res_stat_warmup["forecast"] is None
+        assert res_dyn_warmup["spike_risk"] is None and res_stat_warmup["spike_risk"] is None
 
 def test_no_future_leakage(run_dir):
     """Prove that state slice at t only depends on historical indices."""

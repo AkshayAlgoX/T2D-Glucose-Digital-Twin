@@ -111,6 +111,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><i className="legend-median" />Forecast median</span>
         <span><i className="legend-band" />P10–P90</span>
         <span><i className="legend-outer" />P05–P95</span>
+        <span><i className="legend-peak" />Peak estimate</span>
         {hasPhysics && <span><i className="legend-physics" />Physics prior</span>}
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>

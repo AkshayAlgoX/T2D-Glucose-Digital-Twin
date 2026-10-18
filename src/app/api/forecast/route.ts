@@ -45,8 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     const scenario = (resData as any).scenarios?.[0];
-    if (!scenario) {
+    if (!scenario || !Array.isArray(scenario.points)) {
       return NextResponse.json({ error: "No scenario returned" }, { status: 500 });
+    }
+
+    if (!resData.forecast || !Array.isArray(resData.forecast.points)) {
+      return NextResponse.json({ error: "No baseline forecast available for scenario comparison" }, { status: 422 });
     }
 
     const asOfTime = new Date((resData as any).as_of).getTime();

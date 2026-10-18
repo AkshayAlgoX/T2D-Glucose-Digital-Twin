@@ -22,7 +22,11 @@ FINAL_CONFIG = BACKEND / "final_config.json"
 
 
 def locked_data_dir() -> Path:
-    return Path(os.environ.get("T2D_DATA_DIR") or json.loads(FINAL_CONFIG.read_text())["train"]["data_dir"])
+    raw = os.environ.get("T2D_DATA_DIR") or json.loads(FINAL_CONFIG.read_text())["train"]["data_dir"]
+    p = Path(raw)
+    if not p.is_absolute():
+        p = (BACKEND / p).resolve()
+    return p
 
 
 @pytest.fixture(scope="session")

@@ -9,9 +9,10 @@ backend/runs/*
 !backend/runs/README.md
 
 # Node / Next.js build outputs
-node_modules/
+node_modules
 .next/
 *.tsbuildinfo
+*.log
 
 # Environment config
 .env*

@@ -280,6 +280,32 @@ describe('Workspace Loading Skeletons and Lifecycle', () => {
     expect(screen.getAllByText('18.0%').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('suppresses ghost skeletons and displays workspace unavailable card on initial stream failure', () => {
+    const { container } = render(
+      <TimeProvider>
+        <PatientWorkspace
+          patientId="P-SKELETON-001"
+          forecast={null}
+          cache={emptyCache}
+          isConnected={false}
+          isStale={false}
+          error={new Error('patient-not-found')}
+        />
+      </TimeProvider>
+    );
+
+    // Error alert is shown
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('Patient Not Found')).toBeInTheDocument();
+
+    // Skeletons are completely suppressed (no ghost skeletons)
+    expect(container.querySelectorAll('.skeleton').length).toBe(0);
+
+    // Clean empty state card with Return to Cohort Directory link
+    expect(screen.getByText('Workspace Unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Return to Cohort Directory/i })).toBeInTheDocument();
+  });
+
   it('verifies reduced-motion CSS rules for skeletons in globals.css', () => {
     const cssContent = fs.readFileSync(path.join(process.cwd(), 'src/app/globals.css'), 'utf8');
 

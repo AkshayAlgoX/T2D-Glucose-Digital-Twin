@@ -48,6 +48,12 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
         )}
         <div className="policy-labels"><span>35% watch threshold</span><span>60% warning threshold</span></div>
         <p className="fine-print">Alert status is supplied by the served policy; thresholds alone do not define an alert.</p>
+        <details className="spike-definition context-details">
+          <summary>How is a spike defined?</summary>
+          <p className="fine-print">
+            Operational criteria: A glucose rise of &ge; 50 mg/dL within a 60-minute window, reaching or exceeding 180 mg/dL, and persisting for at least 15 minutes.
+          </p>
+        </details>
       </section>
 
       <section className="contributions" aria-labelledby="contributions-heading">

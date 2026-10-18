@@ -96,7 +96,10 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
       retryTimerRef.current = undefined;
     }
     if (activeReaderRef.current) {
-      try { activeReaderRef.current.cancel(); } catch { /* ignore */ }
+      try {
+        // cancel() may reject if abort has already errored the fetch body stream.
+        void Promise.resolve(activeReaderRef.current.cancel()).catch(() => {});
+      } catch { /* best-effort cleanup */ }
       activeReaderRef.current = null;
     }
 
@@ -531,7 +534,10 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
         stabilityTimerRef.current = undefined;
       }
       if (activeReaderRef.current) {
-        try { activeReaderRef.current.cancel(); } catch { /* ignore */ }
+        try {
+          // cancel() may reject if abort has already errored the fetch body stream.
+          void Promise.resolve(activeReaderRef.current.cancel()).catch(() => {});
+        } catch { /* best-effort cleanup */ }
         activeReaderRef.current = null;
       }
     };

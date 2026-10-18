@@ -1,4 +1,5 @@
 import json
+import pytest
 import numpy as np
 if not hasattr(np, "long"):
     np.long = int
@@ -70,6 +71,7 @@ def create_synthetic_artifact(path: Path, pids: list[str]):
     meal_hash = T.meal_log_sha256(series)
     return meal_hash
 
+@pytest.fixture
 def h2b_setup():
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)

@@ -200,3 +200,72 @@ def test_latency_p95(client, subjects):
     p95 = float(np.percentile(times, 95))
     print(f"\nforecast latency ms: p50 {np.median(times):.0f}, p95 {p95:.0f}")
     assert p95 < 150, "Blueprint 10.2 target: p95 < 150 ms"
+
+
+def test_warmup_contract_earliest_anchor(client, subjects):
+    svc: S.ServiceContext = client.app.state.ctx
+    sid = subjects[0]["subject_id"]
+    pc = svc.patients[uuid.UUID(sid)]
+
+    # Subject first_as_of matches FIRST_ANCHOR (step 287)
+    expected_first = S.utc(pc.ps.stamps[T.FIRST_ANCHOR]).isoformat()
+    assert subjects[0]["first_as_of"] == expected_first
+
+    # Request before FIRST_ANCHOR (e.g., step 143 or step 200) must return 422 AS_OF_OUT_OF_RANGE
+    stamp_early = pc.ps.stamps[200].isoformat() + "Z"
+    r = client.post("/v1/forecasts", json=request_body(sid, as_of=stamp_early))
+    assert r.status_code == 422
+    assert r.json()["code"] == "AS_OF_OUT_OF_RANGE"
+
+    # Request at exactly FIRST_ANCHOR (step 287) succeeds
+    stamp_first = pc.ps.stamps[T.FIRST_ANCHOR].isoformat() + "Z"
+    r_first = client.post("/v1/forecasts", json=request_body(sid, as_of=stamp_first))
+    assert r_first.status_code == 200
+    out_first = r_first.json()
+    assert_valid("forecast-response.json", out_first)
+    assert out_first["as_of"].startswith(expected_first[:19])
+    assert out_first["data_quality"]["in_warmup"] is False
+
+
+def test_warmup_insufficient_history_guarantees(client, subjects):
+    svc: S.ServiceContext = client.app.state.ctx
+    sid = subjects[0]["subject_id"]
+    pc = svc.patients[uuid.UUID(sid)]
+
+    # data_quality at t < FIRST_ANCHOR must be insufficient, in_warmup=True, with sensor_warmup and sensor_day1 reasons
+    for step in (0, 72, 143, 200, 286):
+        dq = S.data_quality(svc, pc, step)
+        assert dq["status"] == "insufficient", f"Step {step} must be insufficient"
+        assert dq["in_warmup"] is True
+        assert dq["sensor_day"] == 0
+        assert "sensor_warmup" in dq["reasons"]
+        assert "sensor_day1" in dq["reasons"]
+
+        # build_forecast at t < FIRST_ANCHOR cannot produce a valid forecast or risk
+        req = S.ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=uuid.UUID(sid))
+        body = S.build_forecast(svc, req, t_override=step)
+        assert body["data_quality"]["status"] == "insufficient"
+        assert body["forecast"] is None
+        assert body["spike_risk"] is None
+        assert body["alert"]["state"] == "none"
+
+        # Explicit direct calls to rollouts or run_model must fail safely
+        with pytest.raises(ValueError, match="Cannot compute rollouts before FIRST_ANCHOR"):
+            svc.rollouts(pc, step)
+        with pytest.raises(ValueError, match="Cannot run model before FIRST_ANCHOR"):
+            svc.run_model(pc, step, np.zeros(24), np.zeros((24, 8)))
+
+
+def test_twin_card_caching(client, subjects):
+    sid = subjects[0]["subject_id"]
+    t0 = time.perf_counter()
+    r1 = client.get(f"/v1/subjects/{sid}/twin")
+    t1 = time.perf_counter() - t0
+    assert r1.status_code == 200
+
+    t2_start = time.perf_counter()
+    r2 = client.get(f"/v1/subjects/{sid}/twin")
+    t2 = time.perf_counter() - t2_start
+    assert r2.status_code == 200
+    assert r1.json() == r2.json()
+    assert t2 < 0.05, f"Cached twin_card took {t2:.3f}s, expected < 0.05s"

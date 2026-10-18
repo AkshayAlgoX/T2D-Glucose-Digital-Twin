@@ -6,13 +6,13 @@
 
 | Submission item | Value |
 |---|---|
-| Team / institution | `[TEAM_NAME] / [COLLEGE_OR_INCUBATOR]` |
-| Members and roles | `[VERIFIED_MEMBER_NAMES_AND_ROLES]` |
-| Public repository / release | `[VERIFIED_PUBLIC_URL] / [REVIEWED_RELEASE_COMMIT]` |
-| Demo video (>=20 minutes) | `[PUBLIC_OR_UNLISTED_VIDEO_URL]` |
-| Architecture PDF/PPT | `[ARCHITECTURE_EXPORT_LINK]` |
-| Presentation PDF/PPT | `[PRESENTATION_LINK]` |
-| License | `[OWNER_CONFIRMED_LICENSE_AND_NOTICES]` — package metadata says ISC; final rights review pending |
+| Team / institution | T2D Digital Twin Team (Akshaya R — BGS College of Engineering and Technology; Nikhil VS — East West Institute of Technology) |
+| Members and roles | Akshaya R (Integration Owner, Engineering & Backend), Nikhil VS (Data Architecture, Modeling & Evaluation) |
+| Public repository / release | `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin` / `release/candidate-20261017` |
+| Demo video (>=20 minutes) | DEFERRED — Pending owner recording |
+| Architecture PDF/PPT | [`docs/architecture/architecture.pdf`](../architecture/architecture.pdf) |
+| Presentation PDF/PPT | [`docs/presentation/presentation.pdf`](../presentation/presentation.pdf) |
+| License | OWNER DECISION REQUIRED — package metadata declares ISC; Apache 2.0 / MIT recommended |
 
 ## The problem
 

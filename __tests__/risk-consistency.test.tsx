@@ -110,4 +110,15 @@ describe('Risk labels and independently served values',()=>{
     expect(container.querySelector('.risk-estimate')).toHaveTextContent('60.0%');
     expect(container.querySelector('.cumulative-summary')).toHaveTextContent('By 120 min74.6%');
   });
+
+  it('renders operational spike definition disclosure', () => {
+    const p = fixture();
+    const { container } = render(<RiskPanel forecast={p} />);
+    const disclosure = container.querySelector('.spike-definition');
+    expect(disclosure).toBeInTheDocument();
+    expect(disclosure?.textContent).toContain('How is a spike defined?');
+    expect(disclosure?.textContent).toContain('50 mg/dL');
+    expect(disclosure?.textContent).toContain('180 mg/dL');
+    expect(disclosure?.textContent).toContain('15 minutes');
+  });
 });

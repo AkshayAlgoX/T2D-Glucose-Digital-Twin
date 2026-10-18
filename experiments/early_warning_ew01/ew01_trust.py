@@ -45,7 +45,7 @@ EW01_DIR = Path(__file__).resolve().parent
 REPO_ROOT = EW01_DIR.parents[1]
 LOCK_PATH = EW01_DIR / "requirements.txt"
 
-PRODUCTION_REGISTRY_ROOT = Path("/home/akshaya/t2d-execution-registry/EW-01")
+PRODUCTION_REGISTRY_ROOT = Path(os.environ.get("EW01_REGISTRY_ROOT", "/home/akshaya/t2d-execution-registry/EW-01"))
 TRUST_ANCHOR_NAME = "trusted_pubkey.pem"
 
 EXPERIMENT = "EW-01"

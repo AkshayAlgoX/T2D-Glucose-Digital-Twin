@@ -39,4 +39,12 @@ describe('Opus Audit - ForecastCanvas', () => {
     // Baseline should be dimmed to 50% (opacity 0.5)
     expect(container.querySelector('.forecast-layer')).toHaveAttribute('opacity', '0.5');
   });
+
+  it('renders Peak estimate in chart legend', () => {
+    const { container } = render(<ForecastCanvas forecast={null} cache={{}} />);
+    const legend = container.querySelector('.chart-legend');
+    expect(legend).toBeInTheDocument();
+    expect(legend?.textContent).toContain('Peak estimate');
+    expect(legend?.querySelector('.legend-peak')).toBeInTheDocument();
+  });
 });

@@ -128,6 +128,7 @@ p.fine-print { margin: 10px 0 0; }
 .chart-legend .legend-band { height: 8px; background: #d3e2f6; border: 1px solid var(--color-forecast); }
 .chart-legend .legend-outer { height: 8px; background: #edf3fc; border: 1px dotted var(--color-forecast); }
 .chart-legend .legend-physics { height: 0; background: transparent; border-top: 2px dashed var(--color-physics); }
+.chart-legend .legend-peak { width: 8px; height: 8px; border-radius: 50%; background: var(--color-forecast); }
 .forecast-plot { min-height: 0; flex: 1; position: relative; width: 100%; }
 .forecast-plot > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .chart-axis { font-size: 13px; fill: var(--color-ink-2); font-family: var(--font-sans); }

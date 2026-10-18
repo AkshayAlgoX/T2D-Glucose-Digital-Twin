@@ -1,8 +1,8 @@
 #!/bin/bash
 # EW-01 runner-gate remediation: attributable locked-environment test evidence.
-WT=/home/akshaya/t2d-ew01-final
-S=/tmp/claude-1000/-home-akshaya-T2D-Glucose-Digital-Twin/def97422-9ce0-47dc-a56d-f433ad180420/scratchpad/env
-V=$S/venv/bin/python
+WT="${T2D_WORKTREE:-$(cd "$(dirname "$0")/../.." && pwd)}"
+S="${EW01_SCRATCH:-/tmp/ew01_env}"
+V="${EW01_PYTHON:-$S/venv/bin/python}"
 RUN="env -i HOME=$HOME PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1"
 cd $WT
 echo "### date: $(date -Is)"

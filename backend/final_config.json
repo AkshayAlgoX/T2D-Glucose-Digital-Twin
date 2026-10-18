@@ -1,7 +1,7 @@
 {
   "schema": "pr_tft_run_config/v1",
   "train": {
-    "data_dir": "/home/akshaya/synthetic_v2_300",
+    "data_dir": "synthetic_v2",
     "out_dir": "runs/pr_tft_final",
     "pretrain_truth": "",
     "pretrain_epochs": 0,

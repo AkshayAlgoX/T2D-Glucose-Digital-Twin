@@ -241,45 +241,68 @@ export function PatientWorkspace({
           )}
         </div>
       )}
-      <details className="patient-context" open={!compact || contextExpanded}>
-        <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
-          <span>Patient context</span><span>Clinical & physiological data</span>
-        </summary>
-        <ClinicalContext patientId={patientId} forecast={forecast} />
-      </details>
-      <div className="workspace-grid">
-        <section className="trajectory-panel panel" aria-labelledby="trajectory-heading">
-          <div className="trajectory-header">
-            <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
-            <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
+      {error && !forecast ? (
+        <section className="workspace-unavailable-panel panel" aria-label="Workspace unavailable">
+          <div className="empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>Workspace Unavailable</h2>
+            <p style={{ maxWidth: '480px', margin: '0 auto 24px', fontSize: '13px', color: 'var(--color-ink-3)', lineHeight: 1.6 }}>
+              {error.message === 'patient-not-found'
+                ? 'The requested patient identifier was not found in the synthetic cohort.'
+                : error.message === 'contract-invalid'
+                ? 'The received stream failed contract validation. No unvalidated forecasts will be shown.'
+                : 'The subject stream could not be loaded. Please verify the backend service or return to the cohort directory.'}
+            </p>
+            <div className="empty-actions" style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              <Link href="/cohort" className="primary-button" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <ArrowLeft size={14} aria-hidden="true" />
+                Return to Cohort Directory
+              </Link>
+            </div>
           </div>
-          {!forecast ? (
-            <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
-              <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
-              <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
-            </div>
-          ) : (
-            <div className="current-summary">
-              <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
-              <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
-            </div>
-          )}
-          <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
-          <div className="model-caption"><span>{mode}</span><span>Data quality: {forecast?.data_quality?.status === 'ok' ? 'OK' : forecast?.data_quality?.status === 'degraded' ? 'Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : 'Unavailable'}</span></div>
         </section>
+      ) : (
+        <>
+          <details className="patient-context" open={!compact || contextExpanded}>
+            <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
+              <span>Patient context</span><span>Clinical & physiological data</span>
+            </summary>
+            <ClinicalContext patientId={patientId} forecast={forecast} />
+          </details>
+          <div className="workspace-grid">
+            <section className="trajectory-panel panel" aria-labelledby="trajectory-heading">
+              <div className="trajectory-header">
+                <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
+                <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
+              </div>
+              {!forecast ? (
+                <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
+                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
+                  <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
+                </div>
+              ) : (
+                <div className="current-summary">
+                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
+                  <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
+                </div>
+              )}
+              <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
+              <div className="model-caption"><span>{mode}</span><span>Data quality: {forecast?.data_quality?.status === 'ok' ? 'OK' : forecast?.data_quality?.status === 'degraded' ? 'Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : 'Unavailable'}</span></div>
+            </section>
 
-        <aside className="insights-panel panel" aria-label="Risk and model contributions">
-        <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
-        </aside>
-        <div className="workspace-support">
-          <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>
-          <DataAvailability forecast={forecast} cache={cache} />
-        </div>
-      </div>
-      <div className="workspace-limitations" aria-label="Prototype limitations">
-        <ScenarioEditor patientId={patientId} currentForecast={forecast} />
-        <TimeScrubber cache={cache} asOf={forecast?.as_of} />
-      </div>
+            <aside className="insights-panel panel" aria-label="Risk and model contributions">
+            <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
+            </aside>
+            <div className="workspace-support">
+              <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>
+              <DataAvailability forecast={forecast} cache={cache} />
+            </div>
+          </div>
+          <div className="workspace-limitations" aria-label="Prototype limitations">
+            <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+            <TimeScrubber cache={cache} asOf={forecast?.as_of} />
+          </div>
+        </>
+      )}
       <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
     </main>
   );

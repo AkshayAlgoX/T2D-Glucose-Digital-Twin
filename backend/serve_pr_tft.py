@@ -418,6 +418,7 @@ class PatientCache:
     meal_effect: np.ndarray  # twin meal effect, mg/dL
     static: np.ndarray  # (S,) normalised
     ukf_mean: np.ndarray | None = None
+    fit_quality: dict[str, Any] | None = None
 
 
 class ServiceContext:
@@ -544,8 +545,11 @@ class ServiceContext:
         last = ps.n - 1
         if as_of is None:
             return last
-        stamp = as_of.astimezone(dt.timezone.utc).replace(tzinfo=None)
-        first_ok = ps.stamps[T.PAST_STEPS - 1]
+        if as_of.tzinfo is not None:
+            stamp = as_of.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        else:
+            stamp = as_of
+        first_ok = ps.stamps[T.FIRST_ANCHOR]
         if stamp < first_ok or stamp > ps.stamps[last] + dt.timedelta(minutes=T.STEP_MIN):
             raise ServiceError(422, "AS_OF_OUT_OF_RANGE", "as_of outside the replay window",
                                f"as_of must lie between {first_ok.isoformat()}Z and {ps.stamps[last].isoformat()}Z.")
@@ -556,6 +560,8 @@ class ServiceContext:
     def rollouts(self, pc: PatientCache, t: int, extra_carbs: np.ndarray | None = None,
                  extra_flux: np.ndarray | None = None, habit_scale: np.ndarray | None = None):
         """Twin rollouts and future-input block for one anchor (optionally a scenario)."""
+        if t < T.FIRST_ANCHOR:
+            raise ValueError(f"Cannot compute rollouts before FIRST_ANCHOR ({T.FIRST_ANCHOR}), got {t}")
         ps, idx = pc.ps, np.array([t])
         prob, carbs = T.habit_features(ps, idx, self.pop)
         if habit_scale is not None:
@@ -577,6 +583,8 @@ class ServiceContext:
         return base[0], nomeal[0], habit[0], fut.astype(np.float32), future
 
     def run_model(self, pc: PatientCache, t: int, twin_base: np.ndarray, fut: np.ndarray) -> dict[str, np.ndarray]:
+        if t < T.FIRST_ANCHOR:
+            raise ValueError(f"Cannot run model before FIRST_ANCHOR ({T.FIRST_ANCHOR}), got {t}")
         ps = pc.ps
         window = ps.cgm[max(0, t - T.RISE_STEPS + 1):t + 1]
         g0 = float(ps.cgm_ff[t])
@@ -680,10 +688,15 @@ def data_quality(ctx: ServiceContext, pc: PatientCache, t: int) -> dict[str, Any
         reasons.append("no_recent_meal_logs")
     if t < T.BINS_PER_DAY // 4:
         reasons.append("twin_not_calibrated")
-    insufficient = (not np.isfinite(ps.cgm_ff[t])) or past_cov < ctx.cfg.min_past_coverage or t < T.PAST_STEPS - 1
+    in_warmup = t < T.FIRST_ANCHOR
+    if in_warmup:
+        reasons.append("sensor_warmup")
+        reasons.append("sensor_day1")
+    insufficient = (not np.isfinite(ps.cgm_ff[t])) or past_cov < ctx.cfg.min_past_coverage or in_warmup
     status = "insufficient" if insufficient else ("degraded" if {"cgm_gap", "ood_subject"} & set(reasons) else "ok")
     return {"status": status, "cgm_coverage_6h_pct": round(coverage, 1),
             "last_cgm_at": utc(ps.stamps[last_idx]).isoformat(), "staleness_min": int(staleness),
+            "sensor_day": int(t // T.BINS_PER_DAY), "in_warmup": in_warmup,
             "ood_score": round(ood, 3), "reasons": reasons}
 
 
@@ -882,14 +895,18 @@ def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[Scenario
 
 def twin_card(ctx: ServiceContext, pc: PatientCache) -> dict[str, Any]:
     ps = pc.ps
-    t = T.eligible_anchors(ps, ctx.cfg)
-    fit = {}
-    if t.size:
-        pred = ctx.twin.forecast(ps, t)
-        y = ps.cgm[t[:, None] + np.arange(1, T.HORIZON + 1)[None, :]]
-        k = 60 // T.STEP_MIN - 1
-        ok = np.isfinite(y[:, k])
-        fit["rmse_60m_14d_mg_dl"] = round(float(np.sqrt(np.mean((pred[ok, k] - y[ok, k]) ** 2))), 1)
+    if pc.fit_quality is not None:
+        fit = pc.fit_quality
+    else:
+        t = T.eligible_anchors(ps, ctx.cfg)
+        fit = {}
+        if t.size:
+            pred = ctx.twin.forecast(ps, t, cached_mean=pc.ukf_mean)
+            y = ps.cgm[t[:, None] + np.arange(1, T.HORIZON + 1)[None, :]]
+            k = 60 // T.STEP_MIN - 1
+            ok = np.isfinite(y[:, k])
+            fit["rmse_60m_14d_mg_dl"] = round(float(np.sqrt(np.mean((pred[ok, k] - y[ok, k]) ** 2))), 1)
+        pc.fit_quality = fit
     summary = ctx.twin.parameter_summary(ps)
     params = [
         ("insulin_sensitivity_rel", summary["insulin_sensitivity_rel"], "relative to healthy"),
@@ -1004,7 +1021,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     @app.get("/v1/subjects", dependencies=[Depends(auth)])
     def subjects(c: ServiceContext = Depends(ctx)):
         return [{"subject_id": str(sid), "patient_id": pc.ps.pid, "group": pc.ps.group,
-                 "split": c.split_of.get(pc.ps.pid), "first_as_of": utc(pc.ps.stamps[T.PAST_STEPS - 1]).isoformat(),
+                 "split": c.split_of.get(pc.ps.pid), "first_as_of": utc(pc.ps.stamps[T.FIRST_ANCHOR]).isoformat(),
                  "last_as_of": utc(pc.ps.stamps[-1]).isoformat()} for sid, pc in c.patients.items()]
 
     @app.post("/v1/forecasts", dependencies=[Depends(auth)])
@@ -1038,7 +1055,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
                 parsed_include.append(part)  # type: ignore
 
         pc = c.patient(subject_id)
-        t = c.anchor_index(pc, as_of) if as_of else T.PAST_STEPS - 1
+        t = c.anchor_index(pc, as_of) if as_of else T.FIRST_ANCHOR
         if last_event_id:
             try:
                 t = int(last_event_id.split("-")[0]) + 1

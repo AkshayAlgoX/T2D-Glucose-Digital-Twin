@@ -1,7 +1,7 @@
 {
   "name": "t2d-glucose-digital-twin",
   "version": "1.0.0",
-  "description": "This document outlines the architectural foundation for a Healthcare Digital Twin dashboard designed for predictive monitoring (focusing on sudden glucose spikes). The stack utilizes **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Shadcn UI**, and **Prisma ORM**.",
+  "description": "Healthcare Digital Twin clinical workstation and replay engine for predictive glucose monitoring and adverse spike warning. Built with Next.js (App Router), TypeScript, and Tailwind CSS.",
   "main": "index.js",
   "scripts": {
     "test": "jest",
@@ -12,15 +12,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git"
+    "url": "git+https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin./issues"
+    "url": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin/issues"
   },
-  "homepage": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.#readme",
+  "homepage": "https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin#readme",
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.3",
