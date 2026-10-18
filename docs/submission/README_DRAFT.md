@@ -12,7 +12,7 @@
 | Demo video (>=20 minutes) | DEFERRED — Pending owner recording |
 | Architecture PDF/PPT | [`docs/architecture/architecture.pdf`](../architecture/architecture.pdf) |
 | Presentation PDF/PPT | [`docs/presentation/presentation.pdf`](../presentation/presentation.pdf) |
-| License | OWNER DECISION REQUIRED — package metadata declares ISC; Apache 2.0 / MIT recommended |
+| License | [`Apache-2.0`](../../LICENSE) — verified and approved by project owner; see [`LICENSE`](../../LICENSE) and [`NOTICE`](../../NOTICE) |
 
 ## The problem
 

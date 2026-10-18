@@ -21,7 +21,7 @@
 | **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
 | **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Verified 20:00 exact timeline (segment 16:00–18:30 is exactly 2:30) |
 | **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
-| **Open-Source License** | **OWNER DECISION REQUIRED** | No root `LICENSE` file; `package.json` declares `ISC`; Apache 2.0 / MIT recommended |
+| **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---
@@ -187,5 +187,25 @@ A repository security scan across tracked files, commit history, and branches co
 
 ## License & Legal Notice
 
-- **Current Repository State**: Private repository, no root `LICENSE` file.
-- **Owner Decision Required**: The repository owner must confirm the intended open-source license (e.g., Apache 2.0 or MIT) before toggling the repository public.
+This project is licensed under the **Apache License, Version 2.0**. See the [`LICENSE`](LICENSE) file for the full license text and [`NOTICE`](NOTICE) for copyright attribution.
+
+```
+Copyright 2026 Akshaya R, Nikhil VS (T2D Digital Twin Team)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+### Attribution & Redistribution Terms
+- **Project Copyright**: Held by the verified project team: Akshaya R (BGS College of Engineering and Technology) and Nikhil VS (East West Institute of Technology).
+- **Synthetic Data & Model Artifacts**: Model checkpoints (`runs/pr_tft_ablation_arm_d/checkpoints/`), UKF state (`canonical_ukf_state.npz`), and synthetic datasets (`backend/synthetic_v2/`) were generated exclusively using project simulation and training pipelines without third-party patient PHI or proprietary weights, and are distributed under the terms of this license.
+- **Third-Party Dependencies**: External runtime and development dependencies installed via `npm` or `pip` are governed by their respective upstream open-source licenses (MIT, BSD-3-Clause, Apache-2.0, etc.) and are not re-licensed under this project's Apache-2.0 grant.
