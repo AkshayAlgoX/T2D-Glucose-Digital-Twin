@@ -161,7 +161,7 @@
           <strong>Target Use Case:</strong> Early Warning & Continuous Glucose Forecasting for Prediabetes and Type 2 Diabetes.<br>
           <strong>Team:</strong> T2D Digital Twin Team (Akshaya R — BGS College of Engineering and Technology; Nikhil VS — East West Institute of Technology)<br>
           <strong>Target Platform:</strong> Web-based Clinical Workstation & Replay Dashboard.<br>
-          <strong>Release Commit:</strong> <code>68f8cce84dee8a584982a8bb23113ed22bb3d01c</code>
+          <strong>Release Commit:</strong> <code>67431af93f4e32d68c9df8c57e7ad24da9419de8</code>
         </p>
       </div>
       <div class="alert-box">
@@ -321,7 +321,7 @@
             <li><strong>Temporal Horizon:</strong> 120 minutes forward from current <code>as_of</code> timestamp.</li>
             <li><strong>Discretization:</strong> 24 discrete 5-minute timesteps.</li>
             <li><strong>Probabilistic Quantiles:</strong> p05, p10, p25, p50 (median), p75, p90, p95.</li>
-            <li><strong>Conformal Calibration:</strong> Saved isotonic and conformal adjustments enforce nominal 80% and 90% confidence bands.</li>
+            <li><strong>Conformal Calibration:</strong> Saved conformal interval widening fits the empirical 80% (p10–p90) confidence band with isotonic hazard calibration.</li>
           </ul>
         </div>
         <div class="card">
@@ -329,7 +329,7 @@
           <ul>
             <li><strong>Spike Event Definition:</strong> Glucose rising &ge; 50 mg/dL within 60 min and exceeding 180 mg/dL for &ge; 15 min.</li>
             <li><strong>Cumulative Risk Curve:</strong> Onset probability evaluated across 5-min to 120-min offsets.</li>
-            <li><strong>Risk Tiers:</strong> Low (&lt;15%), Watch (15–35%), High (&gt;35%).</li>
+            <li><strong>Risk Tiers:</strong> Low (&lt;35%), Watch (35–60%), High/Warning (&ge;60%).</li>
             <li><strong>Stateful Alert Policy:</strong> Hysteresis filtering and 120-min suppression prevent alert flapping.</li>
           </ul>
         </div>
@@ -527,7 +527,7 @@
             <li>Observable-input contract enforcement.</li>
             <li>PR-TFT + UKF S3 model architecture.</li>
             <li>Chunk-invariant SSE proxy & recovery hook.</li>
-            <li>35 passing test suites (292 tests).</li>
+            <li>36 Jest suites (307 tests) & 107 backend tests passed.</li>
           </ul>
         </div>
         <div class="card">
@@ -614,7 +614,7 @@
         <div class="card">
           <h4>Demonstrated & Frozen in this Release</h4>
           <ul>
-            <li><strong>Frozen Code Commit:</strong> <code>68f8cce84dee8a584982a8bb23113ed22bb3d01c</code> passed all independent reviews and post-merge smoke tests.</li>
+            <li><strong>Candidate Release Commit:</strong> <code>67431af93f4e32d68c9df8c57e7ad24da9419de8</code> passed all independent reviews and test suites.</li>
             <li><strong>End-to-End Pipeline:</strong> Live synthetic backend &rarr; Next.js SSE proxy &rarr; browser patient dashboard verified.</li>
             <li><strong>Framing Resilience:</strong> Chunk-invariant earliest-delimiter parser verified across all split boundaries.</li>
             <li><strong>Strict Validation:</strong> Comprehensive fail-closed error handling and contract enforcement.</li>
@@ -631,7 +631,7 @@
         </div>
       </div>
       <div class="success-box">
-        <strong>Release Status:</strong> Code is frozen at commit <code>68f8cce8</code>. Full documentation assets, architecture exports, and demo scripts are verified.
+        <strong>Release Status:</strong> Code is verified on candidate commit <code>67431af9</code>. Full documentation assets, architecture exports, and demo scripts are reconciled.
       </div>
     </div>
     <div class="footer">

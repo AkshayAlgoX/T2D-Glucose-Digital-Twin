@@ -386,8 +386,8 @@ def prepare_patients(telemetry: pd.DataFrame, ehr: pd.DataFrame, cfg: TrainConfi
         series[pid] = PatientSeries(
             pid=pid, group=str(row["diabetes_status"]), stamps=grid, cgm=cgm,
             cgm_ff=pd.Series(cgm).ffill(limit=3).to_numpy(),
-            hr=g["heart_rate"].interpolate(limit_direction="both").to_numpy(dtype=float),
-            hrv=g["hrv"].interpolate(limit_direction="both").to_numpy(dtype=float),
+            hr=g["heart_rate"].ffill().bfill().to_numpy(dtype=float),
+            hrv=g["hrv"].ffill().bfill().to_numpy(dtype=float),
             steps=g["step_count"].fillna(0).to_numpy(dtype=float),
             asleep=(g["sleep_stage"].fillna("Awake") != "Awake").to_numpy(dtype=float),
             meal_min=meal_min, meal_carbs=meal_carbs, static_raw=static_vector(row, cfg.twin_mode),

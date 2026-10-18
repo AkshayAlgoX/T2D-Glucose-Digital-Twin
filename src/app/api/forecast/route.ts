@@ -6,7 +6,16 @@ export async function POST(request: NextRequest) {
   if (!backendUrl) return NextResponse.json({ error: "BACKEND_URL missing" }, { status: 500 });
   
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    if (!body || typeof body !== 'object' || !body.patientId) {
+      return NextResponse.json({ error: "Missing required patientId" }, { status: 400 });
+    }
     
     const backendReq = {
       schema_version: "1.0.0",
@@ -44,13 +53,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid upstream contract" }, { status: 502 });
     }
 
+    // Baseline forecast check MUST precede scenario check.
+    // If backend returns insufficient data or null forecast, return 422 before checking scenarios.
+    if (!resData.forecast || !Array.isArray(resData.forecast.points)) {
+      return NextResponse.json({ error: "No baseline forecast available for scenario comparison" }, { status: 422 });
+    }
+
     const scenario = (resData as any).scenarios?.[0];
     if (!scenario || !Array.isArray(scenario.points)) {
       return NextResponse.json({ error: "No scenario returned" }, { status: 500 });
-    }
-
-    if (!resData.forecast || !Array.isArray(resData.forecast.points)) {
-      return NextResponse.json({ error: "No baseline forecast available for scenario comparison" }, { status: 422 });
     }
 
     const asOfTime = new Date((resData as any).as_of).getTime();

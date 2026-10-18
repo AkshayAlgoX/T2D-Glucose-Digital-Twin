@@ -191,6 +191,26 @@ def test_stream_events(client, subjects):
     assert resumed[0]["event_id"] == ids[3]
 
 
+def test_stream_resume_preserves_alert_companion_and_cooldown(client, subjects):
+    sid = subjects[0]["subject_id"]
+    # Run uninterrupted stream for 3 readings
+    with client.stream("GET", f"/v1/subjects/{sid}/stream", params={"speed": 0, "max_events": 6}) as r:
+        uninterrupted = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines() if line.startswith("data: ")]
+
+    # If any alert event exists in uninterrupted stream:
+    uninterrupted_events = [(e["event"], e["event_id"]) for e in uninterrupted]
+    first_forecast_id = uninterrupted[0]["event_id"]
+
+    # Resume immediately after first forecast event
+    with client.stream("GET", f"/v1/subjects/{sid}/stream", params={"speed": 0, "max_events": 5},
+                       headers={"Last-Event-ID": first_forecast_id}) as r:
+        resumed = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines() if line.startswith("data: ")]
+
+    resumed_events = [(e["event"], e["event_id"]) for e in resumed]
+    # The resumed sequence must equal the tail of the uninterrupted sequence (no omitted companion events, no duplicated alerts)
+    assert resumed_events == uninterrupted_events[1:len(resumed_events) + 1]
+
+
 def test_latency_p95(client, subjects):
     times = []
     for s in subjects[:40]:

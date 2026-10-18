@@ -9,7 +9,7 @@ Target recording: **22:00**, with final delivered duration at least 20:00. No re
 - Establish API/UI connectivity without collecting cohort performance metrics. Do not call the TwinCard endpoint: its handler computes RMSE.
 - No scenario UI click-through is promised: `ScenarioEditor.tsx` disables its controls. API demonstration is optional and remains unverified until separately rehearsed.
 - Do not navigate to `/design-review` and imply its hand-built outputs are inference. Do not show fixture screenshots as validation.
-- The default stream omits EHR context. Explain this limitation; do not promise a populated EHR sidebar. The direct forecast API can request `ehr_context` during an authorized demonstration.
+- Telemetry stream provides observable EHR context (`ehr_context=True` by default); explain how static clinical covariates condition the residual model.
 - A failed live step must be disclosed. A source walkthrough can explain implementation but cannot replace evidence that the prototype runs. Do not silently splice in fixtures.
 
 ## Timed plan

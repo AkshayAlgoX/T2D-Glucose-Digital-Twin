@@ -85,4 +85,54 @@ describe('/api/forecast proxy', () => {
     const data = await response.json();
     expect(data.error).toMatch(/No baseline forecast available/);
   });
+
+  it('returns 422 on realistic upstream insufficient data response without scenarios', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        as_of: '2026-09-28T11:55:00Z',
+        forecast: null,
+        spike_risk: null
+        // scenarios is omitted in production insufficient-data responses
+      })
+    });
+
+    const req = new NextRequest('http://localhost/api/forecast', {
+      method: 'POST',
+      body: JSON.stringify({
+        patientId: '123',
+        pinned_as_of: '2026-09-28T11:55:00Z',
+        scenarios: [{ scenario_id: "scen-1", inputs: [] }]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toMatch(/No baseline forecast available/);
+  });
+
+  it('returns 400 when request body is JSON null', async () => {
+    const req = new NextRequest('http://localhost/api/forecast', {
+      method: 'POST',
+      body: JSON.stringify(null)
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toMatch(/Missing required patientId/);
+  });
+
+  it('returns 400 when request body is missing patientId', async () => {
+    const req = new NextRequest('http://localhost/api/forecast', {
+      method: 'POST',
+      body: JSON.stringify({ pinned_as_of: '2026-09-28T11:55:00Z' })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toMatch(/Missing required patientId/);
+  });
 });

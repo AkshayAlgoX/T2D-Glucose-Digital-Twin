@@ -71,11 +71,78 @@ def test_alert_policy_semantics(client, subjects):
     # Because in_progress is True, it is NOT at_risk, so target="none"
     assert alert["state"] == "none" and event is None
 
-def test_no_future_dependent_access():
-    # in_progress uses `ps.armed[t]`. We prove ps.armed[t] only depends on historical data
-    # by inspecting the train_pr_tft.detect_spike_onsets function logic.
-    # The output ps.armed is purely causal.
-    pass
+def test_no_future_dependent_access(client, subjects):
+    """Verify that spike detection and historical features at anchor t depend only on historical indices <= t."""
+    svc = client.app.state.ctx
+    sid = uuid.UUID(subjects[0]["subject_id"])
+    pc = svc.patient(sid)
+    t = S.T.FIRST_ANCHOR
+
+    # Original armed and onset status up to t
+    orig_armed = pc.ps.armed[:t + 1].copy()
+    orig_onset = pc.ps.onset[:t + 1].copy()
+
+    # Mutate future CGM beyond t (simulate future spike or crash)
+    cgm_mutated = pc.ps.cgm.copy()
+    cgm_mutated[t + 1:] = 400.0  # extreme future spike
+    onset_mut, armed_mut = S.T.detect_spike_onsets(cgm_mutated)
+
+    # Spike onset and armed status up to anchor t MUST be identical
+    np.testing.assert_array_equal(orig_armed, armed_mut[:t + 1])
+    np.testing.assert_array_equal(orig_onset, onset_mut[:t + 1])
+
+
+def test_fallback_quantiles_monotonic_and_honest_risk(client, subjects):
+    """Verify fallback produces monotonically non-decreasing quantiles and honest unavailable risk."""
+    svc = client.app.state.ctx
+
+    # Force fallback by raising in run_model
+    def mock_fail(*_args, **_kwargs):
+        raise RuntimeError("simulated PR-TFT inference failure")
+
+    orig_run = svc.run_model
+    svc.run_model = mock_fail
+    try:
+        r = client.post("/v1/forecasts", json=request_body(subjects[0]["subject_id"]))
+        assert r.status_code == 200
+        body = r.json()
+        assert body["model"]["fallback_used"] == "twin_only"
+
+        # 1. Monotonicity across all 24 horizons
+        points = body["forecast"]["points"]
+        assert len(points) == 24
+        for p in points:
+            assert p["p05"] <= p["p10"] <= p["p25"] <= p["p50"] <= p["p75"] <= p["p90"] <= p["p95"]
+
+        # 2. Honest risk semantics: neural risk model failed, so spike_risk is unavailable (null)
+        assert body["spike_risk"] is None
+        assert body["alert"]["state"] == "none"
+    finally:
+        svc.run_model = orig_run
+
+
+def test_alert_policy_point_and_stream_unification():
+    """Verify that stateless point policy (alert_for) and stateful streaming policy (AlertMachine) agree."""
+    subject = uuid.uuid4()
+    stamp = dt.datetime(2026, 1, 1, 12, 0, tzinfo=dt.timezone.utc)
+
+    # Test cases: (probability, in_progress, expected_state)
+    cases = [
+        (0.20, False, "none"),
+        (0.35, False, "watch"),
+        (0.50, False, "watch"),
+        (0.60, False, "warning"),
+        (0.90, False, "warning"),
+        (0.90, True, "none"),   # spike in progress -> no new alert
+        (0.35, True, "none"),   # spike in progress -> no new watch
+    ]
+
+    for p, in_prog, expected in cases:
+        point_alert = S.alert_for(p, in_prog, subject, stamp)
+        machine = S.AlertMachine()
+        stream_alert, _ = machine.step(p, in_prog, subject, stamp)
+        assert point_alert["state"] == expected, f"point failed for p={p}, in_prog={in_prog}"
+        assert stream_alert["state"] == expected, f"stream failed for p={p}, in_prog={in_prog}"
 
 def test_causal_direction():
     machine = S.AlertMachine()

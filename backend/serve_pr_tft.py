@@ -606,11 +606,10 @@ class ServiceContext:
                 "p_bin": torch.sigmoid(out["hazard_logits"][0]).numpy(), "peak": out["peak"][0].numpy()}
 
     def twin_only(self, twin_base: np.ndarray) -> dict[str, np.ndarray]:
-        """Fallback: twin p50 with the calibrated interval widths around it."""
-        w = np.asarray(self.calib.conformal_mg_dl)
-        q = np.stack([twin_base - 1.6 * w, twin_base - w, twin_base - 0.5 * w, twin_base,
-                      twin_base + 0.5 * w, twin_base + w, twin_base + 1.6 * w], axis=-1)
-        return {"q": q, "q_raw": q, "p_bin": np.zeros(T.HORIZON), "peak": np.array([twin_base.max()] * 2)}
+        """Fallback: deterministic twin physiological trajectory without invented neural uncertainty bands."""
+        q = np.stack([twin_base] * 7, axis=-1)
+        peak = np.array([float(twin_base.max()), float(twin_base.max())])
+        return {"q": q, "q_raw": q, "p_bin": np.zeros(T.HORIZON), "peak": peak}
 
 
 # --------------------------------------------------------------------------- #
@@ -655,16 +654,29 @@ def onset_quartiles(cum: np.ndarray) -> dict[str, int] | None:
     return {f"p{int(q * 100)}": int((np.searchsorted(cond, q) + 1) * T.STEP_MIN) for q in (0.25, 0.5, 0.75)}
 
 
-def alert_for(p: float, p50: np.ndarray, subject: uuid.UUID, stamp: dt.datetime) -> dict[str, Any]:
-    """Stateless policy for one-off requests (the stream adds hysteresis and suppression)."""
-    if p >= WARNING_P and p50.max() >= T.SPIKE_LEVEL:
-        state, key = "warning", "alert.spike.warning"
-    elif p >= WATCH_P:
-        state, key = "watch", "alert.spike.watch"
+def decide_alert_state(p: float, in_progress: bool) -> str:
+    """Unified alert decision policy: warning at WARNING_P (0.60) when at-risk, watch at WATCH_P (0.35) when at-risk."""
+    at_risk = not in_progress
+    if p >= WARNING_P and at_risk:
+        return "warning"
+    if p >= WATCH_P and at_risk:
+        return "watch"
+    return "none"
+
+
+def alert_for(p: float, in_progress: bool, subject: uuid.UUID, stamp: dt.datetime) -> dict[str, Any]:
+    """Stateless policy for one-off requests matching streaming policy thresholds."""
+    state = decide_alert_state(p, in_progress)
+    if state == "warning":
+        key = "alert.spike.warning"
+    elif state == "watch":
+        key = "alert.spike.watch"
     else:
         return {"state": "none", "alert_id": None, "since": None, "suppressed_until": None, "message_key": None}
+    s = stamp.isoformat()
+    since_str = s[:-6] + "Z" if s.endswith("+00:00") else (s if s.endswith("Z") else s + "Z")
     return {"state": state, "alert_id": str(uuid.uuid5(subject, f"{state}-{stamp.isoformat()}")),
-            "since": stamp.isoformat(), "suppressed_until": None, "message_key": key}
+            "since": since_str, "suppressed_until": None, "message_key": key}
 
 
 def data_quality(ctx: ServiceContext, pc: PatientCache, t: int) -> dict[str, Any]:
@@ -756,7 +768,6 @@ def build_forecast(ctx: ServiceContext, req: ForecastRequest, t_override: int | 
         out = ctx.twin_only(base)
         resp["model"]["fallback_used"] = "twin_only"
     q = out["q"]
-    cum, p120 = calibrated_hazard(ctx, out["p_bin"])
     fallback = resp["model"]["fallback_used"] is not None
     points = []
     for k in range(T.HORIZON):
@@ -770,17 +781,22 @@ def build_forecast(ctx: ServiceContext, req: ForecastRequest, t_override: int | 
     in_progress = not bool(ps.armed[t])
     resp["forecast"] = {"units": "mg/dL", "step_min": 5, "horizon_min": 120, "conformal_adjusted": not fallback,
                         "points": points}
-    resp["spike_risk"] = {
-        "probability_120m": round(p120, 3), "tier": tier_of(p120), "calibrated": not fallback,
-        "spike_in_progress": in_progress,
-        "definition": {"threshold_mg_dl": T.SPIKE_LEVEL, "min_rise_mg_dl": T.SPIKE_RISE,
-                       "rise_window_min": T.RISE_STEPS * T.STEP_MIN, "persistence_min": T.PERSIST_STEPS * T.STEP_MIN},
-        "cumulative": [{"offset_min": (k + 1) * T.STEP_MIN, "p": round(float(cum[k]), 3)} for k in range(T.HORIZON)],
-        "onset_offset_min": onset_quartiles(cum),
-        "peak_mg_dl": ({"p50": clamp_g(out["peak"][0]), "p90": clamp_g(out["peak"][1])} if p120 >= 0.05 else None),
-        "time_to_peak_min": (peak_idx + 1) * T.STEP_MIN if p50.max() >= T.SPIKE_LEVEL else None,
-    }
-    resp["alert"] = alert_for(p120, p50, pc.subject_id, stamp)
+    if fallback:
+        resp["spike_risk"] = None
+        resp["alert"] = {"state": "none", "alert_id": None, "since": None, "suppressed_until": None, "message_key": None}
+    else:
+        cum, p120 = calibrated_hazard(ctx, out["p_bin"])
+        resp["spike_risk"] = {
+            "probability_120m": round(p120, 3), "tier": tier_of(p120), "calibrated": True,
+            "spike_in_progress": in_progress,
+            "definition": {"threshold_mg_dl": T.SPIKE_LEVEL, "min_rise_mg_dl": T.SPIKE_RISE,
+                           "rise_window_min": T.RISE_STEPS * T.STEP_MIN, "persistence_min": T.PERSIST_STEPS * T.STEP_MIN},
+            "cumulative": [{"offset_min": (k + 1) * T.STEP_MIN, "p": round(float(cum[k]), 3)} for k in range(T.HORIZON)],
+            "onset_offset_min": onset_quartiles(cum),
+            "peak_mg_dl": ({"p50": clamp_g(out["peak"][0]), "p90": clamp_g(out["peak"][1])} if p120 >= 0.05 else None),
+            "time_to_peak_min": (peak_idx + 1) * T.STEP_MIN if p50.max() >= T.SPIKE_LEVEL else None,
+        }
+        resp["alert"] = alert_for(p120, in_progress, pc.subject_id, stamp)
     if "drivers" in include:
         resp["drivers"] = drivers(ctx, pc, t, base, nomeal, habit, p50, peak_idx)
     if "twin_state" in include:
@@ -935,13 +951,7 @@ class AlertMachine:
     suppressed_until: dt.datetime | None = None
 
     def step(self, p: float, in_progress: bool, subject: uuid.UUID, now: dt.datetime) -> tuple[dict[str, Any], str | None]:
-        at_risk = not in_progress
-        target = "none"
-        if p >= WARNING_P and at_risk:
-            target = "warning"
-        elif p >= WATCH_P and at_risk:
-            target = "watch"
-            
+        target = decide_alert_state(p, in_progress)
         event = None
         if target != "none":
             if self.suppressed_until is None or now >= self.suppressed_until:
@@ -1055,17 +1065,39 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
                 parsed_include.append(part)  # type: ignore
 
         pc = c.patient(subject_id)
-        t = c.anchor_index(pc, as_of) if as_of else T.FIRST_ANCHOR
+        start_t = c.anchor_index(pc, as_of) if as_of else T.FIRST_ANCHOR
+        resume_idx = None
+        resume_type = None
         if last_event_id:
             try:
-                t = int(last_event_id.split("-")[0]) + 1
-            except ValueError as exc:
+                parts = last_event_id.strip().split("-")
+                resume_idx = int(parts[0])
+                resume_type = parts[1] if len(parts) > 1 else "forecast"
+                if resume_type not in ("forecast", "alert", "quality"):
+                    raise ValueError("Unknown event type")
+                if resume_idx < start_t or resume_idx >= pc.ps.n:
+                    raise ServiceError(422, "REQUEST_INVALID", "Last-Event-ID out of range", last_event_id)
+            except (ValueError, IndexError) as exc:
+                if isinstance(exc, ServiceError):
+                    raise
                 raise ServiceError(422, "REQUEST_INVALID", "Bad Last-Event-ID", last_event_id) from exc
         pause = max(0.0, T.STEP_MIN * 60 / speed) if speed > 0 else 0.0
 
         async def events():
             machine, sent, quality = AlertMachine(), 0, None
-            for idx in range(t, pc.ps.n):
+            # Fast-forward machine state deterministically up to resume_idx to preserve alert hysteresis and 120-min cooldown
+            if resume_idx is not None and resume_idx > start_t:
+                for past_i in range(start_t, resume_idx):
+                    req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=[])
+                    past_body = await run_in_threadpool(build_forecast, c, req, past_i)
+                    if past_body["spike_risk"] is not None:
+                        past_stamp = dt.datetime.fromisoformat(past_body["as_of"])
+                        in_progress = past_body["spike_risk"]["spike_in_progress"]
+                        machine.step(past_body["spike_risk"]["probability_120m"], in_progress, subject_id, past_stamp)
+                    quality = past_body["data_quality"]["status"]
+
+            begin_idx = resume_idx if resume_idx is not None else start_t
+            for idx in range(begin_idx, pc.ps.n):
                 req = ForecastRequest(schema_version="1.0.0", request_id=uuid.uuid4(), subject_id=subject_id, include=parsed_include)
                 body = await run_in_threadpool(build_forecast, c, req, idx)
                 stamp = dt.datetime.fromisoformat(body["as_of"])
@@ -1077,18 +1109,31 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
                     alert_event = None
                 payload = ForecastResponse.model_validate(body).model_dump(mode="json", exclude_unset=True)
                 now = dt.datetime.now(dt.timezone.utc).isoformat()
-                yield sse({"event": "forecast.updated", "event_id": f"{idx:06d}-forecast",
-                           "subject_id": str(subject_id), "emitted_at": now, "payload": payload})
-                if alert_event:
+                is_resume_anchor = (resume_idx is not None and idx == resume_idx)
+
+                if not is_resume_anchor or resume_type not in ("forecast", "alert", "quality"):
+                    yield sse({"event": "forecast.updated", "event_id": f"{idx:06d}-forecast",
+                               "subject_id": str(subject_id), "emitted_at": now, "payload": payload})
+                    sent += 1
+                    if max_events and sent >= max_events:
+                        break
+
+                if alert_event and (not is_resume_anchor or resume_type == "forecast"):
                     yield sse({"event": alert_event, "event_id": f"{idx:06d}-alert", "subject_id": str(subject_id),
                                "emitted_at": now, "payload": payload["alert"]})
+                    sent += 1
+                    if max_events and sent >= max_events:
+                        break
+
                 if quality is not None and body["data_quality"]["status"] != quality:
-                    yield sse({"event": "data_quality.changed", "event_id": f"{idx:06d}-quality",
-                               "subject_id": str(subject_id), "emitted_at": now, "payload": payload["data_quality"]})
+                    if not is_resume_anchor or resume_type in ("forecast", "alert"):
+                        yield sse({"event": "data_quality.changed", "event_id": f"{idx:06d}-quality",
+                                   "subject_id": str(subject_id), "emitted_at": now, "payload": payload["data_quality"]})
+                        sent += 1
+                        if max_events and sent >= max_events:
+                            break
+
                 quality = body["data_quality"]["status"]
-                sent += 1
-                if max_events and sent >= max_events:
-                    break
                 await asyncio.sleep(pause)
 
         return StreamingResponse(events(), media_type="text/event-stream",

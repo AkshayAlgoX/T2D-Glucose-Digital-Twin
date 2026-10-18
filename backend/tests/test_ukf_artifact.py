@@ -17,30 +17,19 @@ def test_inference_equivalence(run_dir, tmp_path):
     ukf_file = run_dir / "canonical_ukf_state.npz"
     if not ukf_file.exists():
         pytest.skip("No canonical artifact present")
-        
-    ukf_file_backup = tmp_path / "canonical_ukf_state.npz"
-    prov_file = run_dir / "canonical_ukf_provenance.json"
-    prov_file_backup = tmp_path / "canonical_ukf_provenance.json"
-    
-    # 1. Init dynamic context (by temporarily moving artifact)
-    ukf_file.rename(ukf_file_backup)
-    if prov_file.exists():
-        prov_file.rename(prov_file_backup)
-    
-    try:
-        ctx_dyn = ServiceContext(run_dir)
-        
-        # 2. Init static context
-        ukf_file_backup.rename(ukf_file)
-        if prov_file_backup.exists():
-            prov_file_backup.rename(prov_file)
-            
-        ctx_stat = ServiceContext(run_dir)
-    finally:
-        if ukf_file_backup.exists() and not ukf_file.exists():
-            ukf_file_backup.rename(ukf_file)
-        if prov_file_backup.exists() and not prov_file.exists():
-            prov_file_backup.rename(prov_file)
+
+    # Set up isolated run directory WITHOUT the canonical artifact to test dynamic computation safely
+    dyn_run = tmp_path / "dynamic_run"
+    dyn_run.mkdir()
+    for item in run_dir.iterdir():
+        if item.name not in ("canonical_ukf_state.npz", "canonical_ukf_provenance.json"):
+            if item.is_dir():
+                (dyn_run / item.name).symlink_to(item.resolve())
+            else:
+                (dyn_run / item.name).symlink_to(item.resolve())
+
+    ctx_dyn = ServiceContext(dyn_run)
+    ctx_stat = ServiceContext(run_dir)
     
     # Compare
     for pid in list(ctx_dyn.by_pid.keys())[:5]:
@@ -83,18 +72,23 @@ def test_inference_equivalence(run_dir, tmp_path):
         assert res_dyn_warmup["spike_risk"] is None and res_stat_warmup["spike_risk"] is None
 
 def test_no_future_leakage(run_dir):
-    """Prove that state slice at t only depends on historical indices."""
+    """Prove that state slice at anchor 287 depends only on historical indices <= 287."""
     ctx = ServiceContext(run_dir)
-    pc = ctx.patient(list(ctx.patients.keys())[0])
-    
-    # When requesting as_of=T, the past matrix sliced by serve_pr_tft 
-    # uses EXACTLY the indices [t - PAST_STEPS + 1 : t + 1].
-    # Prove that the values in this slice are mathematically identical 
-    # for T1=100 and T2=200, confirming no temporal mutation occurred.
-    
-    past1 = pc.past[101 - 48 : 101] # as_of = stamps[100]
-    past2 = pc.past[201 - 48 : 201] # as_of = stamps[200]
-    
-    # The overlapping interval in the static matrix must remain strictly identical
-    # regardless of whether the forecast is being run at T1 or T2.
-    np.testing.assert_array_equal(pc.past[:101], pc.past[:101])
+    sid = list(ctx.patients.keys())[0]
+    pc = ctx.patient(sid)
+
+    # When requesting as_of at anchor 287, past matrix uses indices up to 287
+    past_anchor = pc.past[:T.FIRST_ANCHOR + 1].copy()
+
+    # Modify future readings on a copy of patient series and verify past remains invariant
+    ps_copy = dataclasses.replace(pc.ps, cgm=pc.ps.cgm.copy(), hr=pc.ps.hr.copy())
+    ps_copy.cgm[T.FIRST_ANCHOR + 1:] = 350.0  # Extreme future spike
+    ps_copy.hr[T.FIRST_ANCHOR + 1:] = 180.0    # Extreme future heart rate
+
+    # Re-extract past matrix with mutated future
+    effect = ctx.twin.meal_effect_series(ps_copy)
+    feats = ctx.twin.state_features(ps_copy)
+    mutated_past = T.past_matrix(ps_copy, ctx.norm, effect, feats)
+
+    # Historical slice through anchor 287 MUST remain mathematically identical
+    np.testing.assert_array_equal(past_anchor, mutated_past[:T.FIRST_ANCHOR + 1])

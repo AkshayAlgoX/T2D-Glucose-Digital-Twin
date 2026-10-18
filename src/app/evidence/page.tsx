@@ -167,7 +167,7 @@ export default async function EvidencePage() {
                   <div><strong>Top Tell:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
                 </div>
                 <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
-                  Synthetic data does not match real physiological dynamics. Pipeline verified via null control (AUROC 0.507).
+                  Synthetic data is distinguishable from mock-real comparator generator; real-world physiological realism remains unestablished. Pipeline verified via null control (AUROC 0.507).
                 </p>
               </div>
 
@@ -262,7 +262,7 @@ export default async function EvidencePage() {
             </div>
 
             <div style={{ borderTop: '1px solid var(--color-line)', paddingTop: '14px' }}>
-              <span className="eyebrow">Historical Model Selection Metrics (Validation Split, n=44)</span>
+              <span className="eyebrow">Historical Arm D Development Reference (Validation Split, n=44 · runs/pr_tft_ablation_arm_d)</span>
               <p style={{ fontSize: '12px', color: 'var(--color-ink-3)', margin: '4px 0 12px' }}>
                 Recorded during model checkpoint selection on the validation cohort; these figures reflect calibration tuning, not independent generalization.
               </p>
@@ -280,8 +280,8 @@ export default async function EvidencePage() {
         <div className="panel evidence-source">
           <FolderOpen size={19} aria-hidden="true" />
           <div>
-            <strong>Source · configured artifact directory</strong>
-            <p>This view reads existing run and evaluation files. It does not execute evaluations, generate data, or authenticate declared provenance.</p>
+            <strong>Source · historical Arm D development reference & configured artifact directory</strong>
+            <p>Fixed development reference metrics derived from runs/pr_tft_ablation_arm_d/run_manifest.json on the validation split. This view reads existing run and evaluation files. It does not execute evaluations, generate data, or authenticate declared provenance.</p>
           </div>
         </div>
 
