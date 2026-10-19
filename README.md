@@ -2,8 +2,8 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-36%20passed%20%7C%20307%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-107%20passed-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-36%20passed%20%7C%20325%20tests-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-111%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -17,7 +17,7 @@
 | **Project Title** | `T2D Glucose Digital Twin` | Focus: Prediabetes & Type 2 Diabetes Adverse Event Early Warning |
 | **Team & Institution** | **T2D Digital Twin Team**<br>• Akshaya R — BGS College of Engineering and Technology<br>• Nikhil VS — East West Institute of Technology | Descriptive project-team label; independent engineering college affiliations |
 | **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch based on commit `67431af9` |
-| **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 2-page landscape document; source in [`docs/architecture/architecture.mmd`](docs/architecture/architecture.mmd) |
+| **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 3-page landscape document; source in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) |
 | **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
 | **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Verified 20:00 exact timeline (segment 16:00–18:30 is exactly 2:30) |
 | **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
@@ -138,10 +138,10 @@ Open `http://localhost:3000/cohort` or `http://localhost:3000/patients/19dba1b5-
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 36 Jest test suites (307 tests: unit, integration, contracts, safety invariants):
+# Run all 36 Jest test suites (325 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run all 107 backend tests (provenance, contracts, causality, safety):
+# Run all 111 backend tests (provenance, contracts, causality, safety):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
@@ -159,8 +159,8 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 
 ### 1. Negative Validation Gate: Synthetic Realism (Gate 3)
 - **Result**: **FAILED**
-- **Metric**: Discriminator AUROC = **0.9320** (90% CI: 0.928–0.936) against target threshold **&le; 0.65**.
-- **Implication**: A classifier can reliably distinguish synthetic patient series from mock-real records (top tell: `jerk_sd`). Purely simulation-based evaluations carry risks of circularity.
+- **Metric**: Historical AUROC = **0.9320** (90% CI: 0.928–0.936); Fresh duration-corrected AUROC = **0.9290** (90% CI: 0.925–0.933) against target threshold **&le; 0.65**.
+- **Implication**: A 40-feature classifier reliably distinguishes synthetic ODE trajectories from mock-real generator records. Controlled factorial drift experiments confirm empirical AR(1) background drift (SD 8–16 mg/dL) accounts for a portion of the trajectory curvature difference (e.g., jerk/acceleration), but does not explain the entire multivariate failure across the 40-feature discriminator. Acceptance threshold remains &le; 0.65; result remains FAILED without metric-gaming.
 
 ### 2. EW-01 Scientific Evaluation
 - **Status**: **UNEXECUTED / GOVERNANCE-BLOCKED**
@@ -173,6 +173,16 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 ### 4. Disabled Scenario UI
 - **Status**: **API-ONLY PROTOTYPE**
 - **Detail**: While backend routes support meal/activity simulation, `ScenarioEditor.tsx` in the dashboard is explicitly disabled. Pharmacological scenarios are rejected (`SCENARIO_UNSUPPORTED`). Scenario outputs do not represent human causal treatment effects.
+
+### 5. Validation Trajectory Benchmark & Baseline Audit
+- **Scope**: Evaluated on the **44 validation patients** (47,629 decision anchors) from the pre-registered split (`split_293.json`).
+- **PR-TFT Arm D Trajectory Errors (RMSE mg/dL)**:
+  - **30-min**: **12.36** (MAE 8.43, MARD 7.22%)
+  - **60-min**: **19.53** (MAE 12.43, MARD 10.16%)
+  - **120-min**: **25.03** (MAE 16.76, MARD 13.66%)
+- **Uncertainty & Hazard**: 80% conformal interval empirical coverage is **80.00%** (width 37.3 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, and Expected Calibration Error (ECE) **0.000094**.
+- **Audit of Baseline Comparability (NO-GO for Direct Superiority Claims)**: Earlier baseline references in `backend/runs/pr_tft_demo/evaluation_baseline.json` report Persistence (RMSE120 50.66) and Twin-only (RMSE120 40.20) on an 18-subject test partition under an earlier demo run (`stage2_observed-epoch=01-val_loss=0.3096.ckpt`). Because this artifact evaluated only 18 subjects, direct apples-to-apples numerical superiority of Arm D over those baselines is marked **cohort-unverified**. Superiority claims on the 44-subject validation split are reserved until baselines are recomputed on the exact same anchors.
+- **Explicit Boundary & Ledger Caveat**: These figures are derived from the development validation partition (`split_293.json`) which was used for checkpoint selection and calibration. They establish architecture-level validation error metrics under simulated conditions, but are explicitly **NOT** independent held-out generalization to human patients. The 44-subject test cohort remains sealed under protocol.
 
 ---
 

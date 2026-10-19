@@ -489,8 +489,8 @@ export interface ScenarioResult {
       p90: GlucoseMgDl;
     }
   ];
-  probability_120m: Probability;
-  delta_probability: number;
+  probability_120m: Probability | null;
+  delta_probability: number | null;
   delta_peak_mg_dl: number;
 }
 export interface TwinState {

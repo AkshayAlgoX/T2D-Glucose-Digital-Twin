@@ -269,8 +269,8 @@ class ScenarioResult(Strict):
     label: Optional[str] = Field(default=None, max_length=60)
     inputs: list[ScenarioInput] = Field(min_length=1)
     points: list[ScenarioPoint] = Field(min_length=24, max_length=24)
-    probability_120m: Prob
-    delta_probability: float = Field(ge=-1, le=1)
+    probability_120m: Optional[Prob] = None
+    delta_probability: Optional[float] = Field(default=None, ge=-1, le=1)
     delta_peak_mg_dl: float
 
 
@@ -784,6 +784,7 @@ def build_forecast(ctx: ServiceContext, req: ForecastRequest, t_override: int | 
     if fallback:
         resp["spike_risk"] = None
         resp["alert"] = {"state": "none", "alert_id": None, "since": None, "suppressed_until": None, "message_key": None}
+        p120 = None
     else:
         cum, p120 = calibrated_hazard(ctx, out["p_bin"])
         resp["spike_risk"] = {
@@ -858,7 +859,7 @@ def ehr_context(ps: T.PatientSeries) -> dict[str, Any]:
 
 
 def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[ScenarioRequest],
-              base_p50: np.ndarray, base_p120: float) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+              base_p50: np.ndarray, base_p120: float | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     ps = pc.ps
     results, notes = [], []
     g_now = float(ps.cgm_ff[t])
@@ -888,17 +889,39 @@ def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[Scenario
         base, _, _, fut, _ = ctx.rollouts(pc, t, extra_carbs, extra_flux, habit_scale)
         try:
             out = ctx.run_model(pc, t, base, fut)
-        except Exception:  # noqa: BLE001
+            is_model_fallback = False
+        except Exception:  # noqa: BLE001 -- model failure falls back to twin-only
+            LOG.exception("PR-TFT scenario inference failed; serving twin-only fallback")
             out = ctx.twin_only(base)
-        _, p120 = calibrated_hazard(ctx, out["p_bin"])
+            is_model_fallback = True
+
+        if is_model_fallback:
+            sc_p120_val = None
+        else:
+            try:
+                _, sc_p120 = calibrated_hazard(ctx, out["p_bin"])
+                sc_p120_val = float(sc_p120)
+            except Exception as exc:
+                LOG.exception("Scenario calibration failed")
+                raise ServiceError(
+                    500,
+                    "CALIBRATION_FAILED",
+                    "Scenario calibration failed",
+                    f"Scenario {sc.scenario_id}: calibration failed: {exc}",
+                ) from exc
         q = out["q"]
+        delta_p = (
+            round(max(-1.0, min(1.0, sc_p120_val - base_p120)), 3)
+            if (sc_p120_val is not None and base_p120 is not None)
+            else None
+        )
         results.append({
             "scenario_id": sc.scenario_id, **({"label": sc.label} if sc.label else {}),
             "inputs": [i.model_dump(exclude_none=True) for i in sc.inputs],
             "points": [{"offset_min": (k + 1) * T.STEP_MIN, "p10": clamp_g(q[k, T.P10_IDX]),
                         "p50": clamp_g(q[k, T.MEDIAN_IDX]), "p90": clamp_g(q[k, T.P90_IDX])} for k in range(T.HORIZON)],
-            "probability_120m": round(p120, 3),
-            "delta_probability": round(max(-1.0, min(1.0, p120 - base_p120)), 3),
+            "probability_120m": round(sc_p120_val, 3) if sc_p120_val is not None else None,
+            "delta_probability": delta_p,
             "delta_peak_mg_dl": round(float(q[:, T.MEDIAN_IDX].max() - base_p50.max()), 1),
         })
         if any(isinstance(i, ActivityInput) for i in sc.inputs):

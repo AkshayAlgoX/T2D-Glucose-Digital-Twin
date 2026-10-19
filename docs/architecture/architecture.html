@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>T2D Glucose Digital Twin — System Architecture</title>
+  <title>T2D Glucose Digital Twin — System Architecture (3-Page Specification)</title>
   <style>
     @page {
       size: 297mm 210mm;
@@ -15,199 +15,378 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     body {
-      background: #f8fafc;
+      background: #e2e8f0;
       color: #0f172a;
-      padding: 20mm 24mm;
     }
-    .container {
-      width: 100%;
+    .page {
+      width: 297mm;
+      height: 210mm;
+      page-break-after: always;
+      box-sizing: border-box;
+      padding: 14mm 18mm;
       background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      padding: 24px 32px;
-    }
-    h1 {
-      font-size: 20pt;
-      font-weight: 800;
-      color: #0f172a;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      font-size: 11pt;
-      color: #0284c7;
-      font-weight: 600;
-      margin-bottom: 18px;
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 10px;
-    }
-    .flow-diagram {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      margin-bottom: 20px;
+      justify-content: space-between;
+      position: relative;
     }
-    .tier {
+    .header {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    h1 {
+      font-size: 17pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 9.5pt;
+      color: #0284c7;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .page-num {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 3px 10px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .grid-2 {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
-    .box {
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .card {
       background: #f8fafc;
-      border: 1.5px solid #cbd5e1;
+      border: 1px solid #cbd5e1;
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px 14px;
+      font-size: 8.5pt;
+    }
+    .card h3 {
       font-size: 9.5pt;
-    }
-    .box h3 {
-      font-size: 10pt;
       font-weight: 700;
-      margin-bottom: 4px;
       color: #0f172a;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .box p {
-      color: #475569;
+    .card p, .card li {
+      color: #334155;
       line-height: 1.4;
     }
-    .tier-label {
-      font-size: 9pt;
-      font-weight: 800;
+    .card ul {
+      margin-left: 16px;
+      margin-top: 4px;
+    }
+    .highlight-blue { border-color: #38bdf8; background: #f0f9ff; }
+    .highlight-purple { border-color: #c084fc; background: #faf5ff; }
+    .highlight-emerald { border-color: #34d399; background: #ecfdf5; }
+    .highlight-amber { border-color: #fbbf24; background: #fffbeb; }
+    .highlight-rose { border-color: #f43f5e; background: #fff1f2; }
+    
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #64748b;
-      margin-bottom: 4px;
     }
-    .arrow-down {
-      text-align: center;
-      font-size: 14pt;
-      color: #94a3b8;
-      font-weight: 800;
-      margin: -6px 0;
+    .badge-physics { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-ml { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+    .badge-warn { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-danger { background: #ffe4e6; color: #be123c; border: 1px solid #fecdd3; }
+    .badge-ok { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+    .banner {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 8pt;
+      line-height: 1.4;
     }
-    .highlight-physics { border-color: #3b82f6; background: #eff6ff; }
-    .highlight-ml { border-color: #8b5cf6; background: #f5f3ff; }
-    .highlight-proxy { border-color: #10b981; background: #ecfdf5; }
-    .highlight-warn { border-color: #f59e0b; background: #fffbeb; }
-    .footer {
-      margin-top: 14px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 8px;
+    .banner-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .banner-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .banner-danger { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+
+    .formula-box {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 8.5pt;
+      text-align: center;
+      margin: 4px 0;
+    }
+
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 6px;
+      font-size: 8pt;
       color: #64748b;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>T2D Glucose Digital Twin — System Architecture</h1>
-    <div class="subtitle">End-to-End Pipeline: Observable Ingestion &rarr; UKF S3 Prior &rarr; PR-TFT Residuals &rarr; SSE Proxy &rarr; Workstation</div>
 
-    <div class="flow-diagram">
-      <!-- Tier 1: Ingestion -->
+  <!-- ==================== PAGE 1: INGESTION & HYBRID ENGINE ==================== -->
+  <div class="page">
+    <div class="header">
       <div>
-        <div class="tier-label">Tier 1: Multimodal Observable Ingestion (Contract S3)</div>
-        <div class="tier">
-          <div class="box">
-            <h3>Static EHR Context</h3>
-            <p>Age, BMI, HbA1c, eGFR, diabetes duration, medication flags (metformin, SGLT2i, GLP-1, insulin).</p>
+        <h1>T2D Glucose Digital Twin — System Architecture</h1>
+        <div class="subtitle">Page 1: Scope, Multimodal Ingestion Contract, & Hybrid Physiological-Deep Learning Engine</div>
+      </div>
+      <div class="page-num">1 / 3</div>
+    </div>
+
+    <div class="content">
+      <div class="banner banner-info">
+        <strong>System Boundary & Hypothesis:</strong> Investigational engineering prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and adverse spike risks over a 120-minute horizon. Evaluated on synthetic physiological cohorts (293 subjects); not clinically validated for autonomous medical decisions.
+      </div>
+
+      <div class="card highlight-blue">
+        <h3><span class="badge badge-physics">Tier 1</span> Multimodal Observable Ingestion (Contract S3) & Latent Firewall</h3>
+        <p style="margin-bottom: 6px;">Privileged generator internal latents (e.g., secret true insulin kinetics) are strictly quarantined by the latent firewall. The system admits only clinically observable streams:</p>
+        <div class="grid-4">
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Static EHR Context</strong><br>
+            <span style="color:#64748b;">Age, BMI, HbA1c, eGFR, T2D duration, 9 medication class flags (Metformin, SGLT2i, GLP-1 RA, Insulin).</span>
           </div>
-          <div class="box">
-            <h3>Dynamic CGM Telemetry</h3>
-            <p>5-minute continuous glucose readings (mg/dL), trend velocity (&Delta;mg/dL/min), sensor flag.</p>
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Dynamic CGM Telemetry</strong><br>
+            <span style="color:#64748b;">5-minute sampled continuous glucose, ROC trend velocity (&Delta;mg/dL/min), sensor flag, warm-up state.</span>
           </div>
-          <div class="box">
-            <h3>Cardiorespiratory Streams</h3>
-            <p>Heart rate (HR), Heart rate variability (HRV), resting HR warm-up calibration.</p>
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Wearable Biometrics</strong><br>
+            <span style="color:#64748b;">Continuous Heart Rate (HR), HRV, step counts, sleep stages, and resting HR warm-up baselines.</span>
           </div>
-          <div class="box">
-            <h3>Behavioral & Dietary Logs</h3>
-            <p>Logged meal carbs (grams), meal timing, step counts, sleep duration/stages.</p>
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Dietary & Behavioral Logs</strong><br>
+            <span style="color:#64748b;">Logged meal carbohydrates (grams), meal timing, absorption slots, and population habit priors.</span>
           </div>
         </div>
       </div>
 
-      <div class="arrow-down">&darr;</div>
-
-      <!-- Tier 2: Hybrid Modeling -->
-      <div>
-        <div class="tier-label">Tier 2: Hybrid Physiological & Deep Learning Engine</div>
-        <div class="tier">
-          <div class="box highlight-physics">
-            <h3>Mechanistic UKF S3</h3>
-            <p>2-compartment Bergman minimal model + gut absorption dynamics. Produces 120-min physiological prior.</p>
+      <div class="card highlight-purple">
+        <h3><span class="badge badge-ml">Tier 2</span> Hybrid Physiological Prior + Deep Residual Learning</h3>
+        <div class="grid-2" style="margin-top:6px;">
+          <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
+            <strong style="color:#0369a1;">Mechanistic UKF S3 Engine:</strong>
+            <p style="margin-top:4px;">Two-compartment Bergman minimal model coupled to a two-stage nonlinear gut absorption ODE. Parameterized by patient-specific EHR priors:</p>
+            <div class="formula-box">
+              dG/dt = -(p_1 + X)G + p_1 G_b + Ra(t) / V_G<br>
+              dX/dt = -p_2 X + p_3 (I - I_b)
+            </div>
+            <p style="font-size:8pt; color:#64748b;">Unscented Kalman Filter (UKF) dynamically tracks insulin sensitivity ($S_I$) and gastric emptying ($t_{\max}$), delivering continuous 120-minute mechanistic forward rollouts.</p>
           </div>
-          <div class="box highlight-ml">
-            <h3>PR-TFT Encoder/Decoder</h3>
-            <p>Variable selection networks, LSTM temporal encoder, causal multi-head self-attention.</p>
-          </div>
-          <div class="box highlight-ml">
-            <h3>Residual Quantile Heads</h3>
-            <p>Learns residual deltas over UKF prior. Outputs 7 quantiles (p05, p10, p25, p50, p75, p90, p95).</p>
-          </div>
-          <div class="box highlight-ml">
-            <h3>Spike Hazard Predictor</h3>
-            <p>Predicts discrete-time spike onset hazard over 120-minute horizon. Calibrated isotonic risk.</p>
+          <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
+            <strong style="color:#7e22ce;">PR-TFT Deep Residual Architecture:</strong>
+            <p style="margin-top:4px;">Physics-Residual Temporal Fusion Transformer (PR-TFT) learns behavioral and physiological residuals over the mechanistic baseline:</p>
+            <div class="formula-box">
+              &ycirc;_t^{(q)} = &ycirc;_t^{\text{UKF}} + &rcirc;_t^{(q)}(\text{Observable History}, \text{Context})
+            </div>
+            <p style="font-size:8pt; color:#64748b;">Variable Selection Networks (VSN) filter multimodal inputs; temporal LSTM encodes past dynamics; causal self-attention models long-range multi-horizon dependencies.</p>
           </div>
         </div>
       </div>
 
-      <div class="arrow-down">&darr;</div>
-
-      <!-- Tier 3: Serving & Proxy -->
-      <div>
-        <div class="tier-label">Tier 3: Reliable Serving & Telemetry Proxy</div>
-        <div class="tier">
-          <div class="box">
-            <h3>FastAPI Inference Service</h3>
-            <p><code>serve_pr_tft.py</code> (port 8001). Generates <code>ForecastResponse</code> v1 and stateful alerts.</p>
-          </div>
-          <div class="box highlight-proxy">
-            <h3>Next.js SSE Proxy Route</h3>
-            <p><code>createSafeSSETransformStream</code> (port 3000). Chunk-invariant earliest-delimiter parser.</p>
-          </div>
-          <div class="box highlight-proxy">
-            <h3>Client Telemetry Hook</h3>
-            <p><code>useRealtimeTelemetry</code>. Bounded exponential backoff, envelope validation, contract enforcement.</p>
-          </div>
-          <div class="box highlight-warn">
-            <h3>What-If Simulation API</h3>
-            <p>Counterfactual meal/activity simulation via <code>/api/forecast</code>. UI editor explicitly disabled.</p>
-          </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Residual Quantile Heads (Multi-Horizon)</h3>
+          <p>Outputs 7 quantiles (<strong>p05, p10, p25, p50, p75, p90, p95</strong>) across 24 discrete 5-minute steps (120 min total). Conformal interval adjustment guarantees strictly valid empirical coverage.</p>
         </div>
-      </div>
-
-      <div class="arrow-down">&darr;</div>
-
-      <!-- Tier 4: Clinical Interface -->
-      <div>
-        <div class="tier-label">Tier 4: Clinical Workstation Dashboard</div>
-        <div class="tier">
-          <div class="box">
-            <h3>Cohort Directory</h3>
-            <p><code>/cohort</code> page. Search, filter by status (Healthy, Prediabetes, T2D), select subjects.</p>
-          </div>
-          <div class="box">
-            <h3>Patient Workspace</h3>
-            <p><code>/patients/[id]</code>. Visualizes glucose ribbon, current trend, and alert status.</p>
-          </div>
-          <div class="box">
-            <h3>Risk Waterfall</h3>
-            <p>Cumulative adverse event probability curve crossing clinical thresholds.</p>
-          </div>
-          <div class="box">
-            <h3>Model Contributions</h3>
-            <p>Arithmetic decomposition: UKF baseline, habitual meals, logged carbs, deep residuals.</p>
-          </div>
+        <div class="card">
+          <h3>Discrete-Time Spike Hazard Head</h3>
+          <p>Predicts cumulative onset probability $P(\text{spike within } 120\text{ min})$. Calibrated post-training via isotonic regression ($ECE = 0.000094$), driving clinical alert tiers.</p>
         </div>
       </div>
     </div>
 
     <div class="footer">
-      <span>Release Commit: <code>68f8cce84dee8a584982a8bb23113ed22bb3d01c</code></span>
-      <span>Happiest Health Digital Twin Challenge — Architecture Document</span>
-      <span>Investigational Research Prototype — Not for Clinical Decisions</span>
+      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
+      <span>Research Prototype — Not for Clinical Decisions</span>
     </div>
   </div>
+
+  <!-- ==================== PAGE 2: SERVING & WORKSTATION ==================== -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>T2D Glucose Digital Twin — System Architecture</h1>
+        <div class="subtitle">Page 2: Reliable Telemetry Serving, Chunk-Invariant SSE Proxy, & Clinical Workstation</div>
+      </div>
+      <div class="page-num">2 / 3</div>
+    </div>
+
+    <div class="content">
+      <div class="card highlight-emerald">
+        <h3><span class="badge badge-ok">Tier 3</span> Reliable Inference Serving & Telemetry Proxy Architecture</h3>
+        <div class="grid-3" style="margin-top: 6px;">
+          <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
+            <strong>FastAPI Inference Service (Port 8001)</strong><br>
+            <p style="color:#64748b; margin-top:4px;"><code>backend/serve_pr_tft.py</code> serves Blueprint Section 9 JSON contract. Evaluates data-quality gates, runs UKF rollouts + PR-TFT inference, checks quantile monotonicity, and executes stateful <code>AlertMachine</code> with 120-min refractory suppression.</p>
+          </div>
+          <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
+            <strong>Next.js SSE Proxy (Port 3000)</strong><br>
+            <p style="color:#64748b; margin-top:4px;"><code>src/app/api/patients/[id]/stream/route.ts</code> proxies events using <code>createSafeSSETransformStream</code>. Chunk-invariant parsing searches for earliest delimiter (<code>\r\n\r\n</code>, <code>\n\n</code>, <code>\r\r</code>), immune to arbitrary network framing and TCP fragmentation.</p>
+          </div>
+          <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
+            <strong>Client Hook (useRealtimeTelemetry)</strong><br>
+            <p style="color:#64748b; margin-top:4px;">State machine manages connection lifecycles: <code>connecting</code> &rarr; <code>connected</code> &rarr; <code>reconnecting</code>. Bounded exponential backoff (max 3 retries), envelope schema validation via Zod, and 15-second client staleness detection.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><span class="badge badge-physics">Tier 4</span> Clinical Workstation Interface</h3>
+        <div class="grid-4" style="margin-top:6px;">
+          <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Cohort Directory</strong><br>
+            <span style="color:#64748b;"><code>/cohort</code> page. Demographic search, status filters (Healthy, Prediabetes, T2D), and quick-pivot patient cards.</span>
+          </div>
+          <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Patient Workspace</strong><br>
+            <span style="color:#64748b;"><code>/patients/[id]</code>. Visualizes live CGM, 24-step forecast ribbon, sensor staleness, and twin parameters.</span>
+          </div>
+          <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Risk Panel & Alert Strip</strong><br>
+            <span style="color:#64748b;">Cumulative adverse event hazard curve with clinical threshold badges (Watch at $p \ge 0.35$, Warning at $p \ge 0.60$).</span>
+          </div>
+          <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong>Model Contributions</strong><br>
+            <span style="color:#64748b;">Additive decomposition explaining model arithmetic: mechanistic prior, meal absorption, learned residual.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card highlight-amber">
+        <h3><span class="badge badge-warn">Safety Boundary</span> Scenario Exploration (What-If API vs. Dashboard UI)</h3>
+        <div class="grid-2" style="margin-top:4px;">
+          <div>
+            <strong>Backend API Capabilities (Supported):</strong>
+            <p style="color:#475569; margin-top:2px;">Routes <code>/api/forecast</code> and <code>/v1/forecasts</code> accept hypothetical meal additions/skips and physical activity inputs, re-solving the linearized twin and generating comparison ribbons (&Delta;peak mg/dL, &Delta;probability).</p>
+          </div>
+          <div>
+            <strong>Clinical Boundary & UI Disablement (Enforced):</strong>
+            <p style="color:#475569; margin-top:2px;"><code>ScenarioEditor.tsx</code> in the dashboard is explicitly disabled. Pharmacological scenarios return <code>SCENARIO_UNSUPPORTED</code> (422). Counterfactual treatment effects have not been validated in humans and must not guide therapy.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="banner banner-warn">
+        <strong>Fail-Closed Safety Architecture:</strong> If the neural network fails (OOM, timeout), the service falls back to the mechanistic UKF twin-only trajectory (<code>fallback_used: "twin_only"</code>) with monotonic quantiles and suppresses hazard alerts. If CGM coverage is insufficient (&lt;6h), forecast and risk are strictly nulled.
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
+      <span>Research Prototype — Not for Clinical Decisions</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3: HYBRID SYNERGIES & SCIENTIFIC RIGOR ==================== -->
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>T2D Glucose Digital Twin — System Architecture</h1>
+        <div class="subtitle">Page 3: Patient-Specific Hybrid Synergies, Calibrated Uncertainty, & Scientific Limitations</div>
+      </div>
+      <div class="page-num">3 / 3</div>
+    </div>
+
+    <div class="content">
+      <div class="grid-2">
+        <div class="card highlight-blue">
+          <h3><span class="badge badge-physics">Core Differentiation</span> Why a Physics-Residual Hybrid Architecture?</h3>
+          <ul style="margin-top: 6px;">
+            <li><strong>Mass Conservation & Physiological Grounding:</strong> Pure black-box neural networks frequently hallucinate impossible glucose spikes or cliff-drops. The UKF minimal model guarantees mass conservation and physiological bounds.</li>
+            <li><strong>Patient-Specific Personalization:</strong> UKF continuously tracks individual metabolic traits (EHR priors $S_I$ insulin sensitivity and $t_{\max}$ absorption kinetics) from longitudinal history.</li>
+            <li><strong>Deep Residual Learning:</strong> The PR-TFT transformer does not need to re-learn basic human physiology; it focuses entirely on modeling complex residual behaviors (delayed dawn phenomenon, stress, meal composition).</li>
+            <li><strong>Interpretability for Clinicians:</strong> Decomposes predictions into observable physiological drivers and learned corrections without black-box opacity.</li>
+          </ul>
+        </div>
+
+        <div class="card highlight-purple">
+          <h3><span class="badge badge-ml">Evidence</span> Validation Benchmark & Calibrated Uncertainty</h3>
+          <ul style="margin-top: 6px;">
+            <li><strong>Evaluated Validation Partition:</strong> 44 validation patients (47,629 decision anchors) from pre-registered <code>split_293.json</code>.</li>
+            <li><strong>Trajectory Error (RMSE mg/dL):</strong><br>
+              &bull; <strong>30-min:</strong> 12.36 (MAE 8.43, MARD 7.22%)<br>
+              &bull; <strong>60-min:</strong> 19.53 (MAE 12.43, MARD 10.16%)<br>
+              &bull; <strong>120-min:</strong> 25.03 (MAE 16.76, MARD 13.66%)</li>
+            <li><strong>Conformal Uncertainty:</strong> 80% empirical interval coverage is <strong>80.00%</strong> (mean width 37.3 mg/dL).</li>
+            <li><strong>Hazard Calibration:</strong> Isotonic-calibrated spike hazard achieves AUROC <strong>0.9226</strong>, AUPRC <strong>0.6314</strong>, and Expected Calibration Error (ECE) <strong>0.000094</strong>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card highlight-rose">
+        <h3><span class="badge badge-danger">Scientific Integrity</span> Negative Validation Gates & Explicit Limitations</h3>
+        <div class="grid-3" style="margin-top:6px;">
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong style="color:#be123c;">1. Gate 3 Realism Audit: FAILED</strong><br>
+            <p style="color:#64748b; font-size:8pt; margin-top:2px;">
+              Historical AUROC <strong>0.9320</strong> / Duration-corrected AUROC <strong>0.9290</strong> vs. threshold <strong>&le; 0.65</strong>. Discriminator easily separates synthetic ODE series from mock-real CGM (top tell: <code>jerk_sd</code>). Factorial drift controls prove generator AR(1) drift explains part of curvature differences, but not the full multivariate failure. No fabricated smoothing applied.
+            </p>
+          </div>
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong style="color:#b45309;">2. Baseline Audit: UNVERIFIED</strong><br>
+            <p style="color:#64748b; font-size:8pt; margin-top:2px;">
+              Demo baseline files (Persistence RMSE120 50.66, UKF 40.20) evaluated an 18-patient test subset under an earlier demo run. Because populations are not aligned, direct superiority claims on the 44-subject validation split are marked cohort-unverified.
+            </p>
+          </div>
+          <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+            <strong style="color:#475569;">3. EW-01 Protocol: UNEXECUTED</strong><br>
+            <p style="color:#64748b; font-size:8pt; margin-top:2px;">
+              Formal comparative early warning evaluation remains governance-blocked pending co-author sign-offs. The 44-patient validation split was used for model tuning and calibration; it does not represent independent human generalization.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="banner banner-danger">
+        <strong>Investigational Research Prototype:</strong> This submission establishes verifiable engineering excellence (36 Jest suites / 325 tests passed; 111 Pytest backend tests passed; chunk-invariant SSE proxy verified). All negative findings are disclosed in full accordance with scientific peer-review standards.
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
+      <span>Research Prototype — Not for Clinical Decisions</span>
+    </div>
+  </div>
+
 </body>
 </html>

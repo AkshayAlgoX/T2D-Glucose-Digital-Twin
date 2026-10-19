@@ -179,8 +179,8 @@
           "items": { "type": "object", "additionalProperties": false, "required": ["offset_min", "p10", "p50", "p90"],
                      "properties": { "offset_min": { "$ref": "#/$defs/OffsetMin" }, "p10": { "$ref": "#/$defs/GlucoseMgDl" }, "p50": { "$ref": "#/$defs/GlucoseMgDl" }, "p90": { "$ref": "#/$defs/GlucoseMgDl" } } }
         },
-        "probability_120m": { "$ref": "#/$defs/Probability" },
-        "delta_probability": { "type": "number", "minimum": -1, "maximum": 1 },
+        "probability_120m": { "oneOf": [{ "$ref": "#/$defs/Probability" }, { "type": "null" }] },
+        "delta_probability": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
         "delta_peak_mg_dl": { "type": "number" }
       }
     },

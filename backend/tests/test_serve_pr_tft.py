@@ -108,6 +108,9 @@ def test_forecast_everything_and_scenarios(client, subjects):
     walk_peak = max(p["p50"] for p in sc["walk"]["points"])
     meal_peak = max(p["p50"] for p in sc["big-meal"]["points"])
     assert walk_peak < meal_peak, "walking after the same meal must lower the peak"
+    assert sc["big-meal"]["delta_probability"] is not None
+    assert isinstance(sc["big-meal"]["delta_probability"], float)
+    assert sc["big-meal"]["probability_120m"] is not None
     assert all("twin_p50" in p for p in out["forecast"]["points"])
     assert any(w["code"] == "SCENARIO_APPROXIMATION" for w in out.get("warnings", []))
 
@@ -162,6 +165,125 @@ def test_fallback_to_twin_only(client, subjects, monkeypatch):
     out = r.json()
     assert_valid("forecast-response.json", out)
     assert out["model"]["fallback_used"] == "twin_only"
+    assert out["spike_risk"] is None
+    assert out["alert"]["state"] == "none"
+    points = out["forecast"]["points"]
+    assert len(points) == 24
+    for p in points:
+        assert p["p05"] <= p["p10"] <= p["p25"] <= p["p50"] <= p["p75"] <= p["p90"] <= p["p95"]
+
+
+def test_fallback_to_twin_only_with_scenarios(client, subjects, monkeypatch):
+    svc: S.ServiceContext = client.app.state.ctx
+
+    def boom(*_a, **_k):
+        raise RuntimeError("simulated model failure")
+
+    monkeypatch.setattr(svc, "run_model", boom)
+    body = request_body(subjects[0]["subject_id"], scenarios=[
+        {"scenario_id": "lunch", "label": "30 g carb", "inputs": [{"kind": "meal", "offset_min": 0, "carbs_g": 30}]},
+        {"scenario_id": "walk", "inputs": [{"kind": "activity", "offset_min": 15, "duration_min": 30, "intensity": "moderate"}]},
+    ])
+    r = client.post("/v1/forecasts", json=body)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert_valid("forecast-response.json", out)
+    assert out["model"]["fallback_used"] == "twin_only"
+    assert out["spike_risk"] is None
+    assert out["alert"]["state"] == "none"
+    assert len(out["scenarios"]) == 2
+    for sc in out["scenarios"]:
+        assert sc["delta_probability"] is None
+        assert sc["probability_120m"] is None
+        assert isinstance(sc["delta_peak_mg_dl"], float)
+        assert len(sc["points"]) == 24
+        for p in sc["points"]:
+            assert p["p10"] <= p["p50"] <= p["p90"]
+
+
+def test_scenarios_with_unavailable_baseline_probability(client, subjects):
+    svc: S.ServiceContext = client.app.state.ctx
+    pc = svc.patient(uuid.UUID(subjects[0]["subject_id"]))
+    t = S.T.FIRST_ANCHOR
+    base, _, _, _, _ = svc.rollouts(pc, t)
+    reqs = [S.ScenarioRequest(scenario_id="meal1", inputs=[S.MealInput(kind="meal", offset_min=0, carbs_g=45)])]
+    results, _ = S.scenarios(svc, pc, t, reqs, base, base_p120=None)
+    assert len(results) == 1
+    assert results[0]["scenario_id"] == "meal1"
+    assert results[0]["delta_probability"] is None
+    assert results[0]["probability_120m"] is not None
+    assert isinstance(results[0]["probability_120m"], float)
+
+
+def test_scenario_calibration_failure_surfaced(client, subjects, monkeypatch):
+    svc: S.ServiceContext = client.app.state.ctx
+    pc = svc.patient(uuid.UUID(subjects[0]["subject_id"]))
+    t = S.T.FIRST_ANCHOR
+    base, _, _, _, _ = svc.rollouts(pc, t)
+    reqs = [S.ScenarioRequest(scenario_id="meal1", inputs=[S.MealInput(kind="meal", offset_min=0, carbs_g=45)])]
+
+    orig_calibrated_hazard = S.calibrated_hazard
+
+    # 1. Direct call to S.scenarios raises ServiceError with CALIBRATION_FAILED when calibration fails
+    def boom_calib(*_a, **_k):
+        raise ValueError("simulated scenario calibration failure")
+
+    monkeypatch.setattr(S, "calibrated_hazard", boom_calib)
+    with pytest.raises(S.ServiceError) as exc_info:
+        S.scenarios(svc, pc, t, reqs, base, base_p120=0.2)
+    assert exc_info.value.status == 500
+    assert exc_info.value.code == "CALIBRATION_FAILED"
+    assert "meal1" in exc_info.value.detail
+    assert "simulated scenario calibration failure" in exc_info.value.detail
+
+    # 2. HTTP endpoint surfaces CALIBRATION_FAILED error rather than falling back to twin-only
+    call_count = 0
+
+    def fail_scenario_calib(ctx, p_bin):
+        nonlocal call_count
+        call_count += 1
+        # First call is baseline calibration; subsequent calls are for scenarios
+        if call_count > 1:
+            raise ValueError("simulated scenario calibration failure")
+        return orig_calibrated_hazard(ctx, p_bin)
+
+    monkeypatch.setattr(S, "calibrated_hazard", fail_scenario_calib)
+    body = request_body(subjects[0]["subject_id"], scenarios=[
+        {"scenario_id": "lunch", "label": "30 g carb", "inputs": [{"kind": "meal", "offset_min": 0, "carbs_g": 30}]},
+    ])
+    r = client.post("/v1/forecasts", json=body)
+    assert r.status_code == 500, r.text
+    assert r.headers["content-type"].startswith("application/problem+json")
+    err = r.json()
+    assert err["code"] == "CALIBRATION_FAILED"
+    assert "lunch" in err["detail"]
+
+
+def test_scenario_known_delta_probability_arithmetic(client, subjects, monkeypatch):
+    svc: S.ServiceContext = client.app.state.ctx
+    pc = svc.patient(uuid.UUID(subjects[0]["subject_id"]))
+    t = S.T.FIRST_ANCHOR
+    base, _, _, _, _ = svc.rollouts(pc, t)
+    reqs = [S.ScenarioRequest(scenario_id="meal1", inputs=[S.MealInput(kind="meal", offset_min=0, carbs_g=45)])]
+
+    # Mock calibrated_hazard to return a known probability of 0.7
+    monkeypatch.setattr(S, "calibrated_hazard", lambda ctx, p_bin: (np.zeros(24), 0.7))
+
+    # Baseline 0.2, scenario 0.7 -> delta = 0.5
+    res1, _ = S.scenarios(svc, pc, t, reqs, base, base_p120=0.2)
+    assert res1[0]["probability_120m"] == 0.7
+    assert res1[0]["delta_probability"] == pytest.approx(0.5, abs=1e-6)
+
+    # Baseline 0.0 (genuine zero), scenario 0.7 -> delta = 0.7
+    res2, _ = S.scenarios(svc, pc, t, reqs, base, base_p120=0.0)
+    assert res2[0]["probability_120m"] == 0.7
+    assert res2[0]["delta_probability"] == pytest.approx(0.7, abs=1e-6)
+
+    # Baseline None, scenario 0.7 -> delta = None
+    res3, _ = S.scenarios(svc, pc, t, reqs, base, base_p120=None)
+    assert res3[0]["probability_120m"] == 0.7
+    assert res3[0]["delta_probability"] is None
+
 
 
 def test_twin_card(client, subjects):

@@ -152,6 +152,54 @@ export const ProblemSchema = z.object({
   code: z.string()
 });
 
+export const ScenarioPointSchema = z.object({
+  offset_min: OffsetMinSchema,
+  p10: GlucoseMgDlSchema,
+  p50: GlucoseMgDlSchema,
+  p90: GlucoseMgDlSchema
+}).strict();
+
+export const ScenarioInputSchema = z.union([
+  z.discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('meal'),
+      offset_min: z.number().int().min(0).max(120),
+      carbs_g: z.number().min(0).max(250),
+      fat_g: z.number().min(0).optional(),
+      protein_g: z.number().min(0).optional(),
+      fiber_g: z.number().min(0).optional(),
+      glycemic_index: z.enum(['low', 'medium', 'high']).optional()
+    }).strict(),
+    z.object({
+      kind: z.literal('activity'),
+      offset_min: z.number().int().min(0).max(120),
+      duration_min: z.number().int().min(5).max(120),
+      intensity: z.enum(['light', 'moderate', 'vigorous'])
+    }).strict(),
+    z.object({
+      kind: z.literal('skip_habitual_meal'),
+      meal_slot: z.enum(['breakfast', 'lunch', 'dinner', 'snack'])
+    }).strict(),
+    z.object({
+      kind: z.literal('medication'),
+      offset_min: z.number().int().min(0).max(120),
+      med_class: MedClassSchema,
+      taken: z.boolean()
+    }).strict()
+  ]),
+  z.record(z.string(), z.unknown())
+]);
+
+export const ScenarioResultSchema = z.object({
+  scenario_id: z.string(),
+  label: z.string().max(60).optional(),
+  inputs: z.array(ScenarioInputSchema).min(1),
+  points: z.array(ScenarioPointSchema).length(24),
+  probability_120m: ProbabilitySchema.nullable(),
+  delta_probability: z.number().min(-1).max(1).nullable(),
+  delta_peak_mg_dl: z.number()
+}).strict();
+
 export const ForecastResponseSchema = z.object({
   schema_version: z.literal('1.0.0'),
   request_id: z.string().uuid(),
@@ -165,7 +213,7 @@ export const ForecastResponseSchema = z.object({
   spike_risk: SpikeRiskSchema.nullable(),
   alert: AlertSchema,
   drivers: z.array(DriverSchema).max(8).optional(),
-  scenarios: z.array(z.unknown()).max(4).optional(),
+  scenarios: z.array(ScenarioResultSchema).max(4).optional(),
   twin_state: TwinStateSchema.optional(),
   ehr_context: EhrContextSchema.optional(),
   intended_use: z.literal('research_only_not_for_clinical_decisions'),

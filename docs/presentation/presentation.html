@@ -527,16 +527,17 @@
             <li>Observable-input contract enforcement.</li>
             <li>PR-TFT + UKF S3 model architecture.</li>
             <li>Chunk-invariant SSE proxy & recovery hook.</li>
-            <li>36 Jest suites (307 tests) & 107 backend tests passed.</li>
+            <li>36 Jest suites (325 tests) & 111 backend tests passed.</li>
           </ul>
         </div>
         <div class="card">
-          <h4>Tier 2: Historical Development Data</h4>
-          <p style="color:#d97706; font-weight:700;">RECORDED WITH CAVEATS</p>
+          <h4>Tier 2: Validation Trajectory Benchmark</h4>
+          <p style="color:#d97706; font-weight:700;">44 PATIENTS (47,629 ANCHORS)</p>
           <ul>
-            <li>Arm D manifest validation trajectory metrics: RMSE60 19.53 mg/dL, RMSE120 25.03 mg/dL.</li>
-            <li>Validation cohort was used for model tuning and calibration.</li>
-            <li>Historical metrics serve as development references only.</li>
+            <li><strong>PR-TFT Arm D:</strong> RMSE30 12.36, RMSE60 19.53, RMSE120 25.03 mg/dL.</li>
+            <li><strong>Uncertainty:</strong> 80% conformal coverage 80.00% (width 37.3); calibrated ECE 0.000094.</li>
+            <li><strong>Baseline Audit:</strong> Historical demo baselines (Persistence 50.66, UKF 40.20) used 18 subjects; direct comparison marked unverified.</li>
+            <li><em>Caveat:</em> Validation split used for checkpointing; not independent human generalization.</li>
           </ul>
         </div>
         <div class="card">
@@ -574,11 +575,12 @@
           <h4>Synthetic Data Realism Audit (Gate 3)</h4>
           <div class="danger-box" style="margin-bottom: 8px;">
             <strong>Gate 3 Result: FAILED</strong><br>
-            Discriminator AUROC: <strong>0.9320</strong> (90% CI: 0.928–0.936) vs. Target Threshold: <strong>&le; 0.65</strong>.
+            Discriminator AUROC: <strong>0.9320</strong> (historical) / <strong>0.9290</strong> (duration-corrected) vs. Target: <strong>&le; 0.65</strong>.
           </div>
           <ul>
-            <li>A machine learning discriminator reliably distinguishes synthetic patient windows from mock-real records (top tell: <code>jerk_sd</code>).</li>
-            <li>The generator and twin share underlying physiological assumptions, creating potential circularity in purely simulated evaluations.</li>
+            <li>A machine learning discriminator reliably distinguishes synthetic ODE trajectories from mock-real generator records (top tell: <code>jerk_sd</code>).</li>
+            <li>Controlled factorial drift experiments confirm empirical AR(1) background drift (SD 8–16 mg/dL) accounts for a portion of trajectory curvature differences, but not the entire multivariate failure.</li>
+            <li>Sampling duration fix (+307 windows) verified; no unscientific parameter gaming applied.</li>
           </ul>
         </div>
         <div class="card">

@@ -64,6 +64,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No scenario returned" }, { status: 500 });
     }
 
+    // Validate scenario probability bounds
+    if (scenario.probability_120m !== null && scenario.probability_120m !== undefined) {
+      if (typeof scenario.probability_120m !== 'number' || !Number.isFinite(scenario.probability_120m) || scenario.probability_120m < 0 || scenario.probability_120m > 1) {
+        return NextResponse.json({ error: "Invalid upstream contract" }, { status: 502 });
+      }
+    }
+
+    // Validate scenario delta_probability bounds if present
+    if (scenario.delta_probability !== null && scenario.delta_probability !== undefined) {
+      if (typeof scenario.delta_probability !== 'number' || !Number.isFinite(scenario.delta_probability) || scenario.delta_probability < -1 || scenario.delta_probability > 1) {
+        return NextResponse.json({ error: "Invalid upstream contract" }, { status: 502 });
+      }
+    }
+
+    // Validate baseline risk probability bounds if present
+    if ((resData as any).spike_risk?.probability_120m !== null && (resData as any).spike_risk?.probability_120m !== undefined) {
+      const baseProb = (resData as any).spike_risk.probability_120m;
+      if (typeof baseProb !== 'number' || !Number.isFinite(baseProb) || baseProb < 0 || baseProb > 1) {
+        return NextResponse.json({ error: "Invalid upstream contract" }, { status: 502 });
+      }
+    }
+
     const asOfTime = new Date((resData as any).as_of).getTime();
 
     // Compute peaks from the actual arrays
@@ -77,6 +99,22 @@ export async function POST(request: NextRequest) {
       p90: p.p90
     }));
 
+    const rawBaselineProb = (resData as any).spike_risk?.probability_120m;
+    const baseline_probability = typeof rawBaselineProb === 'number' && Number.isFinite(rawBaselineProb)
+      ? rawBaselineProb
+      : null;
+
+    const rawNewProb = scenario.probability_120m;
+    const new_probability = typeof rawNewProb === 'number' && Number.isFinite(rawNewProb)
+      ? rawNewProb
+      : null;
+
+    let delta_probability: number | null = null;
+    if (baseline_probability !== null && new_probability !== null) {
+      const diff = Math.round((new_probability - baseline_probability) * 1000) / 1000;
+      delta_probability = Object.is(diff, -0) ? 0 : diff;
+    }
+
     return NextResponse.json({
       pinned_as_of: (resData as any).as_of,
       scenario_forecast,
@@ -84,9 +122,9 @@ export async function POST(request: NextRequest) {
         delta_peak_mg_dl: scenario.delta_peak_mg_dl,
         new_peak_mg_dl,
         baseline_peak_mg_dl,
-        delta_probability: scenario.delta_probability,
-        new_probability: scenario.probability_120m,
-        baseline_probability: (resData as any).spike_risk?.probability_120m || 0
+        delta_probability,
+        new_probability,
+        baseline_probability
       }
     });
 
