@@ -1,0 +1,223 @@
+{
+ "subject": "P0017",
+ "split": "val",
+ "note": "(offset_min, residual mg/dL) of the largest |final median - twin| step",
+ "results": [
+  {
+   "anchor": "05:55 29 Sep",
+   "meal_row_offset_min": 5,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     70,
+     38.5
+    ],
+    "60g_prob_kept_at_habit": [
+     80,
+     21.2
+    ],
+    "20g_prob1": [
+     75,
+     47.3
+    ]
+   }
+  },
+  {
+   "anchor": "05:55 29 Sep",
+   "meal_row_offset_min": 30,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     75,
+     53.7
+    ],
+    "60g_prob_kept_at_habit": [
+     80,
+     47.1
+    ],
+    "20g_prob1": [
+     120,
+     10.7
+    ]
+   }
+  },
+  {
+   "anchor": "05:55 29 Sep",
+   "meal_row_offset_min": 60,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     80,
+     7.9
+    ],
+    "60g_prob_kept_at_habit": [
+     85,
+     5.0
+    ],
+    "20g_prob1": [
+     120,
+     12.4
+    ]
+   }
+  },
+  {
+   "anchor": "05:55 29 Sep",
+   "meal_row_offset_min": 90,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     120,
+     12.2
+    ],
+    "60g_prob_kept_at_habit": [
+     120,
+     11.9
+    ],
+    "20g_prob1": [
+     120,
+     14.7
+    ]
+   }
+  },
+  {
+   "anchor": "07:30 05 Oct",
+   "meal_row_offset_min": 5,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     120,
+     -31.3
+    ],
+    "60g_prob_kept_at_habit": [
+     120,
+     -27.6
+    ],
+    "20g_prob1": [
+     120,
+     -21.0
+    ]
+   }
+  },
+  {
+   "anchor": "07:30 05 Oct",
+   "meal_row_offset_min": 30,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     120,
+     -31.8
+    ],
+    "60g_prob_kept_at_habit": [
+     120,
+     -30.4
+    ],
+    "20g_prob1": [
+     60,
+     22.7
+    ]
+   }
+  },
+  {
+   "anchor": "07:30 05 Oct",
+   "meal_row_offset_min": 60,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     60,
+     32.0
+    ],
+    "60g_prob_kept_at_habit": [
+     120,
+     -27.3
+    ],
+    "20g_prob1": [
+     60,
+     31.4
+    ]
+   }
+  },
+  {
+   "anchor": "07:30 05 Oct",
+   "meal_row_offset_min": 90,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     60,
+     26.6
+    ],
+    "60g_prob_kept_at_habit": [
+     60,
+     26.6
+    ],
+    "20g_prob1": [
+     60,
+     26.6
+    ]
+   }
+  },
+  {
+   "anchor": "13:00 02 Oct",
+   "meal_row_offset_min": 5,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     50,
+     -65.2
+    ],
+    "60g_prob_kept_at_habit": [
+     50,
+     -63.9
+    ],
+    "20g_prob1": [
+     50,
+     -56.0
+    ]
+   }
+  },
+  {
+   "anchor": "13:00 02 Oct",
+   "meal_row_offset_min": 30,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     55,
+     -50.8
+    ],
+    "60g_prob_kept_at_habit": [
+     55,
+     -50.8
+    ],
+    "20g_prob1": [
+     50,
+     -47.8
+    ]
+   }
+  },
+  {
+   "anchor": "13:00 02 Oct",
+   "meal_row_offset_min": 60,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     45,
+     -47.0
+    ],
+    "60g_prob_kept_at_habit": [
+     45,
+     -47.0
+    ],
+    "20g_prob1": [
+     45,
+     -47.0
+    ]
+   }
+  },
+  {
+   "anchor": "13:00 02 Oct",
+   "meal_row_offset_min": 90,
+   "max_abs_residual_at": {
+    "served_60g_prob1": [
+     45,
+     -47.0
+    ],
+    "60g_prob_kept_at_habit": [
+     45,
+     -47.0
+    ],
+    "20g_prob1": [
+     45,
+     -47.0
+    ]
+   }
+  }
+ ]
+}
