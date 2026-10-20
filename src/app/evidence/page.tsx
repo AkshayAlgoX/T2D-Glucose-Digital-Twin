@@ -205,6 +205,16 @@ const ReportSchema = z.object({
   }).passthrough(),
 }).passthrough();
 
+/** Collapsible evidence block: the title row stays visible, detail opens on demand; content stays in the DOM. */
+function EvidenceDisclosure({ labelledBy, label, defaultOpen = false, children }: { labelledBy: string; label: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  return (
+    <details className="panel evidence-section evidence-disclosure" open={defaultOpen || undefined}>
+      <summary><span>{label}</span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
+      <section className="evidence-disclosure-body" aria-labelledby={labelledBy}>{children}</section>
+    </details>
+  );
+}
+
 export default async function EvidencePage() {
   const artifactsDir = process.env.ARTIFACTS_DIR || path.join(process.cwd(), 'runs/pr_tft_ablation_arm_d');
   let manifest: z.infer<typeof ManifestSchema> | null = null;
@@ -490,7 +500,7 @@ export default async function EvidencePage() {
             </div>
 
             {/* 1. Matched Baselines Comparison Table with Patient-Clustered CIs */}
-            <section className="panel evidence-section" aria-labelledby="baselines-heading" style={{ marginBottom: '24px' }}>
+            <EvidenceDisclosure labelledBy="baselines-heading" label="Matched baselines · forecast error by horizon with patient-clustered 95% CIs">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                 <div>
                   <span className="eyebrow">Controlled Benchmarks</span>
@@ -630,11 +640,11 @@ export default async function EvidencePage() {
                   <img src="/evidence/horizon_trajectory.svg" alt="Forecast Error Trajectory Across Horizons (5 to 120 min)" />
                 </div>
               </div>
-            </section>
+            </EvidenceDisclosure>
 
             {/* 2. Patient-Level Pairwise Wins */}
             {wins && (
-              <section className="panel evidence-section" aria-labelledby="patient-wins-heading" style={{ marginBottom: '24px' }}>
+              <EvidenceDisclosure labelledBy="patient-wins-heading" label="Patient-level pairwise wins">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                   <div>
                     <span className="eyebrow">Subject-Level Consistency</span>
@@ -681,12 +691,12 @@ export default async function EvidencePage() {
                     );
                   })}
                 </div>
-              </section>
+              </EvidenceDisclosure>
             )}
 
             {/* 3. Subgroups Stratification */}
             {subgroups && (
-              <section className="panel evidence-section" aria-labelledby="subgroups-heading" style={{ marginBottom: '24px' }}>
+              <EvidenceDisclosure labelledBy="subgroups-heading" label="Subgroups · Healthy, Prediabetes, Type 2">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                   <div>
                     <span className="eyebrow">Diagnostic Stratification</span>
@@ -749,12 +759,12 @@ export default async function EvidencePage() {
                 <div className="evidence-chart-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
                   <img src="/evidence/subgroup_robustness.svg" alt="Subgroup Robustness Across Clinical Strata" />
                 </div>
-              </section>
+              </EvidenceDisclosure>
             )}
 
             {/* 4. Patient Dispersion Compact Numeric Summary */}
             {dist && (
-              <section className="panel evidence-section" aria-labelledby="patient-dist-heading" style={{ marginBottom: '24px' }}>
+              <EvidenceDisclosure labelledBy="patient-dist-heading" label="Per-patient error dispersion">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                   <div>
                     <span className="eyebrow">Cohort Dispersion</span>
@@ -797,12 +807,12 @@ export default async function EvidencePage() {
                     </div>
                   )}
                 </div>
-              </section>
+              </EvidenceDisclosure>
             )}
 
             {/* 5. Calibration Limitations & Resubstitution Diagnostics (Explicitly Reconciled) */}
             {cal && (
-              <section className="panel evidence-section" aria-labelledby="cal-limits-heading" style={{ marginBottom: '24px' }}>
+              <EvidenceDisclosure labelledBy="cal-limits-heading" label="Calibration and interval coverage (resubstitution diagnostics)">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                   <div>
                     <span className="eyebrow">Secondary Diagnostics</span>
@@ -888,7 +898,7 @@ export default async function EvidencePage() {
                 <p className="fine-print" style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
                   Conformal coverage ({metrics.coverage_80_conformal.estimate ? (metrics.coverage_80_conformal.estimate * 100).toFixed(2) : '80.00'}%, width {metrics.width_80_conformal_mg_dl?.estimate?.toFixed(2) ?? '37.30'} mg/dL), Expected Calibration Error (ECE 0.000094), and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting. No threshold should be treated as an approved clinical operating recommendation.
                 </p>
-              </section>
+              </EvidenceDisclosure>
             )}
 
             {/* 6. Scientific Governance & Boundary Disclosures Register */}
@@ -1003,7 +1013,7 @@ export default async function EvidencePage() {
         )}
 
         {/* Historical Development Reference - Preserved separately */}
-        <section className="panel evidence-section" aria-labelledby="historical-record-heading" style={{ marginBottom: '24px' }}>
+        <EvidenceDisclosure labelledBy="historical-record-heading" label="Historical development reference (excluded from claims)">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate Fixed Evidence Record</span>
             <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
@@ -1016,7 +1026,7 @@ export default async function EvidencePage() {
           <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: 0 }}>
             Earlier development reference recorded in <code>backend/runs/pr_tft_demo/evaluation_baseline.json</code> evaluated 18 subjects under demo checkpoint <code>stage2_observed-epoch=01-val_loss=0.3096.ckpt</code> (Persistence RMSE120: 50.66, Twin-only RMSE120: 40.20). This historical record is preserved separately for reference only; direct numerical superiority claims over it are cohort-unverified.
           </p>
-        </section>
+        </EvidenceDisclosure>
 
         {/* Advanced Reproducibility & Cryptographic Provenance Disclosure */}
         {!errorState && manifest && report && (

@@ -577,4 +577,22 @@ describe('EvidencePage', () => {
     expect(screen.queryByText('Audited Validation Benchmark')).not.toBeInTheDocument();
     expect(screen.queryByText(/Recorded artifact — review required/i)).not.toBeInTheDocument();
   });
+
+  it('keeps the summary and the Gate 3 failure outside the collapsed detail, and every detailed table inside a disclosure', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+    const Component = await EvidencePage();
+    const { container } = render(Component);
+    const disclosures = container.querySelectorAll('details.evidence-disclosure');
+    expect(disclosures.length).toBeGreaterThanOrEqual(5);
+    disclosures.forEach(d => expect(d.querySelector('summary')?.textContent).toBeTruthy());
+    container.querySelectorAll('.evidence-table').forEach(table => expect(table.closest('details')).not.toBeNull());
+    const gate3 = screen.getAllByText(/Gate 3 FAILED/i);
+    expect(gate3.some(el => el.closest('details') === null)).toBe(true);
+    expect(screen.getByRole('region', { name: /Matched Baseline/i })).toBeInTheDocument();
+  });
 });
+
