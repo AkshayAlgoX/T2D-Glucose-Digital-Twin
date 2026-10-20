@@ -44,7 +44,7 @@ describe('Opus Audit - ForecastCanvas', () => {
     const { container } = render(<ForecastCanvas forecast={null} cache={{}} />);
     const legend = container.querySelector('.chart-legend');
     expect(legend).toBeInTheDocument();
-    expect(legend?.textContent).toContain('Peak estimate');
+    expect(legend?.textContent).toContain('Forecast peak (median)');
     expect(legend?.querySelector('.legend-peak')).toBeInTheDocument();
   });
 });

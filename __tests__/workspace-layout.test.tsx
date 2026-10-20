@@ -17,7 +17,8 @@ it('keeps context, analysis, history and unavailable capabilities in a coherent 
   const simulation = screen.getByRole('heading', { name: 'What-if simulation' });
   const replay = screen.getByText('Pinned-time replay unavailable');
   const disclaimer = screen.getByText('Research Only (Not for clinical decisions)');
-  [context, trajectory, risk, history, coverage, simulation, replay].forEach((element, index, elements) => {
+  // Story order: forecast, risk, patient record, what-if, then history/coverage/provenance detail.
+  [trajectory, risk, context, simulation, history, coverage, replay].forEach((element, index, elements) => {
     expect(element.compareDocumentPosition(elements[index + 1] ?? disclaimer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   expect(container.querySelector('.trajectory-panel .risk-history')).toBeNull();

@@ -136,7 +136,7 @@ describe('Honest data and risk presentation', () => {
     expect(screen.getByRole('heading', { name: 'Clinical Context' })).toBeInTheDocument();
     expect(screen.getByText('42 years')).toBeInTheDocument();
     expect(screen.getByText('01 Oct 2026')).toHaveAttribute('datetime', '2026-10-01');
-    expect(screen.getByText('Not exposed by this stream')).toBeInTheDocument();
+    expect(screen.getByText('Not received in this forecast')).toBeInTheDocument();
     expect(screen.getByText('Research Only (Not for clinical decisions)')).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
     expect(screen.getByText('Pinned-time replay unavailable')).toBeInTheDocument();

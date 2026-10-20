@@ -251,7 +251,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
 
       <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
 
-      <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built">
+      <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built" data-subject-id={forecast?.subject?.subject_id}>
         <div className="inspector-header">
           <div className="inspector-title-row">
             <span className="inspector-title">How this forecast is built</span>

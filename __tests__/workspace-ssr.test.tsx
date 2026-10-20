@@ -9,12 +9,13 @@ import type { SubjectStore } from '../src/lib/types';
 const cache: SubjectStore = { patientId: 'unit-subject', cgm: [], risk: [], alerts: [], dataQuality: [] };
 
 it('server-renders a single forecast SVG title string without a React title warning', () => {
-  const forecast = { as_of: '2026-10-04T12:00:00Z', current: { value_mg_dl: 110 }, forecast: { points: [] }, spike_risk: { peak_mg_dl: { p50: 130 }, time_to_peak_min: 60 } } as ForecastResponse;
+  const forecast = { as_of: '2026-10-04T12:00:00Z', current: { value_mg_dl: 110 }, forecast: { points: [{ offset_min: 30, p50: 120 }, { offset_min: 60, p50: 130 }, { offset_min: 90, p50: 125 }] }, spike_risk: { peak_mg_dl: { p50: 150 }, time_to_peak_min: 60 } } as ForecastResponse;
   const error = jest.spyOn(console, 'error').mockImplementation(() => {});
   try {
     const html = renderToString(<ForecastCanvas forecast={forecast} cache={cache} />);
     expect(html).toMatch(/<title[^>]*>Glucose forecast chart: current 110 mg\/dL<\/title>/);
-    expect(html).toContain('<title>Reported peak estimate: 130 mg/dL</title>');
+    // The marker sits on the forecast median's own highest point, not the separate peak-model value (150).
+    expect(html).toContain('<title>Highest forecast median: 130 mg/dL at +60 min</title>');
     expect(error).not.toHaveBeenCalled();
   } finally { error.mockRestore(); }
 });

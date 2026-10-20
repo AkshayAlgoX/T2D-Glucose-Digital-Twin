@@ -114,14 +114,14 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       expect(inspector).toHaveAttribute('role', 'region');
       expect(inspector).toHaveAttribute('aria-label', 'How this forecast is built');
 
-      const title = screen.getByText('How this forecast is built: physiology twin + learned residual');
+      const title = screen.getByText('How this forecast is built');
       expect(title).toBeInTheDocument();
 
       const note = screen.getByTestId('inspector-note');
-      expect(note.textContent).toContain('an empirical model adjustment, not a causal effect or accuracy improvement.');
+      expect(note.textContent).toContain('an empirical model adjustment, not a causal effect or accuracy improvement, and not a separately validated mechanism.');
 
       const adjustmentLabel = screen.getByTestId('forecast-adjustment-card').querySelector('.metric-label');
-      expect(adjustmentLabel?.textContent).toBe('② Learned residual (final − twin)');
+      expect(adjustmentLabel?.textContent).toBe('② Learned model adjustment');
       // Strictly avoid claiming causal effect or accuracy improvement
       expect(adjustmentLabel?.textContent).not.toContain('causal effect');
       expect(adjustmentLabel?.textContent).not.toContain('accuracy improvement');
@@ -249,13 +249,14 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       pt60A.twin_p50 = 135.0;
 
       const { rerender } = render(<ForecastCanvas forecast={subjectAForecast} cache={mockCache} />);
-      expect(screen.getByTestId('inspector-note').textContent).toContain('synthetic_001');
+      expect(screen.getByTestId('hybrid-inspector')).toHaveAttribute('data-subject-id', 'synthetic_001');
       expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('140 mg/dL');
 
       // Re-render with null while waiting for Subject B's stream
       rerender(<ForecastCanvas forecast={null} cache={{ ...mockCache, patientId: 'synthetic_002' }} />);
       expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('Unavailable');
       expect(screen.queryByText(/synthetic_001/)).not.toBeInTheDocument();
+      expect(screen.getByTestId('hybrid-inspector')).not.toHaveAttribute('data-subject-id', 'synthetic_001');
 
       // Subject B's forecast arrives
       const subjectBForecast = createMockForecast({
@@ -267,7 +268,7 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       pt60B.twin_p50 = 195.0;
 
       rerender(<ForecastCanvas forecast={subjectBForecast} cache={{ ...mockCache, patientId: 'synthetic_002' }} />);
-      expect(screen.getByTestId('inspector-note').textContent).toContain('synthetic_002');
+      expect(screen.getByTestId('hybrid-inspector')).toHaveAttribute('data-subject-id', 'synthetic_002');
       expect(screen.getByTestId('physics-prior-value').textContent).toBe('195 mg/dL');
       expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('210 mg/dL');
       expect(screen.getByTestId('forecast-adjustment-value').textContent).toBe('+15.0 mg/dL');
