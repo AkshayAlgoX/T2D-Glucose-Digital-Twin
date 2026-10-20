@@ -78,14 +78,14 @@ export default async function Home() {
         <h2 className="landing-section-title">Evidence at a glance</h2>
         {evidence ? (
           <dl className="landing-evidence panel" data-testid="landing-evidence">
-            <div><dt>60-min forecast error (RMSE)</dt><dd>{evidence.rmse60.hybrid.toFixed(1)} mg/dL<small>vs {evidence.rmse60.twin.toFixed(1)} physiology twin alone · {evidence.rmse60.persistence.toFixed(1)} persistence</small></dd></div>
+            <div><dt>60-min forecast error (RMSE)</dt><dd>{evidence.rmse60.hybrid.toFixed(2)} mg/dL<small>vs {evidence.rmse60.twin.toFixed(2)} physiology twin alone · {evidence.rmse60.persistence.toFixed(2)} persistence</small></dd></div>
             <div><dt>Evaluated on</dt><dd>{evidence.patients} synthetic patients<small>Development-validation split; also used for calibration</small></dd></div>
-            <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold}</small></dd></div>
+            <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}</small></dd></div>
           </dl>
         ) : (
           <p className="landing-boundary" data-testid="landing-evidence-missing">The evaluation artifact could not be read, so no metrics are shown. See the Evidence page.</p>
         )}
-        <footer className="research-footer"><span>Research only · not for clinical decisions</span><span>Synthetic data · no clinical validation claimed</span></footer>
+        <footer className="research-footer"><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
       </main>
     </div>
   );

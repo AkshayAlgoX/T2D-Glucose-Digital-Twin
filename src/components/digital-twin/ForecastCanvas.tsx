@@ -132,6 +132,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
       diffClass = 'adjustment-positive';
     } else if (diff < 0) {
       diffDisplay = `${diff.toFixed(1)} mg/dL`;
+      // Same colour as a positive adjustment: green is reserved for the physiology twin; the sign carries direction.
       diffClass = 'adjustment-negative';
     } else {
       diffDisplay = `0.0 mg/dL`;
@@ -173,6 +174,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><i className="legend-outer" />P05–P95</span>
         <span><i className="legend-peak" />Forecast peak (median)</span>
         {hasPhysics && <span><i className="legend-physics" />Physiology twin (prior)</span>}
+        <span><i className="legend-threshold" />Spike level 180 mg/dL</span>
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>
       <div ref={plotRef} className="forecast-plot" onPointerLeave={() => {
@@ -206,15 +208,13 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <rect x={x(anchor)} y={margin.top} width={right - x(anchor)} height={bottom - margin.top} fill="var(--color-surface-2)" opacity={0.5} />
             {yTicks.map(tick => <g key={tick}>
               <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} stroke={tick === 180 ? 'var(--color-amber)' : 'var(--color-line)'} strokeOpacity={tick === 180 ? 0.85 : 1} strokeDasharray={tick === 180 ? '5 4' : undefined} />
-              <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
-              {tick === 180 && <text x={margin.left + 7} y={y(tick) - 7} className="chart-axis chart-threshold-label">180 mg/dL · spike level</text>}
+              <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className={tick === 180 ? 'chart-axis chart-threshold-label' : 'chart-axis'}>{tick}</text>
             </g>)}
-            {x.ticks(narrow ? 4 : 7).map(tick => <g key={tick.getTime()}>
+            {x.ticks(narrow ? 4 : 7).filter(tick => x(tick) <= right - 22 && x(tick) >= margin.left + 14).map(tick => <g key={tick.getTime()}>
               <line x1={x(tick)} x2={x(tick)} y1={margin.top} y2={bottom} stroke="var(--color-line)" strokeDasharray="2 5" />
               <text x={x(tick)} y={bottom + 23} textAnchor="middle" className="chart-axis">{formatTime(tick.getTime())}</text>
             </g>)}
             <text x={margin.left} y={14} className="chart-axis">mg/dL</text>
-            <text x={right} y={size.height - 2} textAnchor="end" className="chart-axis">UTC</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
               <g className="forecast-layer" opacity={mappedScenario.length ? 0.5 : 1}>
                 <path data-testid="outer-quantile-band" d={area('p05', 'p95')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.13} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
@@ -254,7 +254,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         </div>}
       </div>
       <div className="chart-readout">
-        <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · hover or focus the chart to inspect points</span>
+        <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · times in UTC · hover or focus the chart to inspect points</span>
         <span className="sr-only" aria-live={selection?.source === 'keyboard' ? 'polite' : 'off'} aria-atomic="true">
           {selected && (selected.point
             ? `${selectedTimestamp} · Median ${selected.value} mg/dL · P10–P90 ${quantile(selected.point.p10)}–${quantile(selected.point.p90)} mg/dL · P05–P95 ${quantile(selected.point.p05)}–${quantile(selected.point.p95)} mg/dL · +${selected.point.offset_min} min of ${forecast?.forecast?.horizon_min ?? 'unavailable'} min forecast horizon`
@@ -399,7 +399,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
         const r = clampRect(x(w.time), step);
         const bh = Math.max(1, (w.steps / maxSteps) * (h - 4));
         return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} fill="var(--color-ink-3)" opacity={0.7} />;
-      }) : empty('0 steps recorded in this window') },
+      }).concat(rows.filter(w => w.steps > 0).length <= 3 ? [<g key="few">{empty(`${Math.round(rows.reduce((t, w) => t + w.steps, 0))} steps recorded in this window`)}</g>] : []) : empty('0 steps recorded in this window') },
     { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
       render: () => hr ? <path d={hr.path ?? ''} fill="none" stroke="var(--color-danger)" strokeWidth={1.5} /> : empty('No heart-rate readings received') },
     { key: 'hrv', label: 'HRV (RMSSD)', unit: 'ms', latest: fmt(last.hrv),

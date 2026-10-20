@@ -35,7 +35,6 @@ export function RiskStrip({ forecast, cache, isLoading }: { forecast: ForecastRe
   const y = d3Scale.scaleLinear().domain([0, 1]).range([plotBottom, margin.top]);
   const line = d3Shape.line<{ t: string; p: number }>().x(point => x(new Date(point.t))).y(point => y(point.p)).curve(d3Shape.curveStepAfter);
   const area = d3Shape.area<{ t: string; p: number }>().x(point => x(new Date(point.t))).y0(plotBottom).y1(point => y(point.p)).curve(d3Shape.curveStepAfter);
-  const ticks = history.length > 1 ? x.ticks(plotWidth < 420 ? 3 : 5) : [];
   const markerRadius = history.length > 40 ? 1.75 : 3;
 
   const latest = history[history.length - 1];
@@ -66,20 +65,19 @@ export function RiskStrip({ forecast, cache, isLoading }: { forecast: ForecastRe
           {lowest && <div><dt>Lowest in window</dt><dd>{formatPct(lowest.p, 1)}</dd></div>}
         </dl>
         <svg viewBox={`0 0 ${plotWidth} ${plotHeight}`} width={plotWidth} height={plotHeight} className="risk-history-chart" role="img" aria-label="Received risk snapshots; probability scale zero to one">
-          {[0, 0.5, 1].map(v => <g key={v}>
+          {[0, 1].map(v => <g key={v}>
             <line x1={margin.left} x2={plotRight} y1={y(v)} y2={y(v)} stroke="var(--color-line)" />
             <text x={margin.left - 6} y={y(v) + 4} textAnchor="end" className="chart-axis">{Math.round(v * 100)}%</text>
           </g>)}
           <line data-testid="risk-reference-line" x1={margin.left} x2={plotRight} y1={y(WATCH)} y2={y(WATCH)} stroke="var(--color-line-control)" strokeDasharray="3 4" />
-          <text x={plotRight} y={y(WATCH) - 4} textAnchor="end" className="chart-axis risk-threshold-label">35% watch</text>
+          <text x={margin.left - 6} y={y(WATCH) + 4} textAnchor="end" className="chart-axis risk-threshold-label">35%</text>
           <line data-testid="risk-warning-line" x1={margin.left} x2={plotRight} y1={y(WARNING)} y2={y(WARNING)} stroke="var(--color-amber)" strokeDasharray="3 4" strokeOpacity={0.8} />
-          <text x={plotRight} y={y(WARNING) - 4} textAnchor="end" className="chart-axis risk-threshold-label warning">60% warning</text>
-          {ticks.map(t => <text key={t.getTime()} x={x(t)} y={plotHeight - 6} textAnchor="middle" className="chart-axis">{formatTime(t.getTime())}</text>)}
+          <text x={margin.left - 6} y={y(WARNING) + 4} textAnchor="end" className="chart-axis risk-threshold-label warning">60%</text>
           <path d={area(history) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
           <path data-testid="risk-history-path" d={line(history) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2} />
           {history.map((point, index) => <circle key={`${point.t}-${index}`} data-testid="risk-snapshot-marker" cx={x(new Date(point.t))} cy={y(point.p)} r={markerRadius} fill="var(--color-surface)" stroke="var(--color-forecast)" strokeWidth={1.25}><title>{`${point.t} · onset probability ${point.p}`}</title></circle>)}
         </svg>
-        <div className="history-time-labels"><time dateTime={history[0].t} title={formatDateTime(history[0].t)}>{formatTime(history[0].t)} UTC</time><span>35% reference</span><span>Latest recorded <time dateTime={history[history.length - 1].t} title={formatDateTime(history[history.length - 1].t)}>{formatTime(history[history.length - 1].t)} UTC</time></span></div>
+        <div className="history-time-labels"><time dateTime={history[0].t} title={formatDateTime(history[0].t)}>{formatTime(history[0].t)} UTC</time><span className="history-legend"><i className="watch" aria-hidden="true" /><span>35% reference</span><i className="warning" aria-hidden="true" />60% warning</span><span>Latest recorded <time dateTime={history[history.length - 1].t} title={formatDateTime(history[history.length - 1].t)}>{formatTime(history[history.length - 1].t)} UTC</time></span></div>
         <p className="history-scale">Fixed probability scale: 0–100%. Flat steps indicate similar received estimates, not additional observations.</p>
         {history.length <= 5 ? snapshots : <details className="snapshot-details"><summary>View all {history.length} received snapshots</summary>{snapshots}</details>}
       </> : <div className="history-empty">{history.length === 1 ? <><strong>{formatPct(history[0].p, 1)}</strong> at <time dateTime={history[0].t}>{formatDateTime(history[0].t)}</time><p className="fine-print">One snapshot received. History accumulates as updates arrive.</p></> : 'No risk snapshots received. Historical risk is not backfilled.'}</div>}

@@ -143,7 +143,7 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat(scen.flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: 12, top: 12, bottom: 30 };
+  const m = { left: 40, right: 12, top: 12, bottom: 22 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
@@ -158,11 +158,10 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="whatif-chart-title">
         <title id="whatif-chart-title">Baseline forecast compared with the simulated scenario over the next 120 minutes</title>
         {yTicks.map(t => <g key={t}>
-          <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} stroke={t === 180 ? 'var(--color-line-control)' : 'var(--color-line)'} strokeDasharray={t === 180 ? '5 4' : undefined} />
-          <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className="chart-axis">{t}</text>
-          {t === 180 && <text x={m.left + 4} y={y(t) - 5} textAnchor="start" className="chart-axis">180 · spike level</text>}
+          <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} stroke={t === 180 ? 'var(--color-amber)' : 'var(--color-line)'} strokeOpacity={t === 180 ? 0.85 : 1} strokeDasharray={t === 180 ? '5 4' : undefined} />
+          <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className={t === 180 ? 'chart-axis step-label' : 'chart-axis'}>{t}</text>
         </g>)}
-        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 10} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
         <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
         <path d={band(scen) ?? ''} fill="var(--color-projection)" fillOpacity={0.14} />
         <path d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
@@ -183,10 +182,10 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
         })()}
       </svg>
       <div className="whatif-legend" aria-hidden="true">
-        <span><i className="whatif-swatch baseline" />Unchanged plan</span>
-        <span><i className="whatif-swatch scenario" />With this change</span>
+        <span><i className="whatif-swatch baseline" />Unchanged plan (blue shading: its P10–P90)</span>
+        <span><i className="whatif-swatch scenario" />With this change (magenta shading: its P10–P90)</span>
         {scenTwin.length > 0 && <span><i className="whatif-swatch twin" />Physiology twin with this change</span>}
-        <span>Shaded: P10–P90 · mg/dL</span>
+        <span><i className="whatif-swatch threshold" />Spike level 180 mg/dL</span>
       </div>
     </div>
   );
@@ -202,8 +201,8 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
     <div className="whatif-result stage" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
-        <strong>{outOfRange.title}.</strong> {outOfRange.detail}
-        {sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}
+        <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
+        <details><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
       </div>}
       <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} />
       <dl className="whatif-metrics">
@@ -231,6 +230,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
             {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
         </div>
       </dl>
+      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.5 * Math.abs(sum.twinLargestDiff) && <p className="fine-print" data-testid="scenario-twin-gap">The network&apos;s change ({signed(sum.largestDiff, 1, ' mg/dL')} at most) is much smaller than the physiology twin&apos;s ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): its learned adjustment pulls the scenario back towards the patterns it was trained on. Neither size is validated.</p>}
       <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
       {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
       {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}

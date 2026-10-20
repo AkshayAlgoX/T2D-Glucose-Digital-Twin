@@ -340,7 +340,7 @@ export default async function EvidencePage() {
               )}
             </span>
             <span style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>
-              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA-256 matches the run manifest'}
+              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA‑256 matches the run manifest'}
             </span>
           </div>
         </header>
@@ -424,9 +424,6 @@ export default async function EvidencePage() {
                   </div>
                   <div className="pillar-substat" data-testid="headline-definition">
                     60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
-                  </div>
-                  <div className="pillar-substat">
-                    60m RMSE: {metrics.rmse_60.estimate.toFixed(2)} vs {models?.twin_only?.rmse_60.estimate.toFixed(2)} (Twin) vs {models?.persistence?.rmse_60.estimate.toFixed(2)} (Persistence)
                   </div>
                   <div className="pillar-compact-summary">
                     <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_30.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_30.diff.toFixed(2)} vs PE)</span></div>
@@ -535,12 +532,12 @@ export default async function EvidencePage() {
             <div className="generalization-banner" role="region" aria-label="Generalization Boundary Disclosure">
               <strong>Generalization Boundary Disclosure</strong>
               <p>
-                All performance metrics presented below are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They strictly do NOT constitute proof of prospective human generalization or clinical deployment efficacy. The held-out test split remains unexecuted per governance boundaries.
+                All performance metrics on this page are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They strictly do NOT constitute proof of prospective human generalization or clinical deployment efficacy. The held-out test split remains unexecuted per governance boundaries.
               </p>
             </div>
 
             {/* 1. Matched Baselines Comparison Table with Patient-Clustered CIs */}
-            <EvidenceDisclosure labelledBy="baselines-heading" label="Matched baselines · forecast error by horizon with patient-clustered 95% CIs">
+            <EvidenceDisclosure labelledBy="baselines-heading" label="Matched-baseline table · RMSE, MAE, MARD and paired differences">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                 <div>
                   <span className="eyebrow">Controlled Benchmarks</span>

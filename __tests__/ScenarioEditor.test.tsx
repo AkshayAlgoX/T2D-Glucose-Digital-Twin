@@ -68,6 +68,16 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     expect(screen.getByTestId('whatif-scenario-line').getAttribute('d')).toBeTruthy();
   });
 
+  it('explains when the network changes the curve far less than the physiology twin does', async () => {
+    const withTwin = (c: ReturnType<typeof curve>, twin: (i: number) => number) => c.map((p, i) => ({ ...p, twin_p50: twin(i) }));
+    const baseline = withTwin(curve(150, 0), () => 150);
+    const scenario = withTwin(curve(150, 0.25), i => 150 + 2 * i); // twin +46 by +120, network only +5.75
+    respond(200, okBody({ baseline_forecast: baseline, scenario_forecast: scenario }));
+    render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    expect(await screen.findByTestId('scenario-twin-gap')).toHaveTextContent('much smaller than the physiology twin');
+  });
+
   it('does not flag a smooth scenario curve', async () => {
     respond(200, okBody());
     render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);

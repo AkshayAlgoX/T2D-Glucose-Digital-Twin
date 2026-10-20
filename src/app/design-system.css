@@ -464,3 +464,27 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .policy-labels span:last-child { transform: translateX(-3px); }
 @media (max-width: 420px) { .policy-labels { height: 16px; } .policy-labels span:last-child { top: 0; } }
 .evidence-link { color: var(--color-accent-ink); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- Round-2 critique fixes ---- */
+.chart-legend .legend-threshold { height: 0; background: transparent; border-top: 2px dashed var(--color-amber); }
+.whatif-swatch.threshold { border-top: 2px dashed var(--color-amber); }
+.stage .chart-threshold-label { fill: var(--color-amber); font-weight: 600; }
+/* Green is reserved for the physiology twin; the learned adjustment is ultramarine whatever its sign. */
+.metric-value.adjustment-negative, .stage .metric-value.adjustment-negative { color: var(--color-forecast); }
+/* Spike-risk meter: each label centred on its tick. */
+.policy-labels span:first-child, .policy-labels span:last-child { transform: translateX(-50%); }
+/* Solid surfaces: dashed borders read as placeholders. */
+.cumulative-summary { border-style: solid; border-color: var(--color-line); border-left: 3px solid var(--color-forecast); }
+.twin-workstation .workspace-limitations .replay-unavailable { border-style: solid; }
+/* Wide screens: workspace content starts on the same column as the navigation. */
+.workspace-page.twin-workstation { padding-left: 32px; padding-right: 32px; }
+@media (max-width: 720px) { .workspace-page.twin-workstation { padding-left: 16px; padding-right: 16px; } }
+.cohort-directory .directory-table thead th { text-transform: none; letter-spacing: 0.02em; font-size: 12px; }
+.risk-history-stats dd small { white-space: nowrap; }
+.risk-history .history-legend { display: inline-flex; align-items: center; gap: 6px; }
+.risk-history .history-legend i { width: 14px; height: 0; border-top: 2px dashed var(--color-line-control); }
+.risk-history .history-legend i.warning { border-top-color: var(--color-amber); margin-left: 8px; }
+.whatif-caution details { margin-top: 4px; }
+.whatif-caution summary { cursor: pointer; font-weight: 600; }
+.whatif-caution details p { margin: 6px 0 0; }
+@media (max-width: 640px) { .whatif-presets .secondary-button { font-size: 12px; padding: 8px 10px; white-space: nowrap; } }
