@@ -386,7 +386,7 @@ export default async function EvidencePage() {
           <section className="panel evidence-hero" aria-labelledby="exec-summary-heading">
             <div className="evidence-hero-header">
               <span className="eyebrow">Executive Summary</span>
-              <h2 id="exec-summary-heading">Development Validation at a Glance</h2>
+              <h2 id="exec-summary-heading">Development validation at a glance</h2>
               <p>
                 Core scientific findings and negative boundaries evaluated on the 44 simulated demonstration subjects in the validation cohort. Four critical questions for clinical evaluation:
               </p>
@@ -419,8 +419,11 @@ export default async function EvidencePage() {
                     <TrendingDown size={14} aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">How did the hybrid model compare?</h3>
-                  <div className="pillar-stat stat-accent">
-                    {paired ? `-${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}%` : '—'}
+                  <div className="pillar-stat stat-accent" data-testid="headline-vs-twin">
+                    {paired ? `-${paired.pr_minus_twin_rmse_60.relative_reduction_pct.toFixed(1)}%` : '—'}
+                  </div>
+                  <div className="pillar-substat" data-testid="headline-definition">
+                    60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
                   </div>
                   <div className="pillar-substat">
                     60m RMSE: {metrics.rmse_60.estimate.toFixed(2)} vs {models?.twin_only?.rmse_60.estimate.toFixed(2)} (Twin) vs {models?.persistence?.rmse_60.estimate.toFixed(2)} (Persistence)
@@ -485,6 +488,43 @@ export default async function EvidencePage() {
                 </span>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Always-visible figure: forecast error by horizon, from the same validated report as the tables below. */}
+        {hasBenchmarks && models && (
+          <section className="panel evidence-figure" aria-labelledby="error-figure-heading" data-testid="error-by-horizon">
+            <div className="evidence-figure-head">
+              <h2 id="error-figure-heading">Forecast error by horizon</h2>
+              <p className="fine-print">RMSE in mg/dL, lower is better · bars show the estimate, whiskers the patient-clustered 95% CI · 44 synthetic validation patients</p>
+            </div>
+            {(['30', '60', '120'] as const).map(h => {
+              const rows = [
+                { key: 'pr_tft', label: 'Hybrid (twin + learned adjustment)', m: models.pr_tft[`rmse_${h}`] },
+                { key: 'twin_only', label: 'Physiology twin alone', m: models.twin_only?.[`rmse_${h}`] },
+                { key: 'persistence', label: 'Persistence (glucose stays flat)', m: models.persistence?.[`rmse_${h}`] },
+              ].filter(r => r.m && Number.isFinite(r.m.estimate));
+              const scaleMax = 55;
+              const pct = (v: number) => `${Math.max(0, Math.min(100, (v / scaleMax) * 100))}%`;
+              return (
+                <div key={h} className="error-horizon">
+                  <div className="error-horizon-label">{h} min</div>
+                  <div className="error-bars">
+                    {rows.map(r => (
+                      <div key={r.key} className={`error-bar-row ${r.key}`}>
+                        <span className="error-bar-name">{r.label}</span>
+                        <span className="error-bar-track" aria-hidden="true">
+                          <i className="error-bar" style={{ width: pct(r.m!.estimate) }} />
+                          {r.m!.ci_95 && <b className="error-ci" style={{ left: pct(r.m!.ci_95[0]), width: `calc(${pct(r.m!.ci_95[1])} - ${pct(r.m!.ci_95[0])})` }} />}
+                        </span>
+                        <span className="error-bar-value">{r.m!.estimate.toFixed(2)}{r.m!.ci_95 && <small> [{r.m!.ci_95[0].toFixed(2)}–{r.m!.ci_95[1].toFixed(2)}]</small>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <p className="fine-print evidence-figure-foot">Development-validation partition, also used for checkpoint selection and calibration; not held-out or human evidence. Source: <code>runs/pr_tft_ablation_arm_d/evaluation_report.json</code>.</p>
           </section>
         )}
 
@@ -955,9 +995,9 @@ export default async function EvidencePage() {
                     Sealed evaluation on the held-out test split (44 patients) was strictly not executed.
                   </p>
                   <div style={{ fontSize: '12px', display: 'grid', gap: '4px' }}>
-                    <div><strong>Training Tree:</strong> <code>dirty: true</code>, 11 dirty paths</div>
-                    <div><strong>Source Hash:</strong> <code>backend/ukf_twin.py</code> mismatch</div>
-                    <div><strong>Status:</strong> Unexecuted due to provenance boundary</div>
+                    <div><strong>Why it is not run:</strong> the training run recorded uncommitted changes in 11 files (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>), and <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</div>
+                    <div><strong>What this does not affect:</strong> the header check, which confirms that the evaluation report, checkpoint and data match the run manifest.</div>
+                    <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
                   </div>
                   <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
                     No performance claim is made for unexecuted test evaluation.

@@ -395,7 +395,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     // 10-Second Executive Summary Section
-    expect(screen.getByText('Development Validation at a Glance')).toBeInTheDocument();
+    expect(screen.getByText('Development validation at a glance')).toBeInTheDocument();
 
     // Pillar 1: Scope & Cohort
     expect(screen.getByText('1. Evaluation Basis')).toBeInTheDocument();
@@ -405,7 +405,10 @@ describe('EvidencePage', () => {
 
     // Pillar 2: Baseline Comparison & Error Reduction
     expect(screen.getByText('2. Forecast Accuracy')).toBeInTheDocument();
-    expect(screen.getByText('-45.8%')).toBeInTheDocument();
+    // Headline is the hybrid vs the physiology twin alone; persistence is secondary text.
+    expect(screen.getByTestId('headline-vs-twin')).toHaveTextContent('-16.0%');
+    expect(screen.getByTestId('headline-definition')).toHaveTextContent('60-min RMSE vs the physiology twin alone · 45.8% lower than persistence');
+    expect(screen.getByTestId('error-by-horizon')).toHaveTextContent('Physiology twin alone');
     expect(screen.getByText('Physics + Neural Residual')).toBeInTheDocument();
 
     // Pillar 3: Target T2D Subgroup

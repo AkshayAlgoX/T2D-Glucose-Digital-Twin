@@ -330,3 +330,31 @@ body { background: var(--color-bg); color: var(--color-ink); }
   .risk-history-stats dd, .cumulative-summary dd { font-size: 20px; }
   .risk-history .history-time-labels { font-size: 11px; }
 }
+
+/* Evidence: the always-visible error figure */
+.evidence-figure { margin: 0 0 24px; padding: 22px 24px; }
+.evidence-figure-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 14px; }
+.evidence-figure-head h2 { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+.error-horizon { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--color-line); }
+.error-horizon-label { font-family: var(--font-display); font-size: 18px; font-weight: 500; padding-top: 2px; }
+.error-bars { display: grid; gap: 7px; }
+.error-bar-row { display: grid; grid-template-columns: 230px minmax(0, 1fr) 150px; align-items: center; gap: 12px; font-size: 12.5px; }
+.error-bar-name { color: var(--color-ink-2); }
+.error-bar-track { position: relative; height: 14px; background: var(--color-surface-2); border-radius: 3px; }
+.error-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--color-line-control); }
+.error-bar-row.pr_tft .error-bar { background: var(--color-forecast); }
+.error-bar-row.twin_only .error-bar { background: var(--color-physics); }
+.error-ci { position: absolute; top: 6px; height: 2px; background: var(--color-ink); }
+.error-ci::before, .error-ci::after { content: ''; position: absolute; top: -4px; width: 1.5px; height: 10px; background: var(--color-ink); }
+.error-ci::before { left: 0; } .error-ci::after { right: 0; }
+.error-bar-value { font-family: var(--font-mono); font-size: 12.5px; color: var(--color-ink); text-align: right; white-space: nowrap; }
+.error-bar-value small { color: var(--color-ink-3); font-size: 11px; }
+.error-bar-row.pr_tft .error-bar-name, .error-bar-row.pr_tft .error-bar-value { font-weight: 600; color: var(--color-ink); }
+.evidence-figure-foot { margin: 12px 0 0; }
+.overview-page .status-badge, .overview-page .workspace-heading span { white-space: nowrap; }
+@media (max-width: 760px) {
+  .evidence-figure { padding: 16px 14px; }
+  .error-horizon { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .error-bar-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name value" "track track"; gap: 2px 8px; }
+  .error-bar-name { grid-area: name; } .error-bar-value { grid-area: value; } .error-bar-track { grid-area: track; }
+}
