@@ -313,7 +313,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           <div className="inspector-metric-card" data-testid="physics-prior-card">
             <span className="metric-label">① Physiology-based estimate</span>
             <span className="metric-value" data-testid="physics-prior-value">
-              {physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
+              {!forecast ? '—' : physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
             <span className="metric-source">Mechanistic twin median · returned by the service</span>
           </div>
@@ -321,7 +321,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
             <span className="metric-label">② Learned model adjustment</span>
             <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
-              {diffDisplay}
+              {!forecast ? '—' : diffDisplay}
             </span>
             <span className="metric-source">Calculated here as ③ − ①</span>
           </div>
@@ -329,12 +329,12 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           <div className="inspector-metric-card final" data-testid="hybrid-forecast-card">
             <span className="metric-label">③ Final forecast (median)</span>
             <span className="metric-value" data-testid="hybrid-forecast-value">
-              {hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
+              {!forecast ? '—' : hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
             <span className="metric-source" data-testid="hybrid-interval">
               {targetPoint && Number.isFinite(targetPoint.p10) && Number.isFinite(targetPoint.p90)
                 ? `80% interval ${targetPoint.p10}–${targetPoint.p90} mg/dL · returned`
-                : 'Interval unavailable'}
+                : !forecast ? 'Waiting for the first forecast' : 'Interval unavailable'}
             </span>
           </div>
         </div>

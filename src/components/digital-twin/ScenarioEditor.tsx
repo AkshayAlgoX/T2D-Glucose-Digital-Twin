@@ -173,10 +173,12 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
           if (!p) return null;
-          const px = x(p.min), py = y(p.p50), left = px > width * 0.7;
+          const px = x(p.min), py = y(p.p50), left = px > width * 0.5;
+          // Below the point when it sits near the top, so it never collides with the spike-level label.
+          const ly = py < m.top + 34 ? py + 18 : py - 9;
           return <g data-testid="whatif-step-marker">
             <circle cx={px} cy={py} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
-            <text x={left ? px - 9 : px + 9} y={Math.max(m.top + 10, py - 8)} textAnchor={left ? 'end' : 'start'} className="chart-axis step-label">single 5-min step</text>
+            <text x={left ? px - 9 : px + 9} y={ly} textAnchor={left ? 'end' : 'start'} className="chart-axis step-label">{width < 420 ? '1-step jump' : 'single 5-min step'}</text>
           </g>;
         })()}
       </svg>

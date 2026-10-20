@@ -242,7 +242,7 @@ export function PatientWorkspace({
       <header className="workspace-heading tw-header">
         <div className="tw-identity">
           <div className="eyebrow">Digital twin · synthetic subject</div>
-          <h1>{forecast?.subject?.simulator?.param_set_id ?? 'Glucose trajectory'}</h1>
+          <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
           <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
           <p className="tw-story">EHR record + live CGM and wearable readings → 2-hour glucose forecast with uncertainty → test a change to the plan.</p>
         </div>

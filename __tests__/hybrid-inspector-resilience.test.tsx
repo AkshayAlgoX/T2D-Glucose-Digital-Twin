@@ -209,9 +209,9 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
     it('Criterion 2: null stays null when forecast is missing, degraded, or values absent', () => {
       // Case 2a: forecast is null
       const { rerender } = render(<ForecastCanvas forecast={null} cache={mockCache} />);
-      expect(screen.getByTestId('physics-prior-value').textContent).toBe('Unavailable');
-      expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('Unavailable');
-      expect(screen.getByTestId('forecast-adjustment-value').textContent).toBe('Unavailable');
+      expect(screen.getByTestId('physics-prior-value').textContent).toBe('—');
+      expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('—');
+      expect(screen.getByTestId('forecast-adjustment-value').textContent).toBe('—');
 
       // Case 2b: forecast.forecast is null (e.g. data quality insufficient)
       const degradedForecast = createMockForecast({
@@ -254,7 +254,7 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
 
       // Re-render with null while waiting for Subject B's stream
       rerender(<ForecastCanvas forecast={null} cache={{ ...mockCache, patientId: 'synthetic_002' }} />);
-      expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('Unavailable');
+      expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('—');
       expect(screen.queryByText(/synthetic_001/)).not.toBeInTheDocument();
       expect(screen.getByTestId('hybrid-inspector')).not.toHaveAttribute('data-subject-id', 'synthetic_001');
 

@@ -282,3 +282,4 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .evidence-disclosure { border-radius: var(--radius-md); }
 .evidence-disclosure > summary { font-family: var(--font-display); font-weight: 500; font-size: 18px; }
 @media (max-width: 720px) { .overview-page .workspace-heading h1 { font-size: 30px; } .evidence-disclosure > summary { font-size: 16px; } }
+@media (max-width: 640px) { .whatif-result.stage .whatif-metrics { grid-template-columns: minmax(0, 1fr); gap: 10px; } .whatif-result.stage .whatif-metrics dd { font-size: 17px; } }
