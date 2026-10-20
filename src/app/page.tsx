@@ -51,7 +51,7 @@ export default async function Home() {
           <div>
             <span className="eyebrow">Digital twin · Type 2 diabetes · research prototype</span>
             <h1 id="landing-title">See a patient&apos;s next two hours of glucose before they happen, and test a change to the plan.</h1>
-            <p className="landing-audience">For a care team reviewing what a patient&apos;s glucose will do in the two hours after a meal.</p>
+            <p className="landing-audience">For a care team asking two questions after a meal: will this patient&apos;s glucose go above 180 mg/dL in the next two hours, and which change to the plan could matter?</p>
             <p className="landing-lead">
               Glucose Twin combines a synthetic patient&apos;s EHR record with continuous glucose and wearable streams.
               A physiology model sets the shape of the forecast, and a neural network learns what the physiology misses.

@@ -211,8 +211,8 @@
 /* --- Replay hold and risk card --------------------------------------------- */
 .replay-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .replay-toggle:hover { border-color: var(--color-ink); }
-.replay-toggle[aria-pressed="true"] { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-bg); }
-.risk-kicker { display: block; margin: 14px 0 4px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-2); }
+.replay-toggle.is-paused { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-bg); }
+.risk-kicker { display: block; margin: 14px 0 4px; font-size: 13px; font-weight: 600; color: var(--color-ink-2); }
 .risk-high { margin: 4px 0 6px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-line); background: var(--color-surface-2); }
 .risk-high .risk-kicker { margin-top: 0; }
 .risk-high.is-high { border-color: #d8a548; background: #fbf1dc; }
@@ -234,3 +234,20 @@
 .whatif-swatch.twin { border-top: 2px dashed var(--color-physics); }
 .workspace-reconnect { margin: 0 0 14px; padding: 12px 14px; border-left: 3px solid #d8a548; border-radius: 0 8px 8px 0; background: #fbf1dc; color: #6b4508; font-size: 14px; }
 .workspace-reconnect strong { color: var(--color-ink); }
+.whatif-result.stage .chart-axis.blip-label { font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; fill: var(--color-amber); }
+@media (max-width: 1024px) {
+  /* Stack the risk card and the collapsed contributions instead of leaving a half-empty column. */
+  .insights-panel .risk-panel, .workspace-page .insights-panel .risk-panel { display: block; }
+}
+/* Phone cohort card: identity and action, then group and partition, then the three figures in one row. */
+@media (max-width: 720px) {
+  .cohort-directory .directory-table tbody tr { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "id id open" "group group part" "age bmi hba1c"; gap: 10px 12px; }
+  .cohort-directory .directory-table tbody tr > th { grid-area: id; grid-column: auto; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(1) { grid-area: group; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(2) { grid-area: age; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(3) { grid-area: bmi; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(4) { grid-area: hba1c; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(5) { grid-area: part; justify-self: end; }
+  .cohort-directory .directory-table tbody tr > td:nth-of-type(6) { grid-area: open; grid-column: auto; grid-row: auto; justify-self: end; align-self: center; }
+  .cohort-directory .directory-table td.numeric::before { font-size: 12px; color: var(--color-ink-2); margin-bottom: 2px; }
+}

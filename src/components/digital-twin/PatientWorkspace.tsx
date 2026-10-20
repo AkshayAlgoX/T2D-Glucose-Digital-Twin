@@ -271,7 +271,7 @@ export function PatientWorkspace({
           <div className="eyebrow">Digital twin · synthetic subject</div>
           <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
           <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
-          <p className="tw-story">EHR record + replayed synthetic CGM and wearable readings → 2-hour glucose forecast with uncertainty → test a change to the plan.</p>
+          <p className="tw-story">Will glucose go above 180 mg/dL in the next 2 hours, and which change to the plan could matter? EHR record + replayed synthetic CGM and wearables → 2-hour forecast with uncertainty → test a change.</p>
         </div>
         <div className="workspace-status tw-status" role="status">
           <span
@@ -295,7 +295,7 @@ export function PatientWorkspace({
           </span>
           {isStale && <span className="status-badge status-watch">Stale</span>}
           {forecast?.as_of && <span className="tw-clock">{replay?.paused ? 'Replay paused at' : 'Replay time'} <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
-          {replay && forecast && !replay.settling && <button type="button" className="replay-toggle" data-testid="replay-toggle" aria-pressed={replay.paused} onClick={replay.paused ? replay.onResume : replay.onPause}>
+          {replay && forecast && !replay.settling && <button type="button" className={'replay-toggle' + (replay.paused ? ' is-paused' : '')} data-testid="replay-toggle" onClick={replay.paused ? replay.onResume : replay.onPause}>
             {replay.paused ? <><Play size={13} aria-hidden="true" />Resume replay</> : <><Pause size={13} aria-hidden="true" />Pause replay</>}
           </button>}
           {qualityLabel && <span className={'tw-quality ' + (forecast?.data_quality?.status ?? '')}>{qualityLabel}</span>}

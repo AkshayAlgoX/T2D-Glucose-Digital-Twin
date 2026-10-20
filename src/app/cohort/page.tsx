@@ -64,7 +64,7 @@ export default function CohortPage() {
     <div className="app-shell">
       <NavigationRail active="cohort" />
       <main id="main-content" className="overview-page cohort-page">
-        <header className="workspace-heading cohort-heading"><div><span className="eyebrow">Synthetic cohort</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as its own digital twin. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
+        <header className="workspace-heading cohort-heading"><div><span className="eyebrow">Synthetic cohort</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as its own digital twin. The cohort spans healthy, prediabetes and Type 2 so the model learns the full range; the demonstration focuses on Type 2. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
         {state === 'ready' && demo && <section className="demo-entry panel" aria-labelledby="demo-entry-heading">
           <div className="demo-entry-copy">
             <span className="eyebrow">Start here · demonstration subject</span>

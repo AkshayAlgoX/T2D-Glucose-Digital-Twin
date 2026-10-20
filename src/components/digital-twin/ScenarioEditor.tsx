@@ -286,7 +286,7 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
         })()}
         {blip && <g data-testid="change-blip" aria-hidden="true">
           <circle cx={x(blip.min)} cy={y(blip.final)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
-          <text x={x(blip.min) + (blip.min > 60 ? -10 : 10)} y={y(blip.final) - 8} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis step-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
+          <text x={x(blip.min) + (blip.min > 60 ? -10 : 10)} y={y(blip.final) + (y(blip.final) < height - m.bottom - 24 ? 20 : -10)} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
         </g>}
         {labelled && <g aria-hidden="true">{spreadLabels([
           { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
@@ -372,7 +372,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       </figure>
       <dl className="whatif-metrics">
         <div>
-          <dt>Spike risk within 2 h (calibrated)</dt>
+          <dt>New-spike onset risk, 2 h (calibrated)</dt>
           <dd data-testid="scenario-risk">
             {riskAvailable
               ? <>{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)} <strong>({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
