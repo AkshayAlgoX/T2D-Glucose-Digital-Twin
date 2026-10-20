@@ -33,7 +33,8 @@ Start the stack (see README "Verified Installation"):
 
 ```bash
 python -B backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d --host 127.0.0.1 --port 8001
-echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npx next dev --webpack -p 3000
+echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npm run build && npx next start -p 3000
+# Use the production build for the demo: the development server is several times slower and shows a development overlay.
 ```
 
 1. Open `/`. The home page states what the twin does, shows a schematic of the pipeline and the headline evidence (including the failed realism gate, read live from `docs/evidence/validation_ceiling_results.json`). Click **Open the demonstration twin · P0017** (validation split, Type 2). `/cohort` lists the other served subjects; training subjects are in-sample, and sealed test subjects are not served at all.

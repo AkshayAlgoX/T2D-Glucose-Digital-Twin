@@ -136,8 +136,11 @@ npm ci
 # Configure backend target:
 echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local
 
-# Launch Next.js dev server with Webpack bundler (port 3000):
-npx next dev --webpack -p 3000
+# For demos and judging, run the production build (smooth, no development overlay):
+npm run build && npx next start -p 3000
+
+# For development only (slower, with the Next.js error overlay):
+# npx next dev --webpack -p 3000
 ```
 Open `http://localhost:3000/` (overview and a direct link to the demonstration twin), `http://localhost:3000/cohort`, or the validation-split demonstration subject P0017 at `http://localhost:3000/patients/6f50ef50-b6e5-5408-a70c-d8f0509d6012`. Use `localhost`, not `127.0.0.1`: the Next.js dev server does not serve its client runtime to other origins, and the page stays on "Connecting".
 
