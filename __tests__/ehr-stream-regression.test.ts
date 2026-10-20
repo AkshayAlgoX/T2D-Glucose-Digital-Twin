@@ -60,7 +60,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -75,7 +75,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -90,11 +90,26 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=300&include=ehr_context%2Ctwin_overlay`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=300&include=ehr_context%2Ctwin_overlay&catch_up=72`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
     await expect(response.text()).resolves.toBe('');
+  });
+
+  it('forwards an explicit catch_up and rejects out-of-range values without calling the backend', async () => {
+    const ok = new NextRequest(`http://localhost/api/patients/${subjectId}/stream?catch_up=0`);
+    await GET(ok, { params: Promise.resolve({ id: subjectId }) });
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=0`,
+      expect.anything(),
+    );
+    (global.fetch as jest.Mock).mockClear();
+    for (const bad of ['289', '-1', '7.5', 'all']) {
+      const res = await GET(new NextRequest(`http://localhost/api/patients/${subjectId}/stream?catch_up=${bad}`), { params: Promise.resolve({ id: subjectId }) });
+      expect(res.status).toBe(400);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('forwards the configured service token as Bearer authorization', async () => {
@@ -104,7 +119,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72`,
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'text/event-stream',
@@ -129,7 +144,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=unsupported_field`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=unsupported_field&catch_up=72`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(422);
@@ -148,7 +163,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=${encoded}`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=${encoded}&catch_up=72`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);

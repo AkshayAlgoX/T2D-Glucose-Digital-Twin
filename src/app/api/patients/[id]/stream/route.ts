@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createSafeSSETransformStream } from '@/lib/sse-parser';
 
 export const dynamic = 'force-dynamic';
+export const DEFAULT_CATCH_UP_READINGS = 72;
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +21,14 @@ export async function GET(
   const speed = searchParams.get('speed') || '60';
   const include = searchParams.get('include') || 'drivers,twin_state,ehr_context,twin_overlay';
   
-  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}&include=${encodeURIComponent(include)}`;
+  // Open on six hours of real history: the backend sends the first 72 five-minute readings unpaced.
+  // Every point is a full forecast; the window is index-based, so a Last-Event-ID resume is not re-sped.
+  const catchUpParam = searchParams.get('catch_up') ?? String(DEFAULT_CATCH_UP_READINGS);
+  if (!/^\d{1,3}$/.test(catchUpParam) || Number(catchUpParam) > 288) {
+    return new Response('catch_up must be an integer from 0 to 288.', { status: 400 });
+  }
+
+  let url = `${backendUrl}/v1/subjects/${patientId}/stream?speed=${speed}&include=${encodeURIComponent(include)}&catch_up=${catchUpParam}`;
   if (asOf) {
     url += `&as_of=${encodeURIComponent(asOf)}`;
   }

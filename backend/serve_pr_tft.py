@@ -1081,10 +1081,14 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     @app.get("/v1/subjects/{subject_id}/stream", dependencies=[Depends(auth)])
     async def stream(subject_id: uuid.UUID, as_of: Optional[dt.datetime] = None, speed: float = 300.0,
                      max_events: int = 0, last_event_id: Optional[str] = Header(default=None),
+                     catch_up: int = Query(default=0, ge=0, le=288),
                      include: list[str] = Query(default=["drivers", "twin_state"]),
                      c: ServiceContext = Depends(ctx)):
         """Replay: one forecast per 5-min reading from as_of, paced at `speed` x real time
-        (300 -> one reading per second). Resumes after Last-Event-ID when given."""
+        (300 -> one reading per second). Resumes after Last-Event-ID when given.
+        The first `catch_up` readings after the replay start are sent unpaced so a viewer opens on
+        real recent history; every one is still a full forecast. The window is by reading index, so a
+        resume past it is paced normally."""
         parsed_include: list[IncludeKey] = []
         for item in include:
           for part in item.split(","):
@@ -1165,7 +1169,7 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
                             break
 
                 quality = body["data_quality"]["status"]
-                await asyncio.sleep(pause)
+                await asyncio.sleep(0.0 if idx < start_t + catch_up else pause)
 
         return StreamingResponse(events(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
