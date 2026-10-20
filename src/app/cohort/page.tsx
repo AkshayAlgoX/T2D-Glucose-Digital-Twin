@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw, Database } from 'lucide-react';
+import { ArrowRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { SubjectIdentifier } from '@/components/digital-twin/SubjectIdentifier';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 
@@ -13,7 +13,12 @@ interface SubjectSummary {
   patient_id?: string;
   group?: string;
   split?: string;
+  ehr?: { age_years?: number; sex?: string; bmi?: number; hba1c_pct?: number; on_medication?: boolean };
 }
+
+// Ordinal by glycaemic status, so the composition bar reads left (healthy) to right (diagnosed).
+const GROUP_ORDER = ['Healthy', 'Prediabetes', 'Type 2'];
+const num = (v: unknown, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : '—');
 
 export default function CohortPage() {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
@@ -60,22 +65,36 @@ export default function CohortPage() {
     <div className="app-shell">
       <NavigationRail active="cohort" />
       <main id="main-content" className="overview-page cohort-page">
-        <header className="workspace-heading"><div><span className="eyebrow">Research workspace</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as a digital twin workspace. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
-        {state === 'ready' && demo && <section className="demo-entry panel stage" aria-labelledby="demo-entry-heading">
-          <div>
+        <header className="workspace-heading cohort-heading"><div><span className="eyebrow">Synthetic cohort</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as its own digital twin. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
+        {state === 'ready' && demo && <section className="demo-entry panel" aria-labelledby="demo-entry-heading">
+          <div className="demo-entry-copy">
             <span className="eyebrow">Start here · demonstration subject</span>
             <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · {demo.split} split</h2>
             <p>Six hours of synthetic CGM, heart-rate, HRV, sleep and meal-log history; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
           </div>
-          <Link prefetch={false} href={'/patients/' + encodeURIComponent(demo.subject_id)} className="demo-entry-link">Open {demo.patient_id} <ArrowUpRight size={15} aria-hidden="true" /></Link>
+          {demo.ehr && <dl className="demo-entry-facts">
+            <div><dt>Age</dt><dd>{demo.ehr.age_years ?? '—'}</dd></div>
+            <div><dt>BMI</dt><dd>{num(demo.ehr.bmi)}</dd></div>
+            <div><dt>HbA1c</dt><dd>{num(demo.ehr.hba1c_pct)}%</dd></div>
+          </dl>}
+          <Link prefetch={false} href={'/patients/' + encodeURIComponent(demo.subject_id)} className="demo-entry-link">Open {demo.patient_id}<ArrowRight size={15} aria-hidden="true" /></Link>
         </section>}
         {state === 'loading' && <div className="cohort-summary summary-loading" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div key={index}><span className="skeleton skeleton-label" /><span className="skeleton skeleton-number" /><span className="skeleton skeleton-label" /></div>)}</div>}
-        {state === 'ready' && <section className="cohort-summary" aria-label="Cohort composition">
-          <div className="cohort-total"><span className="summary-icon"><Database size={20} aria-hidden="true" /></span><div><span className="eyebrow">Available subjects</span><strong>{subjects.length}</strong><span className="summary-description">Synthetic research cohort</span></div></div>
-          {groups.map(name => <div key={name}><span className="eyebrow">{name}</span><strong>{subjects.filter(subject => subject.group === name).length}</strong><span className="summary-description">Recorded group</span></div>)}
+        {state === 'ready' && subjects.length > 0 && <section className="cohort-composition panel" aria-label="Cohort composition">
+          <div className="composition-head"><span className="composition-total">{subjects.length}</span><span>served subjects by glycaemic status</span></div>
+          <div className="composition-bar" role="img" aria-label={groups.map(name => `${name} ${subjects.filter(subject => subject.group === name).length}`).join(', ')}>
+            {[...groups].sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b)).map(name => {
+              const n = subjects.filter(subject => subject.group === name).length;
+              return <span key={name} className="composition-segment" data-group={name} style={{ flexGrow: n }} />;
+            })}
+          </div>
+          <dl className="composition-legend">
+            {[...groups].sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b)).map(name => <div key={name}><dt><i data-group={name} aria-hidden="true" />{name}</dt><dd>{subjects.filter(subject => subject.group === name).length}</dd></div>)}
+            {splits.map(name => <div key={'split-' + name} className="composition-split"><dt>{name === 'val' ? 'Validation split' : name === 'train' ? 'Training split' : name + ' split'}</dt><dd>{subjects.filter(subject => subject.split === name).length}</dd></div>)}
+          </dl>
         </section>}
         <section id="subject-directory" className="panel cohort-directory" aria-labelledby="directory-heading">
-          <div className="directory-toolbar"><div><h2 id="directory-heading">Subject directory</h2><p className="fine-print">Partition labels describe the recorded model split; they are not evidence of independent validation.</p></div><label className="subject-search"><Search size={15} aria-hidden="true" /><span className="sr-only">Search subjects</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} placeholder="Search ID or group" /></label></div>
+          <div className="directory-toolbar"><div><h2 id="directory-heading">Subject directory</h2><p className="fine-print">Partition labels describe the recorded model split. Training subjects are in-sample, and neither partition is independent validation.</p></div><label className="subject-search"><Search size={15} aria-hidden="true" /><span className="sr-only">Search subjects</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} placeholder="Search ID, group or partition" /></label></div>
           <div className="directory-filters">
             <div className="filter-controls"><label>Group<select value={group} onChange={event => { setGroup(event.target.value); setPage(0); }}><option value="">All groups</option>{groups.map(name => <option key={name}>{name}</option>)}</select></label>
             <label>Partition<select value={split} onChange={event => { setSplit(event.target.value); setPage(0); }}><option value="">All partitions</option>{splits.map(name => <option key={name}>{name}</option>)}</select></label>
@@ -88,13 +107,16 @@ export default function CohortPage() {
           {state === 'ready' && !filtered.length && <div className="empty-state"><h3>{query || group || split ? 'No matching subjects' : 'No subjects returned'}</h3><p>{query || group || split ? 'Try another identifier, group, or partition.' : 'Connect the existing backend to view its subject directory.'}</p></div>}
           {state === 'ready' && !!filtered.length && <>
             <div className="directory-table-wrap"><table className="directory-table">
-              <caption className="sr-only">Synthetic subjects and their recorded group and partition</caption>
-              <thead><tr><th scope="col">Subject</th><th scope="col">Group</th><th scope="col">Partition</th><th scope="col"><span className="sr-only">Workspace</span></th></tr></thead>
-              <tbody>{visible.map(subject => <tr key={subject.subject_id}>
-                <th scope="row"><div className="directory-identity"><span className="subject-avatar" aria-hidden="true"><Users size={16} /></span><div><strong>{subject.patient_id ?? 'Synthetic subject'}</strong><SubjectIdentifier subjectId={subject.subject_id} label={subject.patient_id} /></div></div></th>
+              <caption className="sr-only">Synthetic subjects with their recorded group, observable EHR summary and partition</caption>
+              <thead><tr><th scope="col">Subject</th><th scope="col">Group</th><th scope="col">Age · sex</th><th scope="col">BMI</th><th scope="col">HbA1c</th><th scope="col">Partition</th><th scope="col"><span className="sr-only">Workspace</span></th></tr></thead>
+              <tbody>{visible.map(subject => <tr key={subject.subject_id} className={subject.patient_id === DEMO_PATIENT_ID ? 'is-demo' : undefined}>
+                <th scope="row"><div className="directory-identity"><strong>{subject.patient_id ?? 'Synthetic subject'}</strong>{subject.patient_id === DEMO_PATIENT_ID && <span className="demo-tag">Demo</span>}<SubjectIdentifier subjectId={subject.subject_id} label={subject.patient_id} /></div></th>
                 <td><span className="group-label" data-group={subject.group}>{subject.group ?? 'Group unspecified'}</span></td>
-                <td><span className="partition-label">{subject.split ?? 'Unspecified'}</span></td>
-                <td><Link prefetch={false} href={'/patients/' + encodeURIComponent(subject.subject_id)} className="subject-open" aria-label={'Open subject ' + (subject.patient_id ?? subject.subject_id)}>Open workspace <ArrowUpRight size={15} aria-hidden="true" /></Link></td>
+                <td className="numeric" data-label="Age">{subject.ehr?.age_years ?? '—'}{subject.ehr?.sex ? ` · ${subject.ehr.sex === 'male' ? 'M' : subject.ehr.sex === 'female' ? 'F' : subject.ehr.sex}` : ''}</td>
+                <td className="numeric" data-label="BMI">{num(subject.ehr?.bmi)}</td>
+                <td className="numeric" data-label="HbA1c">{subject.ehr?.hba1c_pct != null ? `${num(subject.ehr.hba1c_pct)}%` : '—'}</td>
+                <td><span className="partition-label" data-split={subject.split}>{subject.split === 'val' ? 'Validation' : subject.split === 'train' ? 'Training' : subject.split ?? 'Unspecified'}</span></td>
+                <td><Link prefetch={false} href={'/patients/' + encodeURIComponent(subject.subject_id)} className="subject-open" aria-label={'Open subject ' + (subject.patient_id ?? subject.subject_id)}>Open<ArrowRight size={14} aria-hidden="true" /></Link></td>
               </tr>)}</tbody>
             </table></div>
             <div className="directory-pagination"><span>Showing {currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, filtered.length)} of {filtered.length}</span><div><button className="icon-button" aria-label="Previous page" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} /></button><span>Page {currentPage + 1} of {pageCount}</span><button className="icon-button" aria-label="Next page" disabled={currentPage + 1 === pageCount} onClick={() => setPage(currentPage + 1)}><ChevronRight size={16} /></button></div></div>

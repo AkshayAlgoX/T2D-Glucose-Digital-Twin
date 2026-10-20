@@ -893,6 +893,13 @@ def observed_inputs(pc: PatientCache, t: int) -> dict[str, Any]:
             "carbs_logged_g": round(float(pc.carbs_logged[t]), 1)}
 
 
+def subject_card(ps: T.PatientSeries) -> dict[str, Any]:
+    """The observable EHR fields a directory row shows (a subset of ehr_context)."""
+    e = ehr_context(ps)
+    return {"age_years": e["age_years"], "sex": e["sex"], "bmi": e["bmi"], "hba1c_pct": e["hba1c_pct"],
+            "on_medication": bool(e["med_classes"])}
+
+
 def ehr_context(ps: T.PatientSeries) -> dict[str, Any]:
     s = ps.static_raw
     meds = [m for m in T.MED_CLASSES if s.get(f"med_{m}", 0) > 0]
@@ -1122,7 +1129,8 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     def subjects(c: ServiceContext = Depends(ctx)):
         return [{"subject_id": str(sid), "patient_id": pc.ps.pid, "group": pc.ps.group,
                  "split": c.split_of.get(pc.ps.pid), "first_as_of": utc(pc.ps.stamps[T.FIRST_ANCHOR]).isoformat(),
-                 "last_as_of": utc(pc.ps.stamps[-1]).isoformat()} for sid, pc in c.served_patients()]
+                 "last_as_of": utc(pc.ps.stamps[-1]).isoformat(), "ehr": subject_card(pc.ps)}
+                for sid, pc in c.served_patients()]
 
     @app.post("/v1/forecasts", dependencies=[Depends(auth)])
     async def forecasts(req: ForecastRequest, c: ServiceContext = Depends(ctx)):

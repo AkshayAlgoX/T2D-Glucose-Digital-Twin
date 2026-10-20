@@ -107,3 +107,14 @@ def test_dashboard_demo_link_is_the_validation_subject_p0017():
     linked = re.search(r"DEMO_SUBJECT_ID = '([0-9a-f-]{36})'", src).group(1)
     assert linked == sid(VAL_DEMO_PID)
     assert VAL_DEMO_PID in SPLIT["val"] and VAL_DEMO_PID not in SEALED_PIDS
+
+
+def test_directory_rows_carry_only_observable_ehr_fields(client):
+    svc: S.ServiceContext = client.app.state.ctx
+    listed = client.get("/v1/subjects").json()
+    for row in listed[:20]:
+        assert set(row["ehr"]) == {"age_years", "sex", "bmi", "hba1c_pct", "on_medication"}
+        pc = svc.patient(uuid.UUID(row["subject_id"]))
+        full = S.ehr_context(pc.ps)
+        assert row["ehr"]["hba1c_pct"] == full["hba1c_pct"] and row["ehr"]["bmi"] == full["bmi"]
+    assert not {r["subject_id"] for r in listed} & {sid(p) for p in SEALED_PIDS}
