@@ -82,7 +82,22 @@ export function summarizeComparison(result: ScenarioComparison) {
   const baselinePeak = round1(base.p50);
   const scenarioPeak = round1(scen.p50);
   const deltaPoints = result.metrics.delta_probability == null ? null : round1(result.metrics.delta_probability * 100);
+  // Physiology twin alone: the mechanistic rollout under each plan, at the same timestamps.
+  const twinByTime = new Map(result.baseline_forecast.filter(p => p.twin_p50 != null).map(p => [Date.parse(p.timestamp), p.twin_p50 as number]));
+  let twin: { diff: number; offset: number } | null = null;
+  let learned: { diff: number; offset: number } | null = null;
+  for (const p of result.scenario_forecast) {
+    if (p.twin_p50 == null) continue;
+    const adj = round1(p.p50 - p.twin_p50);
+    if (!learned || Math.abs(adj) > Math.abs(learned.diff)) learned = { diff: adj, offset: offset(p) };
+    const b = twinByTime.get(Date.parse(p.timestamp));
+    if (b == null) continue;
+    const diff = round1(p.twin_p50 - b);
+    if (!twin || Math.abs(diff) > Math.abs(twin.diff)) twin = { diff, offset: offset(p) };
+  }
   return {
+    twinLargestDiff: twin?.diff ?? null, twinLargestDiffMin: twin?.offset ?? null,
+    learnedLargest: learned?.diff ?? null, learnedLargestMin: learned?.offset ?? null,
     baselinePeak, baselinePeakMin: offset(base), scenarioPeak, scenarioPeakMin: offset(scen),
     deltaPeak: round1(scenarioPeak - baselinePeak),
     largestDiff: largest.diff, largestDiffMin: largest.offset,
@@ -114,7 +129,7 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
   const base = result.baseline_forecast.map(toPoint);
   const scen = result.scenario_forecast.map(toPoint);
   const start = result.current_mg_dl != null ? [{ min: 0, p10: result.current_mg_dl, p50: result.current_mg_dl, p90: result.current_mg_dl }] : [];
-  const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat(result.current_mg_dl ?? []);
+  const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat(scen.flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
   const m = { left: 40, right: 12, top: 12, bottom: 30 };
@@ -122,6 +137,9 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
   const line = d3Shape.line<P>().x(p => x(p.min)).y(p => y(p.p50));
+  const scenTwin = scen.filter(p => p.twin_p50 != null).map(p => ({ min: p.min, v: p.twin_p50 as number }));
+  const startTwin = scenTwin.length && result.current_mg_dl != null ? [{ min: 0, v: result.current_mg_dl }] : [];
+  const twinLine = d3Shape.line<{ min: number; v: number }>().x(p => x(p.min)).y(p => y(p.v));
   const band = d3Shape.area<P>().x(p => x(p.min)).y0(p => y(p.p10)).y1(p => y(p.p90));
   const yTicks = Array.from(new Set([...y.ticks(4), 180])).filter(t => t >= yMin && t <= yMax).sort((a, b) => a - b);
   return (
@@ -138,10 +156,12 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
         <path d={band(scen) ?? ''} fill="var(--color-projection)" fillOpacity={0.14} />
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
         <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
+        {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="2 3" />}
       </svg>
       <div className="whatif-legend" aria-hidden="true">
         <span><i className="whatif-swatch baseline" />Unchanged plan</span>
         <span><i className="whatif-swatch scenario" />With this change</span>
+        {scenTwin.length > 0 && <span><i className="whatif-swatch twin" />Physiology twin with this change</span>}
         <span>Shaded: P10–P90 · mg/dL</span>
       </div>
     </div>
@@ -152,10 +172,15 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const { metrics, warnings, fallback_used } = state.result;
   const riskAvailable = metrics.baseline_probability != null && metrics.new_probability != null;
   const sum = summarizeComparison(state.result);
+  const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   return (
     <div className="whatif-result" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
+      {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
+        <strong>{outOfRange.title}.</strong> {outOfRange.detail}
+        {sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}
+      </div>}
       <dl className="whatif-metrics">
         <div>
           <dt>Highest median glucose in the next 2 h</dt>
@@ -166,6 +191,10 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
           <dt>Largest difference at the same time</dt>
           <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small></dd>
         </div>
+        {sum.twinLargestDiff != null && <div>
+          <dt>Physiology twin alone, largest same-time change</dt>
+          <dd data-testid="scenario-twin-diff">{signed(sum.twinLargestDiff, 1, ' mg/dL')} <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
+        </div>}
         <div>
           <dt>Spike risk within 2 h (calibrated)</dt>
           <dd data-testid="scenario-risk">
@@ -178,7 +207,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
       {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
       <ScenarioComparisonChart result={state.result} />
-      {warnings.map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
+      {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
       {moved && <p className="fine-print" data-testid="scenario-pinned-note">Pinned to the {formatTime(state.asOf)} UTC forecast; the live view has since advanced. Run again to simulate from the latest reading.</p>}
     </div>
   );

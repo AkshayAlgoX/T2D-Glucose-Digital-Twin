@@ -1184,3 +1184,7 @@ p.fine-print { margin: 10px 0 0; }
 .demo-entry-link:hover { filter: brightness(1.08); }
 .demo-entry-link:focus-visible { outline: 2px solid var(--color-forecast); outline-offset: 2px; }
 @media (max-width: 720px) { .demo-entry { flex-direction: column; align-items: stretch; padding: 16px; } .demo-entry-link { justify-content: center; } }
+.whatif-swatch.twin { border-top: 1.5px dotted var(--color-physics); }
+.whatif-caution { padding: 10px 12px; border-left: 3px solid var(--color-alert-edge); background: var(--color-alert-bg); color: var(--color-alert-ink); font-size: 12px; line-height: 1.55; border-radius: 0 6px 6px 0; }
+.whatif-caution strong { color: var(--color-ink); }
+.whatif-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

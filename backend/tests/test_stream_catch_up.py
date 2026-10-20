@@ -103,3 +103,46 @@ def test_observed_inputs_match_the_series_the_network_reads(client):
         assert got["carbs_logged_g"] == round(float(carbs[t]), 1)
     if meal_steps:
         assert got["carbs_logged_g"] > 0
+
+
+# ---- What-If audit (2026-10-20): meal timing, scenario twin curve, out-of-range disclosure ---- #
+from input_contract import meal_step_index  # noqa: E402
+
+
+def test_scenario_meal_row_matches_training_binning():
+    # Future row k is the step at anchor + 5(k+1) min; a meal at minute m is known at step ceil(m / 5).
+    for offset in range(0, 121):
+        expected = min(T.HORIZON - 1, max(0, int(meal_step_index(offset)) - 1))
+        assert S.scenario_meal_row(offset) == expected, offset
+    assert S.scenario_meal_row(30) == 5  # +30 min, not +35 min (the pre-audit placement)
+    assert S.scenario_meal_row(0) == 0 and S.scenario_meal_row(120) == T.HORIZON - 1
+
+
+def _scenario(client, inputs, as_of="2026-09-29T05:55:00Z"):
+    res = client.post("/v1/forecasts", json={"schema_version": "1.0.0", "request_id": str(uuid.uuid4()),
+                                             "subject_id": SID, "as_of": as_of, "include": ["twin_overlay"],
+                                             "scenarios": [{"scenario_id": "audit", "inputs": inputs}]})
+    assert res.status_code == 200, res.text
+    assert not list(_validator().iter_errors(res.json()))
+    return res.json()
+
+
+def test_meal_scenario_returns_its_twin_curve_and_discloses_out_of_range_inputs(client):
+    svc: S.ServiceContext = client.app.state.ctx
+    body = _scenario(client, [{"kind": "meal", "offset_min": 30, "carbs_g": 60}])
+    pc = svc.patient(uuid.UUID(SID))
+    t = svc.anchor_index(pc, S.dt.datetime.fromisoformat(body["as_of"]))
+    extra = np.zeros((1, T.HORIZON)); extra[0, 5] = 60
+    twin, *_ = svc.rollouts(pc, t, extra, np.zeros((1, T.HORIZON * T.STEP_MIN)), np.ones((1, T.HORIZON)))
+    assert [p["twin_p50"] for p in body["scenarios"][0]["points"]] == [S.clamp_g(v) for v in twin]
+    codes = {w["code"]: w for w in body.get("warnings", [])}
+    assert "SCENARIO_OUT_OF_RANGE" in codes
+    p_max, c_max = svc.scenario_input_range()
+    assert 0 < p_max < 1 and 0 < c_max < 60
+    assert "60 g" in codes["SCENARIO_OUT_OF_RANGE"]["detail"]
+
+
+def test_activity_scenario_is_not_flagged_out_of_range(client):
+    body = _scenario(client, [{"kind": "activity", "offset_min": 0, "duration_min": 30, "intensity": "moderate"}])
+    codes = {w["code"] for w in body.get("warnings", [])}
+    assert "SCENARIO_OUT_OF_RANGE" not in codes and "SCENARIO_APPROXIMATION" in codes

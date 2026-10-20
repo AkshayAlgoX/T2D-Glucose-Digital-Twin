@@ -98,6 +98,24 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     expect(screen.queryByTestId('scenario-no-change')).not.toBeInTheDocument();
   });
 
+  it('shows the physiology twin alone, the largest learned adjustment, and the out-of-range caution from the service', async () => {
+    const withTwin = (c: ReturnType<typeof curve>, twin: (i: number) => number) => c.map((p, i) => ({ ...p, twin_p50: twin(i) }));
+    const baseline = withTwin(curve(120, 1), i => 119 + i);
+    // Scenario: twin rises smoothly; the network adds an isolated +40 at one step (row 14 = +75 min).
+    const scenario = withTwin(curve(120, 1), i => 119 + 2 * i).map((p, i) => ({ ...p, p50: p.twin_p50 + (i === 14 ? 40 : 0.5) }));
+    respond(200, okBody({ baseline_forecast: baseline, scenario_forecast: scenario,
+      warnings: [{ code: 'SCENARIO_OUT_OF_RANGE', title: 'Scenario inputs outside the training range', detail: 'reaches probability 1.00 and 60 g in one 5-min step; in training it never exceeded 0.29 and 33 g.' }] }));
+    render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    const caution = await screen.findByTestId('scenario-out-of-range');
+    expect(caution).toHaveTextContent('Scenario inputs outside the training range');
+    expect(caution).toHaveTextContent('the learned adjustment reaches +40.0 mg/dL at +75 min');
+    expect(screen.getByTestId('scenario-twin-diff')).toHaveTextContent('+23.0 mg/dL');
+    expect(screen.getByTestId('scenario-twin-diff')).toHaveTextContent('at +120 min');
+    expect(screen.getByTestId('whatif-twin-line').getAttribute('d')).toBeTruthy();
+    expect(screen.queryAllByTestId('scenario-warning')).toHaveLength(0);
+  });
+
   it('reports unavailable risk honestly on a physics-only fallback', async () => {
     respond(200, okBody({ fallback_used: 'twin_only',
       metrics: { delta_peak_mg_dl: 10, new_peak_mg_dl: 150, baseline_peak_mg_dl: 140, delta_probability: null, new_probability: null, baseline_probability: null } }));

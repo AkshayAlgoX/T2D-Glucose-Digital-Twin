@@ -90,8 +90,8 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             {risk?.time_to_peak_min != null && <p className="fine-print">Reported time to peak: {risk.time_to_peak_min} min from the forecast anchor.</p>}
             <p className="fine-print">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h.</p>
             {peakModel && <details className="context-details" data-testid="peak-model-output">
-              <summary>Separate peak-model output</summary>
-              <p className="fine-print">The service also returns a dedicated estimate of the highest value within 2 h: median {Math.round(peakModel.p50)} mg/dL{peakModel.p90 != null ? `, 90th percentile ${Math.round(peakModel.p90)} mg/dL` : ''}. It is a different quantity from the median curve&apos;s highest point and is not part of the contributions above.</p>
+              <summary>If a spike occurs: peak estimate</summary>
+              <p className="fine-print">A separate model head estimates how high glucose would go <em>if a spike occurs</em>: median {Math.round(peakModel.p50)} mg/dL{peakModel.p90 != null ? `, 90th percentile ${Math.round(peakModel.p90)} mg/dL` : ''}. It was trained only on windows that contain a spike, so it is conditional on one happening and is not the expected peak; it has not been evaluated in the evidence artifacts. It is a different target from the forecast bands and from the contributions above.</p>
             </details>}
           </>
         )}

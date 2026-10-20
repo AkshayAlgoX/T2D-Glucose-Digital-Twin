@@ -138,3 +138,16 @@ describe('Risk labels and independently served values',()=>{
     expect(within(peakRow!).getByText('135')).toBeInTheDocument();
   });
 });
+
+it('labels the separate peak head as conditional on a spike and keeps it out of the contributions total', () => {
+  const p = fixture();
+  p.spike_risk!.peak_mg_dl = { p50: 196.2, p90: 230.4 } as any;
+  p.forecast = { horizon_min: 120, points: [{ offset_min: 15, p50: 110 }, { offset_min: 30, p50: 120 }, { offset_min: 45, p50: 118 }] as any } as any;
+  render(<RiskPanel forecast={p} />);
+  expect(within(screen.getByText('Median at peak').closest('tr')!).getByText('120')).toBeInTheDocument();
+  const disclosure = screen.getByTestId('peak-model-output');
+  expect(disclosure).toHaveTextContent('If a spike occurs: peak estimate');
+  expect(disclosure).toHaveTextContent('median 196 mg/dL, 90th percentile 230 mg/dL');
+  expect(disclosure).toHaveTextContent('trained only on windows that contain a spike');
+});
+
