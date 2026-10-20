@@ -409,9 +409,16 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
       render: () => anySteps ? rows.filter(w => w.steps > 0).map(w => {
         const r = clampRect(x(w.time), step);
-        const bh = Math.max(3, (w.steps / maxSteps) * (h - 4));
-        return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} fill="var(--color-ink-3)" opacity={0.7} />;
-      }).concat(rows.filter(w => w.steps > 0).length <= 3 ? [<g key="few">{empty(`${Math.round(rows.reduce((t, w) => t + w.steps, 0))} steps recorded in this window`)}</g>] : []) : empty('0 steps recorded in this window') },
+        const bh = Math.max(5, (w.steps / maxSteps) * (h - 4));
+        return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} rx={1} fill="var(--color-ink-2)" />;
+      }).concat(rows.filter(w => w.steps > 0).length <= 3 ? (() => {
+        // A near-sedentary window: say so beside the few bars rather than far from them.
+        const xs = rows.filter(w => w.steps > 0).map(w => x(w.time));
+        const first = Math.min(...xs), lastX = Math.max(...xs) + step;
+        const total = Math.round(rows.reduce((t, w) => t + w.steps, 0));
+        const before = first - left > 200;
+        return [<text key="few" x={before ? first - 8 : lastX + 8} y={h / 2 + 4} textAnchor={before ? 'end' : 'start'} className="lane-empty">{`${total} steps in this window`}</text>];
+      })() : []) : empty('0 steps recorded in this window') },
     { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
       render: () => hr ? <path d={hr.path ?? ''} fill="none" stroke="var(--color-danger)" strokeWidth={1.5} /> : empty('No heart-rate readings received') },
     { key: 'hrv', label: 'HRV (RMSSD)', unit: 'ms', latest: fmt(last.hrv),

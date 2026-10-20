@@ -136,7 +136,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
             <summary>Dataset details</summary>
             <p className="fine-print" style={{ margin: '4px 0 0' }}>
               {cohortDetails.roleDescription}.
-              <span style={{ display: 'block', marginTop: '3px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-ink-3)' }}>
+              <span style={{ display: 'block', marginTop: '3px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                 Provenance: {cohortDetails.raw}
               </span>
             </p>

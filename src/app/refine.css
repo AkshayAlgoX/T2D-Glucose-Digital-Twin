@@ -278,3 +278,13 @@
   .pipeline-mobile li.net { border-color: var(--color-forecast); }
   .pipeline-mobile li.out { border-color: var(--color-ink-2); }
 }
+
+/* --- Legibility floor (12 px) for the last small labels ---------------------- */
+.eyebrow, .status-badge, .pillar-label, .pillar-label span, .pillar-tag, .result-count, .chart-anchor-label,
+.cumulative-as-of, .history-legend, .chart-legend span, .directory-pagination, .metric-source, .evidence-pillar-card small,
+.provenance-fields dt, .provenance-fields .hash-value, .snapshot-table th, .snapshot-table td { font-size: 12px; }
+.research-footer, .research-footer span, .history-scale, .coverage-metrics dt, .evidence-section th, .evidence-section td,
+.evidence-section summary, .context-details summary, .evidence-section code, .clinical-fields dt { font-size: 12.5px; }
+.chart-window button { font-size: 12.5px; }
+.clinical-fields small, .forecast-metadata, .forecast-metadata time, .current-summary .eyebrow { font-size: 12px; }
+.stage .chart-axis, .chart-anchor-label { font-size: 12px; }

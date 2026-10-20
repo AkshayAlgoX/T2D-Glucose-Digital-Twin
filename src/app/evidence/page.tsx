@@ -777,7 +777,7 @@ export default async function EvidencePage() {
                           <strong style={{ fontSize: '14px', color: isT2D ? '#8c5b0c' : 'var(--color-ink)' }}>
                             {groupName} {isT2D ? '(target clinical focus)' : ''}
                           </strong>
-                          <span className="status-badge" style={{ fontSize: '11px' }}>
+                          <span className="status-badge" style={{ fontSize: '12px' }}>
                             n={sg.n_patients} pts · {sg.n_anchors_eligible?.toLocaleString()} eligible
                           </span>
                         </div>
@@ -785,17 +785,17 @@ export default async function EvidencePage() {
                           <div>
                             <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>30m RMSE</span>
                             <strong style={{ fontSize: '15px' }}>{sg.rmse_30?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_30?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_30?.toLocaleString()} rows</div>
                           </div>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>60m RMSE</span>
                             <strong style={{ fontSize: '15px' }}>{sg.rmse_60?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_60?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_60?.toLocaleString()} rows</div>
                           </div>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>120m RMSE</span>
                             <strong style={{ fontSize: '15px', color: isT2D ? '#8c5b0c' : 'inherit' }}>{sg.rmse_120?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_120?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_120?.toLocaleString()} rows</div>
                           </div>
                         </div>
                       </div>
