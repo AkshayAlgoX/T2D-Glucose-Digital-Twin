@@ -116,7 +116,8 @@ describe('Risk labels and independently served values',()=>{
     const { container } = render(<RiskPanel forecast={p} />);
     const disclosure = container.querySelector('.spike-definition');
     expect(disclosure).toBeInTheDocument();
-    expect(disclosure?.textContent).toContain('How is a spike defined?');
+    expect(disclosure?.textContent).toContain('How to read this probability');
+    expect(disclosure?.textContent).toContain('not that a spike is certain');
     expect(disclosure?.textContent).toContain('50 mg/dL');
     expect(disclosure?.textContent).toContain('180 mg/dL');
     expect(disclosure?.textContent).toContain('15 minutes');
@@ -155,6 +156,6 @@ it('labels the separate peak head as conditional on a spike and keeps it out of 
 it('explains the spike definition next to the probability and keeps future cumulative risk with it, not in history', () => {
   const p = fixture();
   render(<RiskPanel forecast={p} />);
-  expect(screen.getByTestId('risk-definition')).toHaveTextContent('A median curve above 180 does not by itself meet that definition');
+  expect(screen.getByTestId('risk-definition')).toHaveTextContent('Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min');
   expect(document.querySelector('.cumulative-summary')).toHaveTextContent('Cumulative onset probability · next 2 h');
 });

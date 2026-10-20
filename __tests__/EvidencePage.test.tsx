@@ -559,8 +559,8 @@ describe('EvidencePage', () => {
 
     // Question 4: What remains unproven?
     expect(screen.getByText('What remains unproven?')).toBeInTheDocument();
-    expect(screen.getByText(/Gate 3 Realism FAILED/i)).toBeInTheDocument();
-    expect(screen.getByText(/zero human clinical claims/i)).toBeInTheDocument();
+    expect(screen.getByText(/Realism gate \(Gate 3\) FAILED/i)).toBeInTheDocument();
+    expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });
 
   it('reconciles raw 78.16% coverage and 80.00% conformal-adjusted coverage with explicit mathematical context', async () => {

@@ -339,7 +339,7 @@ export default async function EvidencePage() {
                 </>
               )}
             </span>
-            <span style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>
               {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA‑256 matches the run manifest'}
             </span>
           </div>
@@ -474,10 +474,10 @@ export default async function EvidencePage() {
                     AUROC {gate3?.historical_auroc.toFixed(4) ?? '0.9320'} (Target &le; 0.65)
                   </div>
                   <ul className="pillar-limits-list">
-                    <li><strong>Gate 3 Realism FAILED:</strong> Discriminator easily detects synthetic ODE trajectories (AUROC 0.932031 historical, 0.928974 duration-corrected; top tell: <code>jerk_sd</code>).</li>
-                    <li><strong>Held-out test unexecuted:</strong> 44 test subjects remain sealed behind governance firewall.</li>
-                    <li><strong>EW-01 protocol unexecuted:</strong> Early warning spike alerts are governance-blocked.</li>
-                    <li><strong>Zero human clinical claims:</strong> Evaluated on simulated data only; not validated for clinical diagnosis.</li>
+                    <li><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells the synthetic glucose traces apart from the reference data (AUROC 0.932031 historical, 0.928974 duration-corrected; target ≤ 0.65).</li>
+                    <li><strong>Held-out test not run:</strong> the 44 test patients have never been scored, so no test result is claimed.</li>
+                    <li><strong>Early-warning alerts not validated:</strong> the pre-registered alert study (EW-01) has not been run.</li>
+                    <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
                   </ul>
                 </div>
                 <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
@@ -550,7 +550,7 @@ export default async function EvidencePage() {
                 </span>
               </div>
 
-              <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.55, margin: '0 0 14px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.55, margin: '0 0 14px' }}>
                 Multi-horizon paired forecast error comparison evaluating the PR-TFT hybrid model against standalone UKF physiology ODEs and sensor persistence across 53,849–53,920 evaluable rows. In this synthetic partition, the neural residual layer corrects physics drift at longer horizons without replacing physiological priors.
               </p>
 
@@ -620,7 +620,7 @@ export default async function EvidencePage() {
                           <td style={{ fontWeight: 600, color: 'var(--color-ok)' }}>PR-TFT (Arm D)</td>
                           <td style={{ fontWeight: 700 }}>
                             {row.pr?.estimate.toFixed(2)}{' '}
-                            <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                            <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                               {row.pr?.ci_95 ? `[${row.pr.ci_95[0].toFixed(2)}, ${row.pr.ci_95[1].toFixed(2)}]` : ''}
                             </span>
                           </td>
@@ -637,7 +637,7 @@ export default async function EvidencePage() {
                           <td style={{ color: '#8c5b0c' }}>UKF Twin</td>
                           <td>
                             {row.tw?.estimate ? row.tw.estimate.toFixed(2) : '—'}{' '}
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                               {row.tw?.ci_95 ? `[${row.tw.ci_95[0].toFixed(2)}, ${row.tw.ci_95[1].toFixed(2)}]` : ''}
                             </span>
                           </td>
@@ -650,7 +650,7 @@ export default async function EvidencePage() {
                           <td style={{ color: 'var(--color-danger)' }}>Persistence</td>
                           <td>
                             {row.pe?.estimate ? row.pe.estimate.toFixed(2) : '—'}{' '}
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                               {row.pe?.ci_95 ? `[${row.pe.ci_95[0].toFixed(2)}, ${row.pe.ci_95[1].toFixed(2)}]` : ''}
                             </span>
                           </td>
@@ -665,7 +665,7 @@ export default async function EvidencePage() {
                 </table>
               </div>
 
-              <p className="fine-print" style={{ marginTop: '12px', fontSize: '11px', color: 'var(--color-ink-3)', lineHeight: 1.5 }}>
+              <p className="fine-print" style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.5 }}>
                 Note: Paired differences (&Delta; = PR-TFT - Comparator) are strictly negative in all 10,000/10,000 bootstrap draws in the primary analysis (and 1,000/1,000 in the secondary cross-check). Negative &Delta; indicates lower prediction error. P-values are not inferred from finite bootstrap draws.
               </p>
 
@@ -693,7 +693,7 @@ export default async function EvidencePage() {
                     n=44 Subjects · Exact Binomial Test
                   </span>
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   To avoid degenerate bootstrap intervals at 100% boundary conditions, exact Clopper-Pearson 95% binomial confidence intervals are reported. <em>Sampling assumption:</em> Independent Bernoulli trials across the 44 subjects in the simulated validation cohort; interpretation is strictly limited to this simulated cohort and does not guarantee human generalization.
                 </p>
 
@@ -704,7 +704,7 @@ export default async function EvidencePage() {
                     return (
                       <div key={hKey} style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
                         <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--color-ink)' }}>{hKey} Horizon Wins</div>
-                        <div style={{ display: 'grid', gap: '6px', fontSize: '12px' }}>
+                        <div style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)' }}>vs. Persistence:</span>{' '}
                             <strong style={{ color: 'var(--color-ok)' }}>
@@ -746,7 +746,7 @@ export default async function EvidencePage() {
                   </span>
                 </div>
 
-                <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Stratified evaluation across healthy (n=15), prediabetes (n=19), and Type 2 diabetes (n=10) simulated subjects. The 10-patient T2D subgroup represents the core target use case: PR-TFT delivers its largest absolute gain over pure physics (&Delta; = -5.52 mg/dL at 120m) where metabolic impairment creates non-linear glucose dynamics that exceed standard ODE parameters. Sample sizes reflect the synthetic development partition and must be treated as exploratory.
                 </p>
 
@@ -767,25 +767,25 @@ export default async function EvidencePage() {
                           <strong style={{ fontSize: '14px', color: isT2D ? '#8c5b0c' : 'var(--color-ink)' }}>
                             {groupName} {isT2D ? '(Target Clinical Focus)' : ''}
                           </strong>
-                          <span className="status-badge" style={{ fontSize: '10px' }}>
+                          <span className="status-badge" style={{ fontSize: '11px' }}>
                             n={sg.n_patients} pts · {sg.n_anchors_eligible?.toLocaleString()} eligible
                           </span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '13px' }}>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '11px' }}>30m RMSE</span>
+                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>30m RMSE</span>
                             <strong style={{ fontSize: '15px' }}>{sg.rmse_30?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '10px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_30?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_30?.toLocaleString()} rows</div>
                           </div>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '11px' }}>60m RMSE</span>
+                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>60m RMSE</span>
                             <strong style={{ fontSize: '15px' }}>{sg.rmse_60?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '10px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_60?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_60?.toLocaleString()} rows</div>
                           </div>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '11px' }}>120m RMSE</span>
+                            <span style={{ color: 'var(--color-ink-3)', display: 'block', fontSize: '12px' }}>120m RMSE</span>
                             <strong style={{ fontSize: '15px', color: isT2D ? '#8c5b0c' : 'inherit' }}>{sg.rmse_120?.toFixed(2)}</strong>
-                            <div style={{ fontSize: '10px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_120?.toLocaleString()} rows</div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>{sg.n_evaluable_120?.toLocaleString()} rows</div>
                           </div>
                         </div>
                       </div>
@@ -813,14 +813,14 @@ export default async function EvidencePage() {
                     Compact Numeric Summary (n=44)
                   </span>
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Per-patient RMSE quantiles across the 44 simulated validation subjects, summarizing patient-to-patient error dispersion (median 18.86 mg/dL, IQR 3.42 mg/dL at 60m). <em>Clinical disclosure:</em> These cohort-level summary distributions describe median performance and spread, but do not rule out individual acute forecast errors or outlier trajectory deviations in specific subjects.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                   {dist['60min'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-Minute Horizon Dispersion</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-Minute Horizon Dispersion</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['60min'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['60min'].median?.toFixed(2)}</strong></div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['60min'].max?.toFixed(2)}</div>
@@ -832,8 +832,8 @@ export default async function EvidencePage() {
                   )}
                   {dist['120min'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-Minute Horizon Dispersion</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-Minute Horizon Dispersion</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['120min'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['120min'].median?.toFixed(2)}</strong></div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['120min'].max?.toFixed(2)}</div>
@@ -865,7 +865,7 @@ export default async function EvidencePage() {
                 {/* Conformal Coverage Reconciliation Card */}
                 <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-ink-3)' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-ink-3)' }}>
                       80% Conformal Interval Coverage Reconciliation
                     </span>
                     <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
@@ -874,56 +874,56 @@ export default async function EvidencePage() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '10px' }}>
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px', background: 'var(--color-surface-2)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw Model Coverage (Uncalibrated):</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw Model Coverage (Uncalibrated):</div>
                       <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ink)' }}>
                         78.16% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.781553)</span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
                         Mean uncalibrated p10–p90 width: <strong>36.02 mg/dL</strong> across 53,849–53,920 evaluable rows. Measures raw PR-TFT quantile heads before post-processing.
                       </p>
                     </div>
                     <div style={{ padding: '12px', border: '1px solid var(--color-ok)', borderRadius: '6px', background: 'rgba(11, 113, 107, 0.04)' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-ok)', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ok)', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
                       <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
                         Mean adjusted width: <strong>37.30 mg/dL</strong> (+1.28 mg/dL conformal widening). Evaluated on the 44-subject validation split where the calibrator was fitted (resubstitution diagnostic).
                       </p>
                     </div>
                   </div>
-                  <p style={{ margin: '10px 0 0', fontSize: '11px', color: 'var(--color-ink-2)', lineHeight: 1.5 }}>
+                  <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5 }}>
                     <strong>Reconciliation Note:</strong> Both numbers represent genuine pipeline metrics from <code>run_manifest.json</code>. The 0.781553 value is the unadjusted raw model coverage; the 0.800020 value is the post-hoc conformal-calibrated coverage (Stage-3 validation resubstitution). Neither guarantees 80% coverage on new human patients.
                   </p>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Brier Score (Raw &rarr; Calibrated)</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Brier Score (Raw &rarr; Calibrated)</div>
                     <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
                       {cal.brier_score_calibrated?.toFixed(4)}
-                      <small style={{ fontSize: '11px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {cal.brier_score_raw?.toFixed(4)})</small>
+                      <small style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {cal.brier_score_raw?.toFixed(4)})</small>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-2)' }}>Resubstitution evaluation on {cal.at_risk_anchors?.toLocaleString()} at-risk anchors.</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Resubstitution evaluation on {cal.at_risk_anchors?.toLocaleString()} at-risk anchors.</div>
                   </div>
 
                   {cal.threshold_evaluations?.['0.35'] && (
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Evaluated Threshold 0.35</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Evaluated Threshold 0.35</div>
                       <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-accent-ink)' }}>
                         Sens {(cal.threshold_evaluations['0.35'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.35'].precision * 100).toFixed(1)}%
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-ink-2)' }}>Anchor-level alert fraction: {cal.threshold_evaluations['0.35'].alert_rate_pct?.toFixed(1)}% of decision anchors (diagnostic only; does not represent event-level alerts per day).</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Anchor-level alert fraction: {cal.threshold_evaluations['0.35'].alert_rate_pct?.toFixed(1)}% of decision anchors (diagnostic only; does not represent event-level alerts per day).</div>
                     </div>
                   )}
 
                   {cal.threshold_evaluations?.['0.60'] && (
                     <div style={{ padding: '12px', border: '1px solid #78350f', borderRadius: '6px', background: 'rgba(120, 53, 15, 0.05)' }}>
-                      <div style={{ fontSize: '11px', color: '#8c5b0c', textTransform: 'uppercase' }}>High Threshold Diagnostic (0.60)</div>
+                      <div style={{ fontSize: '12px', color: '#8c5b0c', textTransform: 'uppercase' }}>High Threshold Diagnostic (0.60)</div>
                       <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-danger)' }}>
                         Sens {(cal.threshold_evaluations['0.60'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.60'].precision * 100).toFixed(1)}%
                       </div>
-                      <div style={{ fontSize: '11px', color: '#8c5b0c' }}>High threshold empirical diagnostic (29.9% sensitivity, 74.5% precision, 5.3% anchor-level alert rate). Evaluated on the 44-patient validation partition; does not prove an underlying plateau or collapse mechanism.</div>
+                      <div style={{ fontSize: '12px', color: '#8c5b0c' }}>High threshold empirical diagnostic (29.9% sensitivity, 74.5% precision, 5.3% anchor-level alert rate). Evaluated on the 44-patient validation partition; does not prove an underlying plateau or collapse mechanism.</div>
                     </div>
                   )}
                 </div>
@@ -932,7 +932,7 @@ export default async function EvidencePage() {
                   <img src="/evidence/calibration_reliability.svg" alt="Calibration Reliability Diagram with Equal-Width Probability Bins" />
                 </div>
 
-                <p className="fine-print" style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
+                <p className="fine-print" style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
                   Conformal coverage ({metrics.coverage_80_conformal.estimate ? (metrics.coverage_80_conformal.estimate * 100).toFixed(2) : '80.00'}%, width {metrics.width_80_conformal_mg_dl?.estimate?.toFixed(2) ?? '37.30'} mg/dL), Expected Calibration Error (ECE 0.000094), and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting. No threshold should be treated as an approved clinical operating recommendation.
                 </p>
               </EvidenceDisclosure>
@@ -952,16 +952,16 @@ export default async function EvidencePage() {
                 {gate3 && (
                   <div style={{ border: '1px solid #78350f', borderRadius: '8px', padding: '16px', background: 'rgba(120, 53, 15, 0.06)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8c5b0c' }}>Gate 3 Realism</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8c5b0c' }}>Gate 3 Realism</span>
                       <span className="status-badge" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', background: 'rgba(185, 28, 28, 0.1)' }}>
                         <XCircle size={12} aria-hidden="true" /> {gate3.status}
                       </span>
                     </div>
                     <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Synthetic-Data Indistinguishability</h3>
-                    <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                      Discriminator separates synthetic ODE trajectories from mock-real generator records (33,162 windows).
+                    <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                      A classifier can tell the synthetic glucose traces from the reference records (33,162 windows), so the synthetic data are not yet realistic enough.
                     </p>
-                    <div style={{ fontSize: '12px', display: 'grid', gap: '4px' }}>
+                    <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
                       <div><strong>Historical AUROC:</strong> {gate3.historical_auroc?.toFixed(4)}</div>
                       <div><strong>Duration-Corrected:</strong> {gate3.duration_corrected_auroc?.toFixed(4)}</div>
                       <div><strong>Acceptance Target:</strong> AUROC &le; 0.65</div>
@@ -973,7 +973,7 @@ export default async function EvidencePage() {
                         <img src="/evidence/gate3_realism_summary.svg" alt="Gate 3 Realism Audit Discriminator Summary" />
                       </div>
                     </details>
-                    <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                    <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                       Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507).
                     </p>
                   </div>
@@ -982,21 +982,22 @@ export default async function EvidencePage() {
                 {/* Sealed Test Cohort */}
                 <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Sealed Test Split</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Sealed Test Split</span>
                     <span className="status-badge" style={{ color: '#4b5563', borderColor: '#9ca3af', background: 'rgba(75, 85, 99, 0.08)' }}>
                       SEALED &amp; UNEXECUTED
                     </span>
                   </div>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Held-Out Test Cohort</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
                     Sealed evaluation on the held-out test split (44 patients) was strictly not executed.
                   </p>
-                  <div style={{ fontSize: '12px', display: 'grid', gap: '4px' }}>
-                    <div><strong>Why it is not run:</strong> the training run recorded uncommitted changes in 11 files (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>), and <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</div>
-                    <div><strong>What this does not affect:</strong> the header check, which confirms that the evaluation report, checkpoint and data match the run manifest.</div>
+                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
+                    <div><strong>Why it is not run:</strong> the model was trained from code that had not been committed, and two training source files have changed since, so a test result could not be tied to exactly reproducible code.</div>
+                    <div><strong>What this does not affect:</strong> the check that the evaluation report, checkpoint and data match the recorded run.</div>
+                    <details className="context-details"><summary>Technical detail</summary><p style={{ margin: '6px 0 0' }}>The run manifest (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>) records uncommitted changes in 11 files; <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</p></details>
                     <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                     No performance claim is made for unexecuted test evaluation.
                   </p>
                 </div>
@@ -1004,21 +1005,21 @@ export default async function EvidencePage() {
                 {/* External Dataset */}
                 <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>External Dataset</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>External Dataset</span>
                     <span className="status-badge" style={{ color: '#8c5b0c', borderColor: '#8c5b0c', background: 'rgba(140, 91, 12, 0.08)' }}>
                       <AlertCircle size={12} aria-hidden="true" /> NO-GO
                     </span>
                   </div>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>ShanghaiT2DM Diagnostic</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
                     Assessed diagnostically for input-contract feasibility with the locked model.
                   </p>
-                  <div style={{ fontSize: '12px', display: 'grid', gap: '4px' }}>
+                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
                     <div><strong>Sampling Interval:</strong> 15 min (Contract: 5 min)</div>
                     <div><strong>Missing Channels:</strong> Wearable &amp; meal logs absent</div>
                     <div><strong>Conclusion:</strong> Incompatible; external validation NO-GO</div>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                     External forecasting evaluation remains unexecuted.
                   </p>
                 </div>
@@ -1026,21 +1027,21 @@ export default async function EvidencePage() {
                 {/* EW-01 Protocol */}
                 <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Early Warning</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Early Warning</span>
                     <span className="status-badge" style={{ color: '#4b5563', borderColor: '#9ca3af', background: 'rgba(75, 85, 99, 0.08)' }}>
                       UNEXECUTED
                     </span>
                   </div>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>EW-01 Protocol</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                    Early warning spike evaluation protocol remains unexecuted.
+                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                    The pre-registered study of early-warning spike alerts has not been run.
                   </p>
-                  <div style={{ fontSize: '12px', display: 'grid', gap: '4px' }}>
-                    <div><strong>Protocol Lineage:</strong> Pending multi-party sign-offs</div>
+                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
+                    <div><strong>Protocol:</strong> awaiting sign-off before it can run</div>
                     <div><strong>Prospective Trial:</strong> Not conducted</div>
                     <div><strong>Status:</strong> Excluded from release claims</div>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
                     Passing interface tests do not constitute clinical alert validation.
                   </p>
                 </div>
@@ -1062,7 +1063,7 @@ export default async function EvidencePage() {
           <h2 id="historical-record-heading" style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 8px' }}>
             Historical Development Reference (18-Subject Partition)
           </h2>
-          <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: 0 }}>
             Earlier development reference recorded in <code>backend/runs/pr_tft_demo/evaluation_baseline.json</code> evaluated 18 subjects under demo checkpoint <code>stage2_observed-epoch=01-val_loss=0.3096.ckpt</code> (Persistence RMSE120: 50.66, Twin-only RMSE120: 40.20). This historical record is preserved separately for reference only; direct numerical superiority claims over it are cohort-unverified.
           </p>
         </section>
@@ -1084,7 +1085,7 @@ export default async function EvidencePage() {
               </div>
             </summary>
             <div className="reproducibility-content">
-              <div style={{ padding: '16px 0 12px', fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.6 }}>
+              <div style={{ padding: '16px 0 12px', fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6 }}>
                 <p style={{ margin: '0 0 12px' }}>
                   Cryptographic verification succeeded. All recorded artifact hashes below match the on-disk byte manifests and checkpoint identities.
                   {manifest.run_kind && manifest.run_kind !== 'full' ? ' Notice: Pipeline-check run, not validation evidence.' : ''}
@@ -1108,7 +1109,7 @@ export default async function EvidencePage() {
                   ))}
                 </dl>
               </div>
-              <div style={{ marginTop: '12px', padding: '12px', background: 'var(--color-surface-2)', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ marginTop: '12px', padding: '12px', background: 'var(--color-surface-2)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
                 <div><strong>Audit File Lineage:</strong></div>
                 <div style={{ color: 'var(--color-ink-3)', marginTop: '4px' }}>
                   Manifest: <code>runs/pr_tft_ablation_arm_d/run_manifest.json</code><br />

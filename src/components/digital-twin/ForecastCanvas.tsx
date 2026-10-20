@@ -94,9 +94,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([bottom, margin.top]);
   // Keep the spike reference legible when the plot is short on mobile.
   const evenTicks = Array.from({ length: Math.floor(yMax / tickStep) - Math.ceil(yMin / tickStep) + 1 }, (_, i) => (Math.ceil(yMin / tickStep) + i) * tickStep);
-  const yTicks = Array.from(new Set([...evenTicks, 180]))
-    .filter(tick => tick >= yMin && tick <= yMax && (tick === 180 || Math.abs(y(tick) - y(180)) >= 18))
-    .sort((a, b) => a - b);
+  const yTicks = evenTicks.filter(tick => tick >= yMin && tick <= yMax);
   const area = (lower: 'p05' | 'p10', upper: 'p95' | 'p90') => d3Shape.area<(typeof mapped)[number]>()
     .defined(point => Number.isFinite(point[lower]) && Number.isFinite(point[upper]))
     .x(point => x(point.time)).y0(point => y(point[lower])).y1(point => y(point[upper])).curve(d3Shape.curveLinear);
@@ -183,8 +181,8 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><i className="legend-median" /><span className="lg-long">Forecast median</span><span className="lg-short" aria-hidden="true">Median</span></span>
         <span><i className="legend-band" />P10–P90</span>
         <span><i className="legend-outer" />P05–P95</span>
-        <span><i className="legend-peak" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Peak</span></span>
-        {hasPhysics && <span><i className="legend-physics" /><span className="lg-long">Physiology twin (prior)</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
+        <span><i className="legend-peak" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
+        {hasPhysics && <span><i className="legend-physics" /><span className="lg-long">Physiology twin (prior)</span><span className="lg-short" aria-hidden="true">Twin model</span></span>}
         <span><i className="legend-threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>
@@ -218,9 +216,12 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <defs><clipPath id={chartId + '-clip'}><rect x={margin.left} y={margin.top} width={right - margin.left} height={bottom - margin.top} /></clipPath></defs>
             <rect x={x(anchor)} y={margin.top} width={right - x(anchor)} height={bottom - margin.top} fill="var(--color-surface-2)" opacity={0.5} />
             {yTicks.map(tick => <g key={tick}>
-              <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} stroke={tick === 180 ? 'var(--color-amber)' : 'var(--color-line)'} strokeOpacity={tick === 180 ? 0.85 : 1} strokeDasharray={tick === 180 ? '5 4' : undefined} />
-              <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className={tick === 180 ? 'chart-axis chart-threshold-label' : 'chart-axis'}>{tick}</text>
+              <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} stroke="var(--color-line)" />
+              <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
             </g>)}
+            {/* The spike level is a reference line, labelled on the line itself rather than as an axis tick. */}
+            <line x1={margin.left} x2={right} y1={y(180)} y2={y(180)} stroke="var(--color-amber)" strokeOpacity={0.85} strokeDasharray="5 4" />
+            <text x={margin.left + 6} y={y(180) - 5} className="chart-axis chart-threshold-label">180 spike level</text>
             {x.ticks(narrow ? 4 : 7).filter(tick => x(tick) <= right - 22 && x(tick) >= margin.left + 14).map(tick => <g key={tick.getTime()}>
               <line x1={x(tick)} x2={x(tick)} y1={margin.top} y2={bottom} stroke="var(--color-line)" strokeDasharray="2 5" />
               <text x={x(tick)} y={bottom + 23} textAnchor="middle" className="chart-axis">{formatTime(tick.getTime())}</text>
@@ -228,7 +229,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <text x={margin.left} y={14} className="chart-axis">mg/dL</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
               <g className="forecast-layer" opacity={mappedScenario.length ? 0.5 : 1}>
-                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(joined) ?? ''} fill="var(--color-forecast)" fillOpacity={0.2} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
+                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(joined) ?? ''} fill="var(--color-forecast)" fillOpacity={0.16} stroke="var(--color-forecast)" strokeOpacity={0.85} strokeWidth={1.25} strokeDasharray="2 3" />
                 <path data-testid="quantile-band" d={area('p10', 'p90')(joined) ?? ''} fill="var(--color-forecast)" fillOpacity={0.3} stroke="var(--color-forecast)" strokeOpacity={0.8} strokeWidth={1} />
                 {/* A surface-coloured halo keeps each line legible where it crosses its own band. */}
                 {hasPhysics && <path d={physics(joined) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={5} strokeOpacity={0.85} aria-hidden="true" />}
@@ -425,7 +426,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     <section className="input-lanes" aria-label="Wearable and log inputs the model used" data-testid="input-lanes">
       <div className="input-lanes-heading">
         <span>Wearable and log inputs the model read</span>
-        <span className="fine-print">Observed only · same time axis as the chart</span>
+        <span className="fine-print">Observed only · aligned to the forecast chart's time axis</span>
       </div>
       {lanes.map(lane => (
         <div key={lane.key} className="input-lane" data-testid={`lane-${lane.key}`}>

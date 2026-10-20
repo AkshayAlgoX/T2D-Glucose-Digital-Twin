@@ -48,7 +48,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
             <div className={'risk-alert ' + tone}>{alert?.state === 'watch' || alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong></div>
             <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated)' : ' (not calibrated)' : ''}.</p>
-            <p className="fine-print risk-definition" data-testid="risk-definition">A spike here means glucose reaching 180 mg/dL after a rise of at least 50 mg/dL within 60 min, held for 15 min. A median curve above 180 does not by itself meet that definition, so this probability can be lower than the curve suggests.</p>
+            <p className="fine-print risk-definition" data-testid="risk-definition">Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min, and stays there 15 min.</p>
             {!!checkpoints.length && <div className="cumulative-summary">
               <span>Cumulative onset probability · next&nbsp;2&nbsp;h</span>
               {forecast.as_of && <p className="cumulative-as-of">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
@@ -67,12 +67,13 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
           </>
         )}
         <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>
-        <p className="fine-print">Alert status is supplied by the served policy; thresholds alone do not define an alert.</p>
         <details className="spike-definition context-details">
-          <summary>How is a spike defined?</summary>
+          <summary>How to read this probability</summary>
+          <p className="fine-print" data-testid="risk-vs-curve">The curve shows the middle outcome at each time. A median above 180 mg/dL means about half of the predicted outcomes are above 180 at that time, not that a spike is certain. The probability is a separate, calibrated estimate that a new spike starts within 120 min.</p>
           <p className="fine-print">
-            Operational criteria: A glucose rise of &ge; 50 mg/dL within a 60-minute window, reaching or exceeding 180 mg/dL, and persisting for at least 15 minutes.
+            Operational criteria: a glucose rise of &ge; 50 mg/dL within a 60-minute window, reaching or exceeding 180 mg/dL, and persisting for at least 15 minutes.
           </p>
+          <p className="fine-print">Alert status is supplied by the served policy; thresholds alone do not define an alert.</p>
         </details>
       </section>
 

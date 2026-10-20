@@ -564,7 +564,6 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
 /* Phone: section tabs, and risk-history figures that do not collide */
 .tw-section-tabs { display: none; }
 @media (max-width: 720px) {
-  .tw-section-tabs { position: sticky; top: 0; z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 -16px 14px; padding: 8px 16px; background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
   .tw-section-tabs a { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 8px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-weight: 600; font-size: 13px; text-decoration: none; }
   .tw-section-tabs a:active { transform: scale(0.98); }
   #forecast, #what-if, #record { scroll-margin-top: 64px; }
@@ -583,3 +582,18 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
   .chart-legend .lg-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .chart-legend { column-gap: 12px; }
 }
+
+/* Section tabs on phone and tablet; they sit under the sticky header where it is sticky (641–1024 px). */
+@media (max-width: 1024px) {
+  .tw-section-tabs { position: sticky; top: var(--nav-h, 61px); z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 -32px 16px; padding: 8px 32px; background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
+  .tw-section-tabs a { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 8px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-weight: 600; font-size: 13px; text-decoration: none; }
+  #forecast, #what-if, #record { scroll-margin-top: calc(var(--nav-h, 61px) + 64px); }
+  /* Stack the spike-risk card and the collapsed contributions instead of leaving a half-empty column. */
+  .insights-panel .risk-panel, .workspace-page .insights-panel .risk-panel { display: block; }
+}
+@media (max-width: 720px) { .tw-section-tabs { margin: 0 -16px 14px; padding: 8px 16px; } }
+@media (max-width: 640px) { .tw-section-tabs { top: 0; } #forecast, #what-if, #record { scroll-margin-top: 64px; } }
+.preset-refused { border-style: dashed; color: var(--color-ink-2); }
+.whatif-gap { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--color-physics) 10%, transparent); font-size: 13px; line-height: 1.55; }
+.whatif-gap strong { color: inherit; }
+.stage .chart-readout { font-size: 12.5px; color: #b5c0ca; }

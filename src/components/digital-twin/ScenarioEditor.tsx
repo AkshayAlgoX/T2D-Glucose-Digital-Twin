@@ -20,6 +20,8 @@ const PRESETS: Array<{ id: string; label: string; form: Partial<FormState> }> = 
   { id: 'meal', label: '60 g carb meal in 30 min', form: { kind: 'meal', carbs: '60', offset: '30' } },
   { id: 'walk', label: '30 min brisk walk now', form: { kind: 'activity', duration: '30', intensity: 'moderate', offset: '0' } },
   { id: 'skip', label: 'Skip usual dinner', form: { kind: 'skip_habitual_meal', slot: 'dinner' } },
+  // Kept as a one-click demonstration of the refusal: the backend answers SCENARIO_UNSUPPORTED.
+  { id: 'medication', label: 'Medication change', form: { kind: 'medication' } },
 ];
 
 // Empty text is "not entered", never 0.
@@ -210,7 +212,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
         <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
-        <details><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
+        <details open><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
       </div>}
       <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} />
       <dl className="whatif-metrics">
@@ -238,7 +240,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
             {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
         </div>
       </dl>
-      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.5 * Math.abs(sum.twinLargestDiff) && <p className="fine-print" data-testid="scenario-twin-gap">The network&apos;s change ({signed(sum.largestDiff, 1, ' mg/dL')} at most) is much smaller than the physiology twin&apos;s ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): its learned adjustment pulls the scenario back towards the patterns it was trained on. Neither size is validated.</p>}
+      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.8 * Math.abs(sum.twinLargestDiff) && <p className="whatif-gap" data-testid="scenario-twin-gap"><strong>Why the numbers differ.</strong> The final forecast moves by {signed(sum.largestDiff, 1, ' mg/dL')} at most, smaller than the physiology twin alone ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): the learned adjustment offsets part of the twin&apos;s response to this change.{outOfRange ? ' Because this input is outside the training range, the size of that offset is not reliable.' : ''} The highest-value change ({signed(sum.deltaPeak, 1)}) is smaller again because the two curves peak at different times. Neither size is validated.</p>}
       <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
       {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
       {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
@@ -313,7 +315,8 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
 
       <div className="whatif-presets" role="group" aria-label="Quick scenarios">
         {PRESETS.map(p => (
-          <button key={p.id} type="button" className="secondary-button" disabled={!asOf || loading}
+          <button key={p.id} type="button" className={p.id === 'medication' ? 'secondary-button preset-refused' : 'secondary-button'} disabled={!asOf || loading}
+            title={p.id === 'medication' ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
             onClick={() => { const next = { ...form, ...p.form }; setForm(next); submit(next); }}>
             {p.label}
           </button>
