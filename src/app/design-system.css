@@ -117,7 +117,7 @@ body { background: var(--color-bg); color: var(--color-ink); }
 @media (min-width: 1101px) { .tw-grid { grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; } }
 
 /* The forecast stage */
-.trajectory-panel.stage { border-radius: var(--radius-lg); border: 1px solid #1d262f; box-shadow: 0 24px 60px -30px rgb(12 17 22 / 0.65); overflow: hidden; }
+.trajectory-panel.stage { border-radius: var(--radius-lg); border: 1px solid #1d262f; box-shadow: 0 10px 24px -16px rgb(12 17 22 / 0.45); overflow: hidden; }
 .stage .trajectory-header { border-bottom: 1px solid var(--color-line); padding: 18px 24px 14px; }
 .stage .trajectory-header h2 { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; color: var(--color-ink); }
 .stage .trajectory-header .eyebrow { color: var(--color-accent); }
@@ -585,12 +585,13 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
 
 /* Section tabs on phone and tablet; they sit under the sticky header where it is sticky (641–1024 px). */
 @media (max-width: 1024px) {
-  .tw-section-tabs { position: sticky; top: var(--nav-h, 61px); z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 -32px 16px; padding: 8px 32px; background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
+  .tw-section-tabs { position: sticky; top: var(--nav-h, 60px); z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 -32px 16px; padding: 8px 32px; background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
   .tw-section-tabs a { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 8px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-weight: 600; font-size: 13px; text-decoration: none; }
-  #forecast, #what-if, #record { scroll-margin-top: calc(var(--nav-h, 61px) + 64px); }
+  #forecast, #what-if, #record { scroll-margin-top: calc(var(--nav-h, 60px) + 64px); }
   /* Stack the spike-risk card and the collapsed contributions instead of leaving a half-empty column. */
   .insights-panel .risk-panel, .workspace-page .insights-panel .risk-panel { display: block; }
 }
+@media (max-width: 760px) and (min-width: 641px) { .tw-section-tabs { --nav-h: 99px; } #forecast, #what-if, #record { --nav-h: 99px; } }
 @media (max-width: 720px) { .tw-section-tabs { margin: 0 -16px 14px; padding: 8px 16px; } }
 @media (max-width: 640px) { .tw-section-tabs { top: 0; } #forecast, #what-if, #record { scroll-margin-top: 64px; } }
 .preset-refused { border-style: dashed; color: var(--color-ink-2); }
