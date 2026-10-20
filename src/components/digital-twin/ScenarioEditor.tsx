@@ -202,8 +202,30 @@ function ErrorPanel({ state }: { state: Extract<ScenarioState, { status: 'error'
   );
 }
 
+/**
+ * True while forecasts arrive much faster than the live pace (the stream's catch-up burst), so a
+ * scenario is not pinned to an anchor that is about to be superseded. Live pace is one per 5 s.
+ */
+export function useSettlingAnchor(asOf: string | null, quietMs = 1500) {
+  const [settling, setSettling] = useState(false);
+  const last = useRef<number | null>(null);
+  useEffect(() => {
+    if (!asOf) return;
+    const now = Date.now();
+    const rapid = last.current != null && now - last.current < quietMs;
+    last.current = now;
+    if (!rapid) return;
+    setSettling(true);
+    const timer = setTimeout(() => setSettling(false), quietMs);
+    return () => clearTimeout(timer);
+  }, [asOf, quietMs]);
+  return settling;
+}
+
 export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast?: ForecastResponse | null }) {
-  const asOf = currentForecast?.as_of ?? null;
+  const liveAsOf = currentForecast?.as_of ?? null;
+  const settling = useSettlingAnchor(liveAsOf);
+  const asOf = settling ? null : liveAsOf;
   const { state, run, clear } = useScenario(patientId, asOf);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const medClass: MedClass = currentForecast?.ehr_context?.med_classes?.[0] ?? 'metformin';
@@ -278,11 +300,12 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
       </form>
 
       <div aria-live="polite" aria-busy={loading} className="whatif-output">
-        {!asOf && <p className="fine-print" data-testid="scenario-waiting">Waiting for the first forecast before a scenario can run.</p>}
+        {!asOf && !settling && <p className="fine-print" data-testid="scenario-waiting">Waiting for the first forecast before a scenario can run.</p>}
+        {settling && <p className="fine-print" data-testid="scenario-settling">Loading recent history; simulation is available once the stream reaches the latest reading.</p>}
         {asOf && insufficient && state.status === 'idle' && <p className="fine-print" data-testid="scenario-insufficient-hint">Current data quality is insufficient; the service is expected to refuse a simulation at this point.</p>}
         {loading && <p className="fine-print" data-testid="scenario-loading">Running the twin and network for: {describeInput(state.input)}…</p>}
         {state.status === 'error' && <ErrorPanel state={state} />}
-        {state.status === 'result' && <Readout state={state} liveAsOf={asOf} />}
+        {state.status === 'result' && <Readout state={state} liveAsOf={liveAsOf} />}
       </div>
     </section>
   );

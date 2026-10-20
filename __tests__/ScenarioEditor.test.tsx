@@ -180,6 +180,23 @@ describe('ScenarioEditor — backend-driven what-if', () => {
   });
 });
 
+describe('ScenarioEditor — catch-up burst', () => {
+  it('holds the simulation while forecasts arrive faster than live pace, then enables it on the latest anchor', () => {
+    jest.useFakeTimers();
+    try {
+      const { rerender } = render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
+      rerender(<ScenarioEditor patientId="subject-1" currentForecast={forecast({ as_of: '2026-09-28T12:00:00Z' } as Partial<ForecastResponse>)} />);
+      expect(screen.getByTestId('scenario-settling')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run simulation' })).toBeDisabled();
+      act(() => { jest.advanceTimersByTime(1600); });
+      expect(screen.queryByTestId('scenario-settling')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Run simulation' })).toBeEnabled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe('scenario helpers', () => {
   const form = { kind: 'meal' as const, carbs: '60', offset: '30', duration: '30', intensity: 'moderate' as const, slot: 'dinner' as const };
   it('builds backend-valid inputs and rejects empty/out-of-range values', () => {
