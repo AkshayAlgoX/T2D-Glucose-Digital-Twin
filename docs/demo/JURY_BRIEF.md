@@ -36,9 +36,9 @@ python -B backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d --host 12
 echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npx next dev --webpack -p 3000
 ```
 
-1. Open `/cohort` and click **Open P0017** in the *Start here* panel (validation split, Type 2). Training subjects are in-sample; sealed test subjects are not served at all.
+1. Open `/`. The home page states what the twin does, shows a schematic of the pipeline and the headline evidence (including the failed realism gate, read live from `docs/evidence/validation_ceiling_results.json`). Click **Open the demonstration twin · P0017** (validation split, Type 2). `/cohort` lists the other served subjects; training subjects are in-sample, and sealed test subjects are not served at all.
 2. **Header**: the EHR record in one line (age, sex, BMI, HbA1c, diagnosis duration, medication), the replay clock and data quality. The page opens on six hours of real replayed history (72 readings sent quickly at connect, each a full forecast), with the replay at 05:55 UTC on 29 Sep.
-3. **Glucose trajectory**: observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the forecast-median peak.
+3. **Glucose trajectory** (the dark instrument panel): observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the forecast-median peak. Two hours of history are shown by default so the forecast gets half the chart; *Past 6h* shows the full replayed history.
 4. **Wearable and log inputs the model read**: meal log, steps, heart rate, HRV and sleep, on the same time axis as the chart. These are the values the network consumed at each reading.
 5. **How this forecast is built**: pick +15 / +30 / +60 / +120 min and read ① physiology-based estimate + ② learned model adjustment = ③ final forecast, with its 80% interval.
 6. **Spike risk and model contributions**: the calibrated 2-hour probability, then the contributions, which add up to the forecast median's highest point.
