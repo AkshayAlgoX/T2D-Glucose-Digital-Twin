@@ -150,7 +150,7 @@ function spreadLabels<T extends { y: number }>(labels: T[], gap: number, top: nu
   return overflow > 0 ? sorted.map(l => ({ ...l, y: Math.max(top, l.y - overflow) })) : sorted;
 }
 
-export function ScenarioComparisonChart({ result, step = null, change = null }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null }) {
+export function ScenarioComparisonChart({ result, step = null, change = null, twinFirst = false }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null; twinFirst?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const height = width < 420 ? 200 : 250;
   const labelled = width >= 520;
@@ -187,7 +187,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null }: 
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
         <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
-        {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="2 3" />}
+        {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={twinFirst ? 2.5 : 1.5} strokeDasharray={twinFirst ? undefined : '2 3'} />}
         {change && <g data-testid="whatif-change-marker" aria-hidden="true">
           {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
           <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
@@ -218,7 +218,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null }: 
       <div className="whatif-legend" aria-hidden="true">
         <span><i className="whatif-swatch baseline" />Unchanged plan (blue shading: its P10–P90)</span>
         <span><i className="whatif-swatch scenario" />With this change (dotted outline: its P10–P90)</span>
-        {scenTwin.length > 0 && <span><i className="whatif-swatch twin" />Physiology twin with this change</span>}
+        {scenTwin.length > 0 && <span><i className={'whatif-swatch twin' + (twinFirst ? ' solid' : '')} />Physiology twin with this change</span>}
         <span><i className="whatif-swatch threshold" />Spike level 180 mg/dL</span>
       </div>
     </div>
@@ -363,7 +363,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       </div>}
       <figure className="whatif-figure">
         <figcaption><strong>Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC</span></figcaption>
-        <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} />
+        <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <figure className="whatif-figure">
         <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time</span></figcaption>
@@ -371,7 +371,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       </figure>
       <dl className="whatif-metrics">
         <div>
-          <dt>New-spike onset risk, 2 h (calibrated)</dt>
+          <dt>New-spike onset risk, 2 h (calibrated on the validation split)</dt>
           <dd data-testid="scenario-risk">
             {riskAvailable
               ? <>{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)} <strong>({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>

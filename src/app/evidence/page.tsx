@@ -542,7 +542,7 @@ export default async function EvidencePage() {
             <div className="generalization-banner" role="region" aria-label="Generalization Boundary Disclosure">
               <strong>Generalization Boundary Disclosure</strong>
               <p>
-                All performance metrics on this page are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They strictly do NOT constitute proof of prospective human generalization or clinical deployment efficacy. The held-out test split remains unexecuted per governance boundaries.
+                All performance metrics on this page are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They do not show how the model would perform in people or in clinical use. The held-out test split has not been run.
               </p>
             </div>
 

@@ -252,7 +252,8 @@
   .cohort-directory .directory-table td.numeric::before { font-size: 12px; color: var(--color-ink-2); margin-bottom: 2px; }
 }
 @media (max-width: 720px) { .cohort-directory .directory-table tbody tr > td:nth-of-type(6) { text-align: right; } }
-@media (min-width: 1101px) { .landing-actions { flex-wrap: nowrap; } }
+/* The actions wrap rather than run under the hero figure at 1180–1300 px. */
+.landing-actions { flex-wrap: wrap; }
 /* Home facts: two cells, then the equation on its own full-width row. */
 .hero-forecast-facts { grid-template-columns: auto minmax(0, 1fr); }
 .hero-forecast-facts > .hero-equation { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--color-line); }
@@ -301,3 +302,9 @@
 /* Long option text must not widen the form beyond the screen. */
 .whatif-form, .whatif-form > *, .whatif-form label { min-width: 0; max-width: 100%; }
 .whatif-form select, .whatif-form input { width: 100%; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+
+.whatif-swatch.twin.solid { border-top: 2.5px solid var(--color-physics); }
+.evidence-pillar-card.pillar-limitations .pillar-limits-list li { break-inside: avoid; }
+@media (min-width: 1025px) { .evidence-pillar-grid { align-items: stretch; } .evidence-pillar-card.pillar-limitations { align-self: start; } }
+.navigation-environment { font-size: 12px; }
+.landing-audience { margin: 0 0 14px; }

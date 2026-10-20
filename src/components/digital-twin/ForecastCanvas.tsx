@@ -251,7 +251,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             {!mapped.length && <text x={(margin.left + right) / 2} y={(margin.top + bottom) / 2} textAnchor="middle" className="chart-axis">Prediction unavailable; observed values only</text>}
           </svg>)}
         {selected && <div id={chartId + '-tooltip'} role="tooltip" className="chart-tooltip"
-          style={{ left: x(selected.time) > (margin.left + right) / 2 ? margin.left + 8 : undefined, right: x(selected.time) <= (margin.left + right) / 2 ? 8 : undefined }}>
+          style={x(selected.time) > margin.left + (right - margin.left) * 0.35 ? { left: margin.left + 8 } : { right: 8 }}>
           <strong>{selected.kind === 'observed' ? 'Observed CGM' : `Forecast · +${selected.point?.offset_min} min`}</strong>
           <time dateTime={selectedTimestamp} title={selectedTimestamp}>{formatTime(selectedTimestamp)} UTC</time>
           <dl>
@@ -409,8 +409,8 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
       render: () => anySteps ? rows.filter(w => w.steps > 0).map(w => {
         const r = clampRect(x(w.time), step);
-        const bh = Math.max(5, (w.steps / maxSteps) * (h - 4));
-        return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} rx={1} fill="var(--color-ink-2)" />;
+        const bh = Math.max(8, (w.steps / maxSteps) * (h - 4));
+        return <rect key={w.t} x={r.x} width={Math.max(3, r.width)} y={h - bh} height={bh} rx={1} fill="var(--color-ink)" />;
       }).concat(rows.filter(w => w.steps > 0).length <= 3 ? (() => {
         // A near-sedentary window: say so beside the few bars rather than far from them.
         const xs = rows.filter(w => w.steps > 0).map(w => x(w.time));
