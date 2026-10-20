@@ -99,3 +99,11 @@ def test_sealed_partition_stays_loaded_for_provenance(client):
     assert len(svc.patients) == sum(len(v) for v in SPLIT.values())
     assert svc.sealed_pids == frozenset(SEALED_PIDS)
     assert all(svc.split_of[p] == "test" for p in SEALED_PIDS)
+
+
+def test_dashboard_demo_link_is_the_validation_subject_p0017():
+    import re
+    src = (ROOT / "src" / "lib" / "landing.ts").read_text()
+    linked = re.search(r"DEMO_SUBJECT_ID = '([0-9a-f-]{36})'", src).group(1)
+    assert linked == sid(VAL_DEMO_PID)
+    assert VAL_DEMO_PID in SPLIT["val"] and VAL_DEMO_PID not in SEALED_PIDS

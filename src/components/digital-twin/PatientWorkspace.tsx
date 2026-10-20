@@ -358,7 +358,6 @@ export function PatientWorkspace({
             <div className="tw-whatif panel" id="what-if">
               <ScenarioEditor patientId={patientId} currentForecast={forecast} />
             </div>
-          </div>
 
           <section className="tw-details" aria-labelledby="details-heading">
             <h2 id="details-heading" className="tw-details-heading">History, data quality and provenance</h2>
@@ -370,6 +369,7 @@ export function PatientWorkspace({
               <TimeScrubber cache={cache} asOf={forecast?.as_of} />
             </div>
           </section>
+          </div>
         </>
       )}
       <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>

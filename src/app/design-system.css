@@ -114,7 +114,7 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .twin-workstation .tw-header h1 { font-size: 40px; line-height: 1.05; margin: 4px 0 8px; }
 .twin-workstation .tw-summary { font-size: 16px; color: var(--color-ink); }
 .twin-workstation .tw-story { font-size: 13px; color: var(--color-ink-3); }
-.tw-grid { grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; }
+@media (min-width: 1101px) { .tw-grid { grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; } }
 
 /* The forecast stage */
 .trajectory-panel.stage { border-radius: var(--radius-lg); border: 1px solid #1d262f; box-shadow: 0 24px 60px -30px rgb(12 17 22 / 0.65); overflow: hidden; }
@@ -221,7 +221,7 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .landing-evidence dd { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 500; letter-spacing: -0.02em; }
 .landing-evidence dd small { display: block; margin-top: 4px; font-family: var(--font-sans); font-size: 12px; color: var(--color-ink-3); letter-spacing: 0; }
 .landing-evidence .failed dd { color: var(--color-danger); }
-.landing-section-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-3); margin: 0 0 12px; font-weight: 600; }
+.landing .landing-section-title { font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-3); margin: 0 0 12px; font-weight: 600; }
 
 /* Cohort: the demonstration entry becomes an instrument card */
 .demo-entry.stage { border: 1px solid #1d262f; border-radius: var(--radius-lg); box-shadow: 0 24px 60px -34px rgb(12 17 22 / 0.65); padding: 22px 26px; }
@@ -252,3 +252,11 @@ body { background: var(--color-bg); color: var(--color-ink); }
   .stage .skeleton { animation: none; }
 }
 .stage .chart-threshold-label { fill: var(--color-amber); }
+/* Desktop: forecast, what-if and detail share the main column; the side column spans them. */
+@media (min-width: 1101px) {
+  .tw-grid { grid-template-areas: "traj side" "whatif side" "details side"; grid-template-rows: auto auto 1fr; }
+  .tw-grid > .tw-details { grid-area: details; margin-top: 0; }
+  .tw-grid > .tw-details .tw-details-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 1100px) { .tw-grid { grid-template-areas: "traj" "side" "whatif" "details"; } }
+@media (max-width: 600px) { .landing-diagram { display: none; } }

@@ -88,6 +88,9 @@ describe('Trajectory sizing and numerical fidelity', () => {
     const history = { ...cache, cgm: [{ t: '2026-10-04T08:00:00Z', value: 190, trend: 'flat' }, { t: '2026-10-04T11:55:00Z', value: 200, trend: 'flat' }] };
     const original = JSON.stringify({ fixture, history });
     render(<ForecastCanvas forecast={fixture} cache={history} />);
+    // Two hours of history by default, so the two-hour forecast gets half the chart.
+    expect(screen.getByRole('button', { name: 'Past 2h' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Past 6h' }));
     expect(screen.getAllByTestId('observed-segment')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Past 2h' }));
     expect(screen.getAllByTestId('observed-segment')).toHaveLength(1);
