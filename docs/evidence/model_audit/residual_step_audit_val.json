@@ -1,0 +1,21 @@
+{
+ "split": "val",
+ "patients": 44,
+ "anchors": 880,
+ "seed": 0,
+ "final_median": {
+  "share_isolated_step_gt_10mg_dl": 0.232,
+  "share_isolated_step_gt_20mg_dl": 0.198,
+  "share_isolated_step_gt_40mg_dl": 0.116,
+  "median": 0.32,
+  "p95": 57.7,
+  "max": 80.6
+ },
+ "twin_median": {
+  "share_isolated_step_gt_10mg_dl": 0.0,
+  "share_isolated_step_gt_20mg_dl": 0.0,
+  "share_isolated_step_gt_40mg_dl": 0.0,
+  "median": 0.18,
+  "max": 1.9
+ }
+}

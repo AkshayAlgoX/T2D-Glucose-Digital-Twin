@@ -46,3 +46,11 @@ it('states the hybrid relationship with returned and calculated values distingui
   expect(screen.getByTestId('hybrid-interval')).toHaveTextContent('80% interval 85–105 mg/dL · returned');
   expect(screen.getByTestId('forecast-adjustment-card')).toHaveTextContent('Calculated here as ③ − ①');
 });
+
+it('calls out an isolated one-step jump in the returned forecast median, and stays quiet for a smooth curve', () => {
+  const jagged = { ...forecast, forecast: { ...forecast.forecast!, points: forecast.forecast!.points.map((p, i) => (i === 14 ? { ...p, p50: 140, p90: 150, p95: 155 } : p)) } } as ForecastResponse;
+  const { rerender } = render(<ForecastCanvas forecast={jagged} cache={store([])} />);
+  expect(screen.getByTestId('isolated-step-note')).toHaveTextContent('jumps by 45 mg/dL in a single 5-min step at +75 min');
+  rerender(<ForecastCanvas forecast={forecast} cache={store([])} />);
+  expect(screen.queryByTestId('isolated-step-note')).not.toBeInTheDocument();
+});

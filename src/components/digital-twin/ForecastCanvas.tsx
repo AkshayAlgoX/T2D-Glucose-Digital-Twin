@@ -5,6 +5,9 @@ import { formatTime } from '@/lib/formatters/date';
 import type { ForecastResponse, QuantilePoint } from '@/types/forecast-response';
 import type { SubjectStore, WearableView } from '@/lib/types';
 
+/** Isolated one-step departures above this size are called out under the chart (mg/dL). */
+const ISOLATED_STEP_NOTE_MG_DL = 20;
+
 export function ForecastCanvas({ forecast, cache, isStale }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean }) {
   const plotRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 380 });
@@ -53,6 +56,12 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
     return segments;
   }, []);
   const current = forecast?.current?.value_mg_dl;
+  // Largest departure of one median step from the mean of its neighbours: the learned adjustment can add
+  // isolated steps the physiology twin never has (docs/evidence/model_audit/MODEL_AUDIT_20261020.md).
+  const isolatedStep = points.length >= 3 ? points.slice(1, -1).reduce<{ size: number; offset: number } | null>((best, p, i) => {
+    const size = Math.abs(p.p50 - (points[i].p50 + points[i + 2].p50) / 2);
+    return !best || size > best.size ? { size, offset: p.offset_min } : best;
+  }, null) : null;
   // Mark the forecast median's own highest point so the dot always sits on the curve it describes.
   const peakPoint = points.length ? points.reduce((best, p) => (p.p50 > best.p50 ? p : best), points[0]) : null;
   const peak = peakPoint?.p50;
@@ -249,6 +258,9 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         </span>
       </div>
 
+      {isolatedStep && isolatedStep.size > ISOLATED_STEP_NOTE_MG_DL && <p className="isolated-step-note" data-testid="isolated-step-note">
+        The forecast median jumps by {isolatedStep.size.toFixed(0)} mg/dL in a single 5-min step at +{isolatedStep.offset} min. Isolated steps like this come from the learned adjustment, not from the physiology twin, and are a known limitation of this model; read the band and the twin line, not that single point.
+      </p>}
       <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
 
       <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built" data-subject-id={forecast?.subject?.subject_id}>
