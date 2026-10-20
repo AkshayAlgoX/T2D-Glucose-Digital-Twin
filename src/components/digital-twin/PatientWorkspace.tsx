@@ -354,10 +354,10 @@ export function PatientWorkspace({
                 <ClinicalContext patientId={patientId} forecast={forecast} />
               </details>
             </div>
-          </div>
 
-          <div className="tw-whatif panel" id="what-if">
-            <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+            <div className="tw-whatif panel" id="what-if">
+              <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+            </div>
           </div>
 
           <section className="tw-details" aria-labelledby="details-heading">
