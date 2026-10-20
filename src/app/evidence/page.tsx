@@ -325,12 +325,12 @@ export default async function EvidencePage() {
               ) : (
                 <>
                   <CheckCircle2 size={14} aria-hidden="true" />
-                  Validated Development Artifact
+                  Provenance hashes match
                 </>
               )}
             </span>
             <span style={{ fontSize: '11px', color: 'var(--color-ink-3)' }}>
-              {errorState ? 'Artifact verification failed' : 'Internal simulation benchmark · Cryptographically verified'}
+              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA-256 matches the run manifest'}
             </span>
           </div>
         </header>

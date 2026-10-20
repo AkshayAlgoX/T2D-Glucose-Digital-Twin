@@ -6,6 +6,8 @@ import { ArrowUpRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw, Data
 import { SubjectIdentifier } from '@/components/digital-twin/SubjectIdentifier';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 
+const DEMO_PATIENT_ID = 'P0017';
+
 interface SubjectSummary {
   subject_id: string;
   patient_id?: string;
@@ -51,11 +53,22 @@ export default function CohortPage() {
   const currentPage = Math.min(page, pageCount - 1);
   const visible = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const resetFilters = () => { setQuery(''); setGroup(''); setSplit(''); setPage(0); };
+  // Validation-split Type 2 demonstration subject, shown only if the service actually serves it.
+  const demo = subjects.find(subject => subject.patient_id === DEMO_PATIENT_ID && subject.split === 'val');
+
   return (
     <div className="app-shell">
       <NavigationRail active="cohort" />
       <main id="main-content" className="overview-page cohort-page">
-        <header className="workspace-heading"><div><span className="eyebrow">Research workspace</span><h1>Patient cohort</h1><p>Explore the existing synthetic subjects served by the forecasting model.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
+        <header className="workspace-heading"><div><span className="eyebrow">Research workspace</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as a digital twin workspace. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
+        {state === 'ready' && demo && <section className="demo-entry panel" aria-labelledby="demo-entry-heading">
+          <div>
+            <span className="eyebrow">Start here · demonstration subject</span>
+            <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · {demo.split} split</h2>
+            <p>Six hours of synthetic CGM, heart-rate, HRV, sleep and meal-log history; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
+          </div>
+          <Link prefetch={false} href={'/patients/' + encodeURIComponent(demo.subject_id)} className="demo-entry-link">Open {demo.patient_id} <ArrowUpRight size={15} aria-hidden="true" /></Link>
+        </section>}
         {state === 'loading' && <div className="cohort-summary summary-loading" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div key={index}><span className="skeleton skeleton-label" /><span className="skeleton skeleton-number" /><span className="skeleton skeleton-label" /></div>)}</div>}
         {state === 'ready' && <section className="cohort-summary" aria-label="Cohort composition">
           <div className="cohort-total"><span className="summary-icon"><Database size={20} aria-hidden="true" /></span><div><span className="eyebrow">Available subjects</span><strong>{subjects.length}</strong><span className="summary-description">Synthetic research cohort</span></div></div>

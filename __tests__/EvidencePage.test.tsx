@@ -573,7 +573,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Validated Development Artifact')).toBeInTheDocument();
+    expect(screen.getByText('Provenance hashes match')).toBeInTheDocument();
     expect(screen.queryByText('Audited Validation Benchmark')).not.toBeInTheDocument();
     expect(screen.queryByText(/Recorded artifact — review required/i)).not.toBeInTheDocument();
   });

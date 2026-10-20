@@ -28,6 +28,20 @@ describe('Cohort directory and Workspace entry', () => {
     expect(screen.getByRole('link', { name: 'Workspace' })).toHaveAttribute('href', '/cohort#subject-directory');
   });
 
+  it('offers the validation demonstration subject only when the service serves it as a validation subject', async () => {
+    const p17 = { subject_id: '33333333-3333-4333-8333-333333333333', patient_id: 'P0017', group: 'Type 2', split: 'val' };
+    jest.mocked(global.fetch).mockResolvedValueOnce({ ok: true, json: async () => [...subjects, p17] } as Response);
+    const { unmount } = render(<CohortPage />);
+    const entry = await screen.findByRole('region', { name: /P0017 · Type 2 · val split/ });
+    expect(entry).toHaveTextContent('Start here');
+    expect(screen.getByRole('link', { name: /Open P0017/ })).toHaveAttribute('href', '/patients/' + p17.subject_id);
+    unmount();
+    jest.mocked(global.fetch).mockResolvedValueOnce({ ok: true, json: async () => [...subjects, { ...p17, split: 'test' }] } as Response);
+    render(<CohortPage />);
+    await screen.findByRole('link', { name: 'Open subject UNIT-1' });
+    expect(screen.queryByText('Start here · demonstration subject')).not.toBeInTheDocument();
+  });
+
   it('keeps search results linked to the matching subject', async () => {
     render(<CohortPage />);
     await screen.findByRole('link', { name: 'Open subject UNIT-1' });
