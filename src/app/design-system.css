@@ -576,3 +576,10 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
 .methodology-appendix .appendix-scope { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--color-ink-3); }
 .methodology-appendix .evidence-source { margin-top: 8px; padding: 14px 0 0; border-top: 1px solid var(--color-line); }
 .methodology-appendix .reproducibility-details { border-top: 1px solid var(--color-line); padding-top: 12px; }
+/* Phone legend: short labels on screen, full labels kept for assistive tech. */
+.chart-legend .lg-short { display: none; }
+@media (max-width: 720px) {
+  .chart-legend .lg-short { display: inline; }
+  .chart-legend .lg-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .chart-legend { column-gap: 12px; }
+}

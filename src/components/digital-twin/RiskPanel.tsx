@@ -50,7 +50,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated)' : ' (not calibrated)' : ''}.</p>
             <p className="fine-print risk-definition" data-testid="risk-definition">A spike here means glucose reaching 180 mg/dL after a rise of at least 50 mg/dL within 60 min, held for 15 min. A median curve above 180 does not by itself meet that definition, so this probability can be lower than the curve suggests.</p>
             {!!checkpoints.length && <div className="cumulative-summary">
-              <span>Cumulative onset probability · next 2 h</span>
+              <span>Cumulative onset probability · next&nbsp;2&nbsp;h</span>
               {forecast.as_of && <p className="cumulative-as-of">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
               <dl>{checkpoints.map(point => <div key={point.offset_min}>
                 <dt>By {point.offset_min} min</dt>

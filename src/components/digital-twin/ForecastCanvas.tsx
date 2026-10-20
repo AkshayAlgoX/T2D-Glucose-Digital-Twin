@@ -179,13 +179,13 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   return (
     <div className="forecast-canvas" data-stale={isStale || undefined}>
       <div className="chart-toolbar"><div className="chart-legend" role="group" aria-label="Chart legend">
-        <span><i className="legend-observed" />Observed CGM</span>
-        <span><i className="legend-median" />Forecast median</span>
+        <span><i className="legend-observed" /><span className="lg-long">Observed CGM</span><span className="lg-short" aria-hidden="true">Observed</span></span>
+        <span><i className="legend-median" /><span className="lg-long">Forecast median</span><span className="lg-short" aria-hidden="true">Median</span></span>
         <span><i className="legend-band" />P10–P90</span>
         <span><i className="legend-outer" />P05–P95</span>
-        <span><i className="legend-peak" />Forecast peak (median)</span>
-        {hasPhysics && <span><i className="legend-physics" />Physiology twin (prior)</span>}
-        <span><i className="legend-threshold" />Spike level 180 mg/dL</span>
+        <span><i className="legend-peak" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Peak</span></span>
+        {hasPhysics && <span><i className="legend-physics" /><span className="lg-long">Physiology twin (prior)</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
+        <span><i className="legend-threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>
       <div ref={plotRef} className="forecast-plot" onPointerLeave={() => {
