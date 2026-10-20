@@ -57,7 +57,7 @@ export default async function Home() {
               A physiology model sets the shape of the forecast, and a neural network learns what the physiology misses.
             </p>
             <div className="landing-actions">
-              <Link href={`/patients/${DEMO_SUBJECT_ID}`} className="landing-cta">Open the demonstration twin · P0017 <ArrowRight size={16} aria-hidden="true" /></Link>
+              <Link href={`/patients/${DEMO_SUBJECT_ID}`} className="landing-cta">Open the demo twin · P0017 <ArrowRight size={16} aria-hidden="true" /></Link>
               <Link href="/cohort" className="landing-link"><Users size={16} aria-hidden="true" /> Browse the cohort</Link>
               <Link href="/evidence" className="landing-link"><BookOpenCheck size={16} aria-hidden="true" /> Read the evidence</Link>
             </div>

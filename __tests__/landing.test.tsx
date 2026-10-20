@@ -34,7 +34,7 @@ describe('landing evidence', () => {
 describe('landing page', () => {
   it('routes straight to the validation demonstration subject and shows the failed realism gate', async () => {
     render(await Home());
-    expect(screen.getByRole('link', { name: /Open the demonstration twin · P0017/ })).toHaveAttribute('href', `/patients/${DEMO_SUBJECT_ID}`);
+    expect(screen.getByRole('link', { name: /Open the demo twin · P0017/ })).toHaveAttribute('href', `/patients/${DEMO_SUBJECT_ID}`);
     expect(screen.getByTestId('landing-evidence')).toHaveTextContent('FAILED');
     expect(screen.getByText(/Synthetic data only, and not a medical device/)).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /How the twin turns a patient record/ })).toBeInTheDocument();

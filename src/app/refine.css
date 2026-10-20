@@ -251,3 +251,5 @@
   .cohort-directory .directory-table tbody tr > td:nth-of-type(6) { grid-area: open; grid-column: auto; grid-row: auto; justify-self: end; align-self: center; }
   .cohort-directory .directory-table td.numeric::before { font-size: 12px; color: var(--color-ink-2); margin-bottom: 2px; }
 }
+@media (max-width: 720px) { .cohort-directory .directory-table tbody tr > td:nth-of-type(6) { text-align: right; } }
+@media (min-width: 1101px) { .landing-actions { flex-wrap: nowrap; } }
