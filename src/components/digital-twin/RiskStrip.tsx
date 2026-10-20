@@ -24,8 +24,6 @@ export function RiskStrip({ forecast, cache, isLoading }: { forecast: ForecastRe
   // The telemetry hook writes cache.risk; risk_history is legacy presentation data.
   const history = (cache?.risk?.length ? cache.risk : cache?.risk_history ?? [])
     .filter(point => Number.isFinite(point.p) && Number.isFinite(Date.parse(point.t)));
-  const cumulative: ReadonlyArray<{ offset_min: number; p: number }> = forecast?.spike_risk?.cumulative ?? [];
-  const checkpoints = cumulative.filter(point => point.offset_min === 30 || point.offset_min === 60 || point.offset_min === 120);
 
   const margin = { left: 40, right: 10, top: 10, bottom: 22 };
   const plotRight = Math.max(margin.left + 1, plotWidth - margin.right);
@@ -81,15 +79,6 @@ export function RiskStrip({ forecast, cache, isLoading }: { forecast: ForecastRe
         <p className="history-scale">Fixed probability scale: 0–100%. Flat steps indicate similar received estimates, not additional observations.</p>
         {history.length <= 5 ? snapshots : <details className="snapshot-details"><summary>View all {history.length} received snapshots</summary>{snapshots}</details>}
       </> : <div className="history-empty">{history.length === 1 ? <><strong>{formatPct(history[0].p, 1)}</strong> at <time dateTime={history[0].t}>{formatDateTime(history[0].t)}</time><p className="fine-print">One snapshot received. History accumulates as updates arrive.</p></> : 'No risk snapshots received. Historical risk is not backfilled.'}</div>}
-      {!!checkpoints.length && <div className="cumulative-summary">
-        <span>Current forecast · cumulative onset probability</span>
-        {forecast?.as_of && <p className="cumulative-as-of">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time> · the next two hours, not history</p>}
-        <dl>{checkpoints.map(point => <div key={point.offset_min}>
-          <dt>By {point.offset_min} min</dt>
-          <dd title={`Source probability: ${point.p}`}>{formatPct(point.p, 1)}</dd>
-          <span className="cumulative-bar" aria-hidden="true"><i style={{ width: `${Math.max(0, Math.min(1, point.p)) * 100}%` }} /></span>
-        </div>)}</dl>
-      </div>}
     </section>
   );
 }

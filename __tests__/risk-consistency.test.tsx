@@ -151,3 +151,10 @@ it('labels the separate peak head as conditional on a spike and keeps it out of 
   expect(disclosure).toHaveTextContent('trained only on windows that contain a spike');
 });
 
+
+it('explains the spike definition next to the probability and keeps future cumulative risk with it, not in history', () => {
+  const p = fixture();
+  render(<RiskPanel forecast={p} />);
+  expect(screen.getByTestId('risk-definition')).toHaveTextContent('A median curve above 180 does not by itself meet that definition');
+  expect(document.querySelector('.cumulative-summary')).toHaveTextContent('Cumulative onset probability · next 2 h');
+});

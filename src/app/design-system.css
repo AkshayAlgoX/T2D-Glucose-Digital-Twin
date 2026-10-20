@@ -538,3 +538,37 @@ details[open] > :not(summary) { animation: gt-fade 260ms var(--ease-out) both; }
   .forecast-median-draw { stroke-dasharray: none; }
 }
 html { scroll-behavior: smooth; }
+
+/* ==========================================================================
+   Blind-review pass
+   ========================================================================== */
+/* Opaque header: nothing shows through it. */
+.app-navigation { background: var(--color-bg); backdrop-filter: none; }
+/* Risk panel */
+.risk-definition { margin: 6px 0 4px; font-size: 12px; line-height: 1.55; color: var(--color-ink-3); }
+.risk-summary .cumulative-summary { margin-top: 14px; padding: 12px 14px; }
+.risk-summary .cumulative-summary dl { gap: 10px; }
+.risk-summary .cumulative-summary dd { font-size: 20px; }
+details.contributions > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none; }
+details.contributions > summary::-webkit-details-marker { display: none; }
+details.contributions > summary h2 { margin: 0; }
+details.contributions > summary .fine-print::after { content: ' ▾'; }
+details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
+/* Controls match */
+.whatif-actions .secondary-button { font: inherit; font-size: 13px; font-weight: 600; min-height: 40px; padding: 8px 16px; border-radius: 8px; }
+.whatif-actions .primary-button { min-height: 40px; }
+/* Legibility floor and touch targets */
+.workspace-page .fine-print, .metric-source, .input-lane-label, .whatif-legend, .risk-history-stats dt, .cumulative-summary dt, .chart-readout, .policy-labels { font-size: 12px; }
+.stage .chart-axis, .whatif-result.stage .chart-axis, .risk-history-chart .chart-axis { font-size: 12px; }
+.chart-window button, .horizon-pill { min-height: 36px; padding-inline: 12px; }
+/* Phone: section tabs, and risk-history figures that do not collide */
+.tw-section-tabs { display: none; }
+@media (max-width: 720px) {
+  .tw-section-tabs { position: sticky; top: 0; z-index: 15; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 -16px 14px; padding: 8px 16px; background: var(--color-bg); border-bottom: 1px solid var(--color-line); }
+  .tw-section-tabs a { display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 8px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-weight: 600; font-size: 13px; text-decoration: none; }
+  .tw-section-tabs a:active { transform: scale(0.98); }
+  #forecast, #what-if, #record { scroll-margin-top: 64px; }
+  .risk-history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .risk-history-stats > div:nth-child(2) { grid-column: 1 / -1; order: -1; }
+  .risk-history-stats dd small { display: block; }
+}

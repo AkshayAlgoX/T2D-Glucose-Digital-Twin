@@ -142,7 +142,7 @@ describe('Honest data and risk presentation', () => {
     expect(screen.getByText('Not received in this forecast')).toBeInTheDocument();
     expect(screen.getByText('Research Only (Not for clinical decisions)')).toBeInTheDocument();
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    expect(screen.getByText('Pinned-time replay unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('Pinned-time replay unavailable')).not.toBeInTheDocument();
   });
 
   it('shows the what-if controls with the causal disclaimer and no result until the backend answers', () => {

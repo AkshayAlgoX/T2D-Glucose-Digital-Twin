@@ -15,10 +15,11 @@ it('keeps context, analysis, history and unavailable capabilities in a coherent 
   const history = screen.getByRole('region', { name: 'Risk history' });
   const coverage = screen.getByRole('heading', { name: 'Data coverage' });
   const simulation = screen.getByRole('heading', { name: 'What-if simulation' });
-  const replay = screen.getByText('Pinned-time replay unavailable');
   const disclaimer = screen.getByText('Research Only (Not for clinical decisions)');
   // Story order: forecast, risk, patient record, what-if, then history/coverage/provenance detail.
-  [trajectory, risk, context, simulation, history, coverage, replay].forEach((element, index, elements) => {
+  // The disabled pinned-replay placeholder is no longer shown.
+  expect(screen.queryByText('Pinned-time replay unavailable')).not.toBeInTheDocument();
+  [trajectory, risk, context, simulation, history, coverage].forEach((element, index, elements) => {
     expect(element.compareDocumentPosition(elements[index + 1] ?? disclaimer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   expect(container.querySelector('.trajectory-panel .risk-history')).toBeNull();

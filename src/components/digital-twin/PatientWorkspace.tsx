@@ -6,7 +6,6 @@ import { ForecastCanvas } from './ForecastCanvas';
 import { ScenarioEditor } from './ScenarioEditor';
 import { RiskPanel } from './RiskPanel';
 import { RiskStrip } from './RiskStrip';
-import { TimeScrubber } from './TimeScrubber';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { formatTime, formatDate, formatPct } from '@/lib/formatters/date';
 import type { ForecastResponse, MedClass } from '@/types/forecast-response';
@@ -170,7 +169,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         <h2 id="twin-heading" className="panel-heading">Physiological state</h2>
         <dl className="clinical-fields">
           <div><dt>Insulin sensitivity</dt><dd>{twin.insulin_sensitivity_rel?.toFixed(2) ?? '—'}<small> relative</small></dd></div>
-          <div><dt>Beta-cell function</dt><dd>{twin.beta_cell_rel?.toFixed(2) ?? '—'}<small> relative</small></dd></div>
+          {twin.beta_cell_rel != null && <div><dt>Beta-cell function</dt><dd>{twin.beta_cell_rel.toFixed(2)}<small> relative</small></dd></div>}
           <div><dt>Carbs on board</dt><dd>{twin.carbs_on_board_g != null ? twin.carbs_on_board_g + ' g' : '—'}</dd></div>
         </dl>
         {twin.unannounced_meal && <details className="context-details"><summary>Model estimate details</summary><p className="fine-print">Unannounced-meal heuristic: {formatPct(twin.unannounced_meal.probability, 0)}. This is a model estimate.</p></details>}
@@ -235,7 +234,7 @@ export function PatientWorkspace({
   const isReconnecting = effectiveStatus === 'reconnecting';
   const isConnecting = effectiveStatus === 'connecting';
   const summary = recordSummary(forecast);
-  const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : null;
+  const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality: OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality: Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Data quality: Insufficient data' : null;
   return (
     <main id="main-content" className="workspace-page twin-workstation">
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
@@ -301,6 +300,9 @@ export function PatientWorkspace({
           )}
         </div>
       )}
+      <nav className="tw-section-tabs" aria-label="Workspace sections">
+        <a href="#forecast">Forecast</a><a href="#what-if">What-if</a><a href="#record">Record</a>
+      </nav>
       {error && !forecast ? (
         <section className="workspace-unavailable-panel panel" aria-label="Workspace unavailable">
           <div className="empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -323,7 +325,7 @@ export function PatientWorkspace({
       ) : (
         <>
           <div className="tw-grid">
-            <section className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
+            <section id="forecast" className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
                 <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
                 <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
@@ -340,14 +342,14 @@ export function PatientWorkspace({
                 </div>
               )}
               <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
-              <div className="model-caption"><span>{mode}</span><span>Data quality: {forecast?.data_quality?.status === 'ok' ? 'OK' : forecast?.data_quality?.status === 'degraded' ? 'Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : 'Unavailable'}</span></div>
+              <div className="model-caption"><span>{mode}</span><span>Synthetic subject · not for clinical decisions</span></div>
             </section>
 
             <div className="tw-side">
               <aside className="insights-panel panel" aria-label="Risk and model contributions">
                 <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
               </aside>
-              <details className="patient-context" open={!compact || contextExpanded}>
+              <details id="record" className="patient-context" open={!compact || contextExpanded}>
                 <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
                   <span>Patient record</span><span className="record-hint">EHR context & twin state</span>
                 </summary>
@@ -364,9 +366,6 @@ export function PatientWorkspace({
             <div className="tw-details-grid">
               <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>
               <DataAvailability forecast={forecast} cache={cache} />
-            </div>
-            <div className="workspace-limitations" aria-label="Prototype limitations">
-              <TimeScrubber cache={cache} asOf={forecast?.as_of} />
             </div>
           </section>
           </div>

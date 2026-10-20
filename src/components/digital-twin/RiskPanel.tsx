@@ -25,6 +25,8 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   // The separate peak-model output (spike_risk.peak_mg_dl) is a different quantity and is shown apart.
   const peak = trajectoryMax ?? risk?.peak_mg_dl?.p50 ?? null;
   const peakModel = risk?.peak_mg_dl ?? null;
+  const cumulative: ReadonlyArray<{ offset_min: number; p: number }> = risk?.cumulative ?? [];
+  const checkpoints = cumulative.filter(point => point.offset_min === 30 || point.offset_min === 60 || point.offset_min === 120);
   const peakPoint = forecast?.forecast?.points?.length ? forecast.forecast.points.reduce((best, p) => (p.p50 > best.p50 ? p : best), forecast.forecast.points[0]) : null;
   const peakOffset = peakPoint?.offset_min ?? null;
   const residual = current != null && peak != null && drivers.length ? peak - drivers.reduce((sum, driver) => sum + driver.impact_mg_dl, current) : null;
@@ -45,7 +47,17 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             <div className="risk-estimate">{prob != null ? formatPct(prob, 1) : '—'}<span>onset probability</span></div>
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
             <div className={'risk-alert ' + tone}>{alert?.state === 'watch' || alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong></div>
-            <p className="muted-copy">Probability of a spike onset within 120 min{risk ? risk.calibrated ? ', calibrated' : ', not calibrated' : ''}.</p>
+            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated)' : ' (not calibrated)' : ''}.</p>
+            <p className="fine-print risk-definition" data-testid="risk-definition">A spike here means glucose reaching 180 mg/dL after a rise of at least 50 mg/dL within 60 min, held for 15 min. A median curve above 180 does not by itself meet that definition, so this probability can be lower than the curve suggests.</p>
+            {!!checkpoints.length && <div className="cumulative-summary">
+              <span>Cumulative onset probability · next 2 h</span>
+              {forecast.as_of && <p className="cumulative-as-of">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
+              <dl>{checkpoints.map(point => <div key={point.offset_min}>
+                <dt>By {point.offset_min} min</dt>
+                <dd title={`Source probability: ${point.p}`}>{formatPct(point.p, 1)}</dd>
+                <span className="cumulative-bar" aria-hidden="true"><i style={{ width: `${Math.max(0, Math.min(1, point.p)) * 100}%` }} /></span>
+              </div>)}</dl>
+            </div>}
             {prob != null && <meter className="sr-only" min={0} max={100} value={prob * 100} aria-label="Spike onset probability">{formatPct(prob, 1)}</meter>}
             {prob != null && <div className="risk-meter" aria-hidden="true">
               <div className={'risk-meter-fill ' + tone} style={{ width: formatPct(prob, 2) }} />
@@ -64,8 +76,8 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
         </details>
       </section>
 
-      <section className="contributions" aria-labelledby="contributions-heading">
-        <h2 id="contributions-heading">Model contributions</h2>
+      <details className="contributions" open={false}>
+        <summary><h2 id="contributions-heading">Model contributions</h2><span className="fine-print">where the peak comes from</span></summary>
         <p className="fine-print">Arithmetic of the model's own forecast — not a causal attribution. Values in mg/dL.</p>
         {!forecast ? (
           <div className="skeleton-contributions" aria-busy="true" aria-label="Loading model contributions">
@@ -97,7 +109,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </details>}
           </>
         )}
-      </section>
+      </details>
     </div>
   );
 }

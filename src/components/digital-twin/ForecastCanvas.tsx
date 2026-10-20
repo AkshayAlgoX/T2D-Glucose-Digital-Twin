@@ -8,6 +8,8 @@ import type { SubjectStore, WearableView } from '@/lib/types';
 /** Isolated one-step departures above this size are called out under the chart (mg/dL). */
 const ISOLATED_STEP_NOTE_MG_DL = 20;
 
+function hasPhysicsValue(points: ReadonlyArray<{ twin_p50?: number | null }>) { return points.some(p => p.twin_p50 != null); }
+
 export function ForecastCanvas({ forecast, cache, isStale }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean }) {
   const plotRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 380 });
@@ -46,6 +48,11 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const hasAnchor = Number.isFinite(anchor);
   const points = (forecast?.forecast?.points ?? []) as QuantilePoint[];
   const mapped = points.map(point => ({ ...point, time: anchor + point.offset_min * 60000 }));
+  // Drawing only: start the band, median and twin line at the observed current value (no data added).
+  const currentValue = forecast?.current?.value_mg_dl;
+  const joined = mapped.length && typeof currentValue === 'number' && Number.isFinite(currentValue)
+    ? [{ ...mapped[0], offset_min: 0, time: anchor, p05: currentValue, p10: currentValue, p25: currentValue, p50: currentValue, p75: currentValue, p90: currentValue, p95: currentValue, twin_p50: hasPhysicsValue(mapped) ? currentValue : mapped[0].twin_p50 }, ...mapped]
+    : mapped;
   const hasPhysics = mapped.some(point => point.twin_p50 != null);
   const scenario = forecast?.scenarios?.[0]?.points ?? [];
   const mappedScenario = scenario.map(point => ({ ...point, time: anchor + point.offset_min * 60000 }));
@@ -79,12 +86,16 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
     ...mappedScenario.flatMap(point => [point.p10, point.p50, point.p90]), current, peak,
   ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const yMin = Math.max(0, Math.floor(Math.min(40, ...values) / 20) * 20 - 20);
-  const yMax = Math.ceil((Math.max(220, ...values) + 20) / 20) * 20;
+  const rawMax = Math.max(220, ...values) + 10;
+  // Even ticks: every 40 mg/dL, or every 100 for very wide ranges; the axis top is the next tick above the data.
+  const tickStep = rawMax - yMin > 320 ? 100 : 40;
+  const yMax = Math.ceil(rawMax / tickStep) * tickStep;
   const x = d3Scale.scaleUtc().domain(hasAnchor ? [start, end] : [0, 1]).range([margin.left, right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([bottom, margin.top]);
   // Keep the spike reference legible when the plot is short on mobile.
-  const yTicks = Array.from(new Set([...y.ticks(5), 180]))
-    .filter(tick => tick === 180 || Math.abs(y(tick) - y(180)) >= 22)
+  const evenTicks = Array.from({ length: Math.floor(yMax / tickStep) - Math.ceil(yMin / tickStep) + 1 }, (_, i) => (Math.ceil(yMin / tickStep) + i) * tickStep);
+  const yTicks = Array.from(new Set([...evenTicks, 180]))
+    .filter(tick => tick >= yMin && tick <= yMax && (tick === 180 || Math.abs(y(tick) - y(180)) >= 18))
     .sort((a, b) => a - b);
   const area = (lower: 'p05' | 'p10', upper: 'p95' | 'p90') => d3Shape.area<(typeof mapped)[number]>()
     .defined(point => Number.isFinite(point[lower]) && Number.isFinite(point[upper]))
@@ -217,13 +228,13 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <text x={margin.left} y={14} className="chart-axis">mg/dL</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
               <g className="forecast-layer" opacity={mappedScenario.length ? 0.5 : 1}>
-                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.13} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
-                <path data-testid="quantile-band" d={area('p10', 'p90')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.3} stroke="var(--color-forecast)" strokeOpacity={0.8} strokeWidth={1} />
+                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(joined) ?? ''} fill="var(--color-forecast)" fillOpacity={0.2} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
+                <path data-testid="quantile-band" d={area('p10', 'p90')(joined) ?? ''} fill="var(--color-forecast)" fillOpacity={0.3} stroke="var(--color-forecast)" strokeOpacity={0.8} strokeWidth={1} />
                 {/* A surface-coloured halo keeps each line legible where it crosses its own band. */}
-                {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={5} strokeOpacity={0.85} aria-hidden="true" />}
-                {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="4 4" />}
-                <path d={median(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} strokeLinejoin="round" aria-hidden="true" />
-                <path data-testid="forecast-median" className="forecast-median-draw" pathLength={1} d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
+                {hasPhysics && <path d={physics(joined) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={5} strokeOpacity={0.85} aria-hidden="true" />}
+                {hasPhysics && <path d={physics(joined) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="4 4" />}
+                <path d={median(joined) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} strokeLinejoin="round" aria-hidden="true" />
+                <path data-testid="forecast-median" className="forecast-median-draw" pathLength={1} d={median(joined) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
               </g>
               {!!mappedScenario.length && <g className="scenario-layer"><path d={median(mappedScenario) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2} strokeDasharray="2 3" /></g>}
               {historySegments.map((segment, index) => <g key={index} data-testid="observed-segment">
@@ -265,8 +276,6 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
       {isolatedStep && isolatedStep.size > ISOLATED_STEP_NOTE_MG_DL && <p className="isolated-step-note" data-testid="isolated-step-note">
         The forecast median jumps by {isolatedStep.size.toFixed(0)} mg/dL in a single 5-min step at +{isolatedStep.offset} min. Isolated steps like this come from the learned adjustment, not from the physiology twin, and are a known limitation of this model; read the band and the twin line, not that single point.
       </p>}
-      <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
-
       <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built" data-subject-id={forecast?.subject?.subject_id}>
         <div className="inspector-header">
           <div className="inspector-title-row">
@@ -348,6 +357,8 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           )}
         </div>
       </div>
+
+      <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
 
       {!!mappedScenario.length && <p className="fine-print">Existing scenario overlay · projection under model assumptions, not validated human causal effects.</p>}
     </div>

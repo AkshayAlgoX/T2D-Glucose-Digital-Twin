@@ -149,7 +149,10 @@ describe('ScenarioEditor — backend-driven what-if', () => {
   it('keeps medication changes explicitly unsupported (SCENARIO_UNSUPPORTED from the backend)', async () => {
     respond(422, { type: 'x', title: 'Scenario input not supported', status: 422, code: 'SCENARIO_UNSUPPORTED', detail: 'medication changes need the full twin' });
     render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Medication change' }));
+    // Not a one-click preset any more; still selectable, and still refused by the backend.
+    expect(screen.queryByRole('button', { name: 'Medication change' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Change' }), { target: { value: 'medication' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
     const error = await screen.findByTestId('scenario-error');
     expect(error).toHaveAttribute('data-kind', 'unsupported');
     expect(error).toHaveTextContent('Medication changes are not supported');

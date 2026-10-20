@@ -20,7 +20,6 @@ const PRESETS: Array<{ id: string; label: string; form: Partial<FormState> }> = 
   { id: 'meal', label: '60 g carb meal in 30 min', form: { kind: 'meal', carbs: '60', offset: '30' } },
   { id: 'walk', label: '30 min brisk walk now', form: { kind: 'activity', duration: '30', intensity: 'moderate', offset: '0' } },
   { id: 'skip', label: 'Skip usual dinner', form: { kind: 'skip_habitual_meal', slot: 'dinner' } },
-  { id: 'med', label: 'Medication change', form: { kind: 'medication', offset: '0' } },
 ];
 
 // Empty text is "not entered", never 0.
@@ -163,7 +162,7 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
         </g>)}
         {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
         <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
-        <path d={band(scen) ?? ''} fill="var(--color-projection)" fillOpacity={0.14} />
+        <path d={band(scen) ?? ''} fill="none" stroke="var(--color-projection)" strokeOpacity={0.7} strokeWidth={1} strokeDasharray="3 3" />
         <path d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
         <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
@@ -183,7 +182,7 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
       </svg>
       <div className="whatif-legend" aria-hidden="true">
         <span><i className="whatif-swatch baseline" />Unchanged plan (blue shading: its P10–P90)</span>
-        <span><i className="whatif-swatch scenario" />With this change (magenta shading: its P10–P90)</span>
+        <span><i className="whatif-swatch scenario" />With this change (dotted outline: its P10–P90)</span>
         {scenTwin.length > 0 && <span><i className="whatif-swatch twin" />Physiology twin with this change</span>}
         <span><i className="whatif-swatch threshold" />Spike level 180 mg/dL</span>
       </div>
