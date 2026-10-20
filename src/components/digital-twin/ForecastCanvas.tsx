@@ -219,8 +219,11 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
               <g className="forecast-layer" opacity={mappedScenario.length ? 0.5 : 1}>
                 <path data-testid="outer-quantile-band" d={area('p05', 'p95')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.13} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
                 <path data-testid="quantile-band" d={area('p10', 'p90')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.3} stroke="var(--color-forecast)" strokeOpacity={0.8} strokeWidth={1} />
+                {/* A surface-coloured halo keeps each line legible where it crosses its own band. */}
+                {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={5} strokeOpacity={0.85} aria-hidden="true" />}
+                {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="4 4" />}
+                <path d={median(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} strokeLinejoin="round" aria-hidden="true" />
                 <path data-testid="forecast-median" d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
-                {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="3 5" />}
               </g>
               {!!mappedScenario.length && <g className="scenario-layer"><path d={median(mappedScenario) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2} strokeDasharray="2 3" /></g>}
               {historySegments.map((segment, index) => <g key={index} data-testid="observed-segment">

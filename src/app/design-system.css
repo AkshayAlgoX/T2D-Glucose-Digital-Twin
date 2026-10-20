@@ -260,3 +260,25 @@ body { background: var(--color-bg); color: var(--color-ink); }
 }
 @media (max-width: 1100px) { .tw-grid { grid-template-areas: "traj" "side" "whatif" "details"; } }
 @media (max-width: 600px) { .landing-diagram { display: none; } }
+.step-flag { display: block; margin-top: 3px; color: var(--color-amber) !important; font-size: 11.5px; }
+.whatif-result.stage .step-label { fill: var(--color-amber); }
+.whatif-result.stage .whatif-chart { margin: 4px 0 6px; }
+
+/* ==========================================================================
+   Evidence portal
+   ========================================================================== */
+.overview-page .workspace-heading h1 { font-size: 40px; line-height: 1.05; }
+.evidence-hero { border-radius: var(--radius-lg); }
+.evidence-hero-header h2 { font-size: 26px; font-weight: 500; }
+.evidence-pillar-card { border: 1px solid var(--color-line); border-top: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: none; }
+.evidence-pillar-card:hover { transform: none; box-shadow: var(--shadow-panel); }
+.evidence-pillar-card.pillar-scope, .evidence-pillar-card.pillar-performance, .evidence-pillar-card.pillar-subgroup { border-top-color: var(--color-line); }
+.evidence-pillar-card.pillar-limitations { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-line)); background: color-mix(in srgb, var(--color-danger) 4%, var(--color-surface)); }
+.pillar-stat { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.02em; font-size: 34px; color: var(--color-ink); }
+.pillar-stat.stat-accent { color: var(--color-accent); }
+.pillar-stat.stat-danger { color: var(--color-danger); }
+.pillar-question { font-size: 14px; color: var(--color-ink-2); }
+.pillar-tag { border-radius: 999px; }
+.evidence-disclosure { border-radius: var(--radius-md); }
+.evidence-disclosure > summary { font-family: var(--font-display); font-weight: 500; font-size: 18px; }
+@media (max-width: 720px) { .overview-page .workspace-heading h1 { font-size: 30px; } .evidence-disclosure > summary { font-size: 16px; } }

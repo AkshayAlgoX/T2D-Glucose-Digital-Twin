@@ -68,6 +68,15 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     expect(screen.getByTestId('whatif-scenario-line').getAttribute('d')).toBeTruthy();
   });
 
+  it('does not flag a smooth scenario curve', async () => {
+    respond(200, okBody());
+    render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    await screen.findByTestId('scenario-result');
+    expect(screen.queryByTestId('scenario-peak-on-step')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('whatif-step-marker')).not.toBeInTheDocument();
+  });
+
   it('runs a preset activity scenario and shows backend approximation warnings', async () => {
     respond(200, okBody({ scenario_forecast: curve(120, 0.5), warnings: [{ code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'delayed sensitivity boost is not modelled.' }],
       metrics: { delta_peak_mg_dl: -12, new_peak_mg_dl: 131, baseline_peak_mg_dl: 143, delta_probability: -0.05, new_probability: 0.06, baseline_probability: 0.11 } }));
@@ -113,6 +122,9 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     expect(screen.getByTestId('scenario-twin-diff')).toHaveTextContent('+23.0 mg/dL');
     expect(screen.getByTestId('scenario-twin-diff')).toHaveTextContent('at +120 min');
     expect(screen.getByTestId('whatif-twin-line').getAttribute('d')).toBeTruthy();
+    // The scenario's highest value is that isolated step, so it is called out rather than presented as a level.
+    expect(screen.getByTestId('scenario-peak-on-step')).toHaveTextContent('single 5-min step');
+    expect(screen.getByTestId('whatif-step-marker')).toBeInTheDocument();
     expect(screen.queryAllByTestId('scenario-warning')).toHaveLength(0);
   });
 

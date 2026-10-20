@@ -65,6 +65,9 @@ const pct = (p: number | null) => (p == null ? 'Unavailable' : `${(p * 100).toFi
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
 /** Everything the readout shows, derived from the two same-anchor median curves the backend returned. */
+/** Isolated one-step departures above this size are flagged (mg/dL), matching the forecast chart. */
+const ISOLATED_STEP_MG_DL = 20;
+
 export function summarizeComparison(result: ScenarioComparison) {
   const anchor = Date.parse(result.pinned_as_of);
   const offset = (p: ScenarioCurvePoint) => Math.round((Date.parse(p.timestamp) - anchor) / 60000);
@@ -95,7 +98,15 @@ export function summarizeComparison(result: ScenarioComparison) {
     const diff = round1(p.twin_p50 - b);
     if (!twin || Math.abs(diff) > Math.abs(twin.diff)) twin = { diff, offset: offset(p) };
   }
+  // An isolated one-step jump in the scenario median (see docs/evidence/model_audit/MODEL_AUDIT_20261020.md).
+  const sc = result.scenario_forecast;
+  const step = sc.slice(1, -1).reduce<{ size: number; offset: number } | null>((best, p, i) => {
+    const size = Math.abs(p.p50 - (sc[i].p50 + sc[i + 2].p50) / 2);
+    return !best || size > best.size ? { size, offset: offset(p) } : best;
+  }, null);
+  const isolatedStep = step && step.size > ISOLATED_STEP_MG_DL ? step : null;
   return {
+    isolatedStep,
     twinLargestDiff: twin?.diff ?? null, twinLargestDiffMin: twin?.offset ?? null,
     learnedLargest: learned?.diff ?? null, learnedLargestMin: learned?.offset ?? null,
     baselinePeak, baselinePeakMin: offset(base), scenarioPeak, scenarioPeakMin: offset(scen),
@@ -121,7 +132,7 @@ function useWidth<T extends HTMLElement>(fallback: number) {
   return [ref, width] as const;
 }
 
-export function ScenarioComparisonChart({ result }: { result: ScenarioComparison }) {
+export function ScenarioComparisonChart({ result, step = null }: { result: ScenarioComparison; step?: { size: number; offset: number } | null }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const height = width < 420 ? 190 : 220;
   const anchor = Date.parse(result.pinned_as_of);
@@ -154,9 +165,20 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
         {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 10} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
         <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
         <path d={band(scen) ?? ''} fill="var(--color-projection)" fillOpacity={0.14} />
+        <path d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
+        <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
         {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="2 3" />}
+        {step && (() => {
+          const p = scen.find(q => Math.round(q.min) === step.offset);
+          if (!p) return null;
+          const px = x(p.min), py = y(p.p50), left = px > width * 0.7;
+          return <g data-testid="whatif-step-marker">
+            <circle cx={px} cy={py} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
+            <text x={left ? px - 9 : px + 9} y={Math.max(m.top + 10, py - 8)} textAnchor={left ? 'end' : 'start'} className="chart-axis step-label">single 5-min step</text>
+          </g>;
+        })()}
       </svg>
       <div className="whatif-legend" aria-hidden="true">
         <span><i className="whatif-swatch baseline" />Unchanged plan</span>
@@ -181,20 +203,8 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <strong>{outOfRange.title}.</strong> {outOfRange.detail}
         {sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}
       </div>}
+      <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} />
       <dl className="whatif-metrics">
-        <div>
-          <dt>Highest median glucose in the next 2 h</dt>
-          <dd data-testid="scenario-peak">{sum.baselinePeak.toFixed(1)} → {sum.scenarioPeak.toFixed(1)} mg/dL <strong>({signed(sum.deltaPeak, 1)})</strong>
-            <small data-testid="scenario-peak-timing">at +{sum.baselinePeakMin} min → at +{sum.scenarioPeakMin} min</small></dd>
-        </div>
-        <div>
-          <dt>Largest difference at the same time</dt>
-          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small></dd>
-        </div>
-        {sum.twinLargestDiff != null && <div>
-          <dt>Physiology twin alone, largest same-time change</dt>
-          <dd data-testid="scenario-twin-diff">{signed(sum.twinLargestDiff, 1, ' mg/dL')} <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
-        </div>}
         <div>
           <dt>Spike risk within 2 h (calibrated)</dt>
           <dd data-testid="scenario-risk">
@@ -203,10 +213,24 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
               : <>Unavailable{fallback_used === 'twin_only' ? ' (physics-only fallback; no calibrated risk)' : ''}</>}
           </dd>
         </div>
+        {sum.twinLargestDiff != null && <div>
+          <dt>Physiology twin alone, largest same-time change</dt>
+          <dd data-testid="scenario-twin-diff">{signed(sum.twinLargestDiff, 1, ' mg/dL')} <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
+        </div>}
+        <div>
+          <dt>Highest median glucose in the next 2 h</dt>
+          <dd data-testid="scenario-peak">{sum.baselinePeak.toFixed(1)} → {sum.scenarioPeak.toFixed(1)} mg/dL <strong>({signed(sum.deltaPeak, 1)})</strong>
+            <small data-testid="scenario-peak-timing">at +{sum.baselinePeakMin} min → at +{sum.scenarioPeakMin} min</small>
+            {sum.isolatedStep && sum.isolatedStep.offset === sum.scenarioPeakMin && <small className="step-flag" data-testid="scenario-peak-on-step">This highest value is a single 5-min step, not a sustained level.</small>}</dd>
+        </div>
+        <div>
+          <dt>Largest difference at the same time</dt>
+          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small>
+            {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
+        </div>
       </dl>
       <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
       {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
-      <ScenarioComparisonChart result={state.result} />
       {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
       {moved && <p className="fine-print" data-testid="scenario-pinned-note">Pinned to the {formatTime(state.asOf)} UTC forecast; the live view has since advanced. Run again to simulate from the latest reading.</p>}
     </div>
