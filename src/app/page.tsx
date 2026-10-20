@@ -85,6 +85,7 @@ export default async function Home() {
         ) : (
           <p className="landing-boundary" data-testid="landing-evidence-missing">The evaluation artifact could not be read, so no metrics are shown. See the Evidence page.</p>
         )}
+        <footer className="research-footer"><span>Research only · not for clinical decisions</span><span>Synthetic data · no clinical validation claimed</span></footer>
       </main>
     </div>
   );

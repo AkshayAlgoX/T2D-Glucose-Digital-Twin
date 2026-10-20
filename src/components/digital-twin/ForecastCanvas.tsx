@@ -231,10 +231,10 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
                 {segment.length === 1 && <circle cx={x(segment[0].time)} cy={y(segment[0].value)} r={3} fill="var(--color-ink)" />}
               </g>)}
               {current != null && <circle data-testid="current-observation" cx={x(anchor)} cy={y(current)} r={4} fill="var(--color-ink)" stroke="white" strokeWidth={2} />}
-              {peak != null && peakOffset != null && <circle cx={x(anchor + peakOffset * 60000)} cy={y(peak)} r={4} fill={isWarning ? 'var(--color-danger)' : 'var(--color-forecast)'}><title>{`Highest forecast median: ${peak} mg/dL at +${peakOffset} min`}</title></circle>}
               {selected && <g pointerEvents="none"><line x1={x(selected.time)} x2={x(selected.time)} y1={margin.top} y2={bottom} stroke="var(--color-forecast)" strokeDasharray="3 3" /><circle cx={x(selected.time)} cy={y(selected.value)} r={4} fill="var(--color-forecast)" /></g>}
             </g>
             <line x1={x(anchor)} x2={x(anchor)} y1={margin.top} y2={bottom} stroke="var(--color-ink-3)" strokeDasharray="3 3" />
+              {peak != null && peakOffset != null && <circle cx={x(anchor + peakOffset * 60000)} cy={y(peak)} r={4.5} stroke="var(--color-surface)" strokeWidth={1.5} data-testid="forecast-peak-marker" fill={isWarning ? 'var(--color-danger)' : 'var(--color-forecast)'}><title>{`Highest forecast median: ${peak} mg/dL at +${peakOffset} min`}</title></circle>}
             <text x={Math.min(right - 52, Math.max(margin.left + 105, x(anchor)))} y={margin.top - 10} textAnchor="middle" className="chart-anchor-label">Forecast anchor</text>
             {!mapped.length && <text x={(margin.left + right) / 2} y={(margin.top + bottom) / 2} textAnchor="middle" className="chart-axis">Prediction unavailable; observed values only</text>}
           </svg>)}

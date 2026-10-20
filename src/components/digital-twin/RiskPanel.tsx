@@ -25,6 +25,8 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   // The separate peak-model output (spike_risk.peak_mg_dl) is a different quantity and is shown apart.
   const peak = trajectoryMax ?? risk?.peak_mg_dl?.p50 ?? null;
   const peakModel = risk?.peak_mg_dl ?? null;
+  const peakPoint = forecast?.forecast?.points?.length ? forecast.forecast.points.reduce((best, p) => (p.p50 > best.p50 ? p : best), forecast.forecast.points[0]) : null;
+  const peakOffset = peakPoint?.offset_min ?? null;
   const residual = current != null && peak != null && drivers.length ? peak - drivers.reduce((sum, driver) => sum + driver.impact_mg_dl, current) : null;
 
   return (
@@ -88,7 +90,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </table>
             {!drivers.length && <p className="fine-print">Contribution details have not been received.</p>}
             {risk?.time_to_peak_min != null && <p className="fine-print">Reported time to peak: {risk.time_to_peak_min} min from the forecast anchor.</p>}
-            <p className="fine-print">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h.</p>
+            <p className="fine-print" data-testid="contributions-horizon">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h{peakOffset != null ? ` (+${peakOffset} min)` : ''}, so &ldquo;Learned correction&rdquo; here is measured there. The &ldquo;How this forecast is built&rdquo; strip shows the same split at the horizon you choose.</p>
             {peakModel && <details className="context-details" data-testid="peak-model-output">
               <summary>If a spike occurs: peak estimate</summary>
               <p className="fine-print">A separate model head estimates how high glucose would go <em>if a spike occurs</em>: median {Math.round(peakModel.p50)} mg/dL{peakModel.p90 != null ? `, 90th percentile ${Math.round(peakModel.p90)} mg/dL` : ''}. It was trained only on windows that contain a spike, so it is conditional on one happening and is not the expected peak; it has not been evaluated in the evidence artifacts. It is a different target from the forecast bands and from the contributions above.</p>

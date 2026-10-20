@@ -349,7 +349,7 @@ export function PatientWorkspace({
               </aside>
               <details className="patient-context" open={!compact || contextExpanded}>
                 <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
-                  <span>Patient record</span><span>EHR context & twin state</span>
+                  <span>Patient record</span><span className="record-hint">EHR context & twin state</span>
                 </summary>
                 <ClinicalContext patientId={patientId} forecast={forecast} />
               </details>

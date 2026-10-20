@@ -431,3 +431,32 @@ body { background: var(--color-bg); color: var(--color-ink); }
   .cohort-directory .directory-table td.numeric::before { content: attr(data-label); display: block; font-family: var(--font-sans); font-size: 10.5px; color: var(--color-ink-3); }
 }
 .lane-empty { font-family: var(--font-sans); font-size: 11px; fill: var(--color-ink-3); font-style: italic; }
+
+/* ---- Consistency pass (independent critique) ---- */
+/* Wide screens: the navigation aligns with the page content column. */
+@media (min-width: 1100px) {
+  .app-navigation { padding-inline: max(32px, calc((100vw - var(--page-max)) / 2 + 32px)); }
+}
+/* Legend glyph matches the on-chart peak marker. */
+.stage .chart-legend .legend-peak { background: var(--color-forecast); }
+/* Risk meter: labels sit under their ticks. */
+.policy-labels { position: relative; display: block; height: 16px; }
+.policy-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.policy-labels span:first-child { left: 35%; }
+.policy-labels span:last-child { left: 60%; }
+@media (max-width: 420px) { .policy-labels { height: 30px; } .policy-labels span:last-child { top: 14px; } }
+/* Headings: serif display on every page section heading. */
+.tw-side h2, .tw-side .patient-context > summary > span:first-child, .contributions h2, .risk-summary h2,
+.overview-page .evidence-section h2, .data-availability h2 { font-family: var(--font-display); font-weight: 500; font-size: 19px; letter-spacing: -0.01em; }
+/* Numbers on the instrument use the mono face, like the rest of the stage. */
+.stage .current-glucose { font-family: var(--font-mono); font-weight: 500; }
+/* Home: actions stay on one row on desktop. */
+.landing-actions { gap: 10px; }
+.landing-link { padding: 0 14px; }
+@media (min-width: 1200px) { .landing-actions { flex-wrap: nowrap; } .landing-actions a { white-space: nowrap; } }
+.landing .research-footer { margin-top: 32px; }
+/* Phone: the collapsed patient record shows that it expands. */
+.twin-workstation .patient-context > summary::after { content: 'Show ▾'; font-size: 12px; color: var(--color-accent-ink); font-weight: 500; }
+.twin-workstation .patient-context[open] > summary::after { content: 'Hide ▴'; }
+@media (min-width: 641px) { .twin-workstation .patient-context > summary::after { display: none; } }
+@media (max-width: 640px) { .twin-workstation .patient-context .record-hint { display: none; } }
