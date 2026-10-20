@@ -256,7 +256,7 @@ export function PatientWorkspace({
     }
   }
   const fallback = forecast?.model?.fallback_used;
-  const mode = !forecast ? 'Awaiting model' : fallback === 'twin_only' ? 'Physics baseline' : fallback === 'persistence' ? 'Persistence fallback' : fallback === 'xgboost' ? 'XGBoost fallback' : 'PR-TFT + physiological twin';
+  const mode = !forecast ? 'Awaiting model' : fallback === 'twin_only' ? 'Physics baseline' : fallback === 'persistence' ? 'Persistence fallback' : fallback === 'xgboost' ? 'XGBoost fallback' : 'Physiology twin + learned adjustment (PR-TFT)';
   const effectiveStatus = connectionStatus ?? (isConnected ? 'connected' : 'disconnected');
   const isConnectedState = effectiveStatus === 'connected';
   const isReconnecting = effectiveStatus === 'reconnecting';
@@ -294,7 +294,7 @@ export function PatientWorkspace({
               : 'Disconnected'}
           </span>
           {isStale && <span className="status-badge status-watch">Stale</span>}
-          {forecast?.as_of && <span className="tw-clock">{replay?.paused ? 'Replay paused at' : 'Replay time'} <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
+          {forecast?.as_of && <span className="tw-clock">{replay?.paused ? 'Replay paused at' : replay?.settling ? 'Loading recent history ·' : 'Replay time'} <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
           {replay && forecast && !replay.settling && <button type="button" className={'replay-toggle' + (replay.paused ? ' is-paused' : '')} data-testid="replay-toggle" onClick={replay.paused ? replay.onResume : replay.onPause}>
             {replay.paused ? <><Play size={13} aria-hidden="true" />Resume replay</> : <><Pause size={13} aria-hidden="true" />Pause replay</>}
           </button>}
@@ -305,10 +305,10 @@ export function PatientWorkspace({
         <div role="alert" className="workspace-error">
           <strong>
             {error.message === 'patient-not-found'
-              ? 'Patient Not Found'
+              ? 'Patient not found'
               : error.message === 'contract-invalid'
-              ? 'Contract Invalid (Malformed Data)'
-              : 'Service Unavailable'}
+              ? 'Contract invalid (malformed data)'
+              : 'Service unavailable'}
           </strong>
           <p>
             {error.message === 'contract-invalid'
@@ -384,7 +384,7 @@ export function PatientWorkspace({
                 <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
               </aside>
               <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif')}>
-                <span><strong>Test a change to the plan</strong><small>Add a meal or a walk, or skip a usual meal, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
+                <span><strong>Test a change to the plan</strong><small>Add a meal or some activity, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
               </button>
               <details id="record" data-view="record" className="patient-context" open={!compact || contextExpanded}>
                 <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>

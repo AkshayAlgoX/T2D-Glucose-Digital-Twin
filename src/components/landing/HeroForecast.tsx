@@ -2,6 +2,7 @@ import React from 'react';
 import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
 import type { HeroForecast as HeroData, HeroPoint } from '@/lib/hero';
+import { aboveLevel } from '@/components/digital-twin/RiskPanel';
 
 const W = 640;
 const H = 300;
@@ -31,6 +32,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
   const observed = d3Shape.line<{ m: number; v: number }>().x(o => x(o.m)).y(o => y(o.v));
   const ticks = Array.from({ length: Math.floor((yMax - yMin) / 40) + 1 }, (_, i) => yMin + i * 40);
   const at60 = data.points.find(p => p.offset_min === 60);
+  const high = aboveLevel(data.points);
   const peak = data.points.reduce((best, p) => (p.p50 > best.p50 ? p : best), data.points[0]);
   const time = new Date(anchor).toISOString().slice(11, 16);
   const summary = `Observed glucose for ${data.patientId} over the two hours to ${time} UTC, rising to ${fmt(data.current)} mg/dL, and the model's two-hour forecast: median peaking at ${fmt(peak.p50)} mg/dL at +${peak.offset_min} min, with its 80% band.`;
@@ -66,13 +68,16 @@ export function HeroForecast({ data }: { data: HeroData }) {
       </div>
       <dl className="hero-forecast-facts">
         <div><dt>Now</dt><dd>{fmt(data.current)}<small> mg/dL</small></dd></div>
+        <div className="hero-high" data-testid="hero-high-window"><dt>Forecast vs 180 mg/dL</dt><dd>{high.median
+          ? `Median above 180 ${high.median[0] === high.median[1] ? `at +${high.median[0]} min` : `from +${high.median[0]} to +${high.median[1]} min`}`
+          : high.upper ? 'Median below 180; upper band reaches it' : 'Below 180 across the 80% band'}</dd></div>
         {at60 && at60.twin_p50 != null && <div className="hero-equation">
-          <dt>At +60 min: twin + learned adjustment = forecast</dt>
+          <dt>At +60 min: physiology twin + learned adjustment = forecast</dt>
           <dd><span className="t-twin">{fmt(at60.twin_p50)}</span> <span className="op">+</span> <span className="t-learn">{at60.p50 - at60.twin_p50 < 0 ? `(${signed(at60.p50 - at60.twin_p50)})` : signed(at60.p50 - at60.twin_p50)}</span> <span className="op">=</span> <span className="t-final">{fmt(at60.p50)}</span><small> mg/dL</small></dd>
         </div>}
-        {data.probability != null && <div><dt>Spike risk, next 2 h{data.calibrated ? ' (calibrated)' : ''}</dt><dd>{(data.probability * 100).toFixed(1)}<small>%</small></dd></div>}
       </dl>
-      <p className="hero-forecast-note">Replayed from the running backend; the same forecast opens in the workspace. Learned adjustment {at60 && at60.twin_p50 != null ? `at +60 min: ${signed(at60.p50 - at60.twin_p50)} mg/dL. ` : ''}Synthetic data; not clinically validated.</p>
+      {data.probability != null && <p className="hero-onset" data-testid="hero-onset">New-spike onset risk, next 2 h: <strong>{(data.probability * 100).toFixed(1)}%</strong>{data.calibrated ? ' · a separate classifier, calibrated on the validation split' : ''}</p>}
+      <p className="hero-forecast-note">Replayed from the running backend; the same forecast opens in the workspace. Synthetic data; not clinically validated.</p>
     </figure>
   );
 }

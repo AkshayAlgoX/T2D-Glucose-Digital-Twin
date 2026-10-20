@@ -539,7 +539,7 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
       </TimeProvider>
     );
 
-    expect(screen.getByText('Service Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Service unavailable')).toBeInTheDocument();
     const retryBtn = screen.getByRole('button', { name: /Retry stream connection/i });
     expect(retryBtn).toBeInTheDocument();
 
@@ -562,7 +562,7 @@ describe('Stream Reliability & Bounded Recovery (SSE)', () => {
       </TimeProvider>
     );
 
-    expect(screen.getByText('Patient Not Found')).toBeInTheDocument();
+    expect(screen.getByText('Patient not found')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Retry stream connection/i })).not.toBeInTheDocument();
   });
 

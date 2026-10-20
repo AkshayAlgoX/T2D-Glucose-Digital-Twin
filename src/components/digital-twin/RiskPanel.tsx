@@ -112,7 +112,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
       </section>
 
       <details className="contributions" open={false}>
-        <summary><h2 id="contributions-heading">Model contributions</h2><span className="fine-print">where the peak comes from</span></summary>
+        <summary><h2 id="contributions-heading">Model contributions</h2><span className="fine-print">show</span></summary>
         <p className="fine-print">Arithmetic of the model's own forecast — not a causal attribution. Values in mg/dL.</p>
         {!forecast ? (
           <div className="skeleton-contributions" aria-busy="true" aria-label="Loading model contributions">
@@ -137,7 +137,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </table>
             {!drivers.length && <p className="fine-print">Contribution details have not been received.</p>}
             {risk?.time_to_peak_min != null && <p className="fine-print">Reported time to peak: {risk.time_to_peak_min} min from the forecast anchor.</p>}
-            <p className="fine-print" data-testid="contributions-horizon">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h{peakOffset != null ? ` (+${peakOffset} min)` : ''}, so &ldquo;Learned correction&rdquo; here is measured there. The &ldquo;How this forecast is built&rdquo; strip shows the same split at the horizon you choose.</p>
+            <p className="fine-print" data-testid="contributions-horizon">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h{peakOffset != null ? ` (+${peakOffset} min)` : ''}, so &ldquo;Learned adjustment&rdquo; here is measured there. The &ldquo;How this forecast is built&rdquo; strip shows the same split at the horizon you choose.</p>
             {peakModel && <details className="context-details" data-testid="peak-model-output">
               <summary>If a spike occurs: peak estimate</summary>
               <p className="fine-print">A separate model head estimates how high glucose would go <em>if a spike occurs</em>: median {Math.round(peakModel.p50)} mg/dL{peakModel.p90 != null ? `, 90th percentile ${Math.round(peakModel.p90)} mg/dL` : ''}. It was trained only on windows that contain a spike, so it is conditional on one happening and is not the expected peak; it has not been evaluated in the evidence artifacts. It is a different target from the forecast bands and from the contributions above.</p>

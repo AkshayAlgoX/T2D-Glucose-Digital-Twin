@@ -253,3 +253,28 @@
 }
 @media (max-width: 720px) { .cohort-directory .directory-table tbody tr > td:nth-of-type(6) { text-align: right; } }
 @media (min-width: 1101px) { .landing-actions { flex-wrap: nowrap; } }
+/* Home facts: two cells, then the equation on its own full-width row. */
+.hero-forecast-facts { grid-template-columns: auto minmax(0, 1fr); }
+.hero-forecast-facts > .hero-equation { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--color-line); }
+.hero-forecast-facts .hero-high dd { font-family: var(--font-display); font-size: 21px; white-space: normal; color: #f2cf86; }
+.hero-onset { margin: 10px 0 0; font-size: 13px; color: var(--color-ink-2); }
+.hero-onset strong { color: var(--color-ink); font-family: var(--font-mono); }
+@media (max-width: 600px) { .hero-forecast-facts { grid-template-columns: minmax(0, 1fr); } .hero-forecast-facts > div { padding-left: 0; border-left: 0; } .hero-forecast-facts > div + div { border-top: 1px solid var(--color-line); } }
+/* One alert style per card: the forecast window is information, the policy state is the alert. */
+.risk-high.is-high { border: 1px solid var(--color-line); border-left: 3px solid #d8a548; background: var(--color-surface); }
+.risk-high.is-high .risk-high-main { color: var(--color-ink); }
+/* Evidence summary: three answers in a row, the limitations full width beneath. */
+@media (min-width: 1025px) {
+  .evidence-pillar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .evidence-pillar-card.pillar-limitations { grid-column: 1 / -1; }
+  .evidence-pillar-card.pillar-limitations .pillar-limits-list { columns: 2; column-gap: 28px; }
+}
+.pipeline-mobile { display: none; }
+@media (max-width: 600px) {
+  .pipeline-mobile { display: grid; gap: 8px; margin: 0; padding: 14px; list-style: none; border-radius: var(--radius-lg); }
+  .pipeline-mobile li { padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface-2); font-size: 14px; line-height: 1.45; color: var(--color-ink-2); }
+  .pipeline-mobile li span { display: block; font-weight: 600; color: var(--color-ink); }
+  .pipeline-mobile li.twin { border-color: var(--color-physics); }
+  .pipeline-mobile li.net { border-color: var(--color-forecast); }
+  .pipeline-mobile li.out { border-color: var(--color-ink-2); }
+}

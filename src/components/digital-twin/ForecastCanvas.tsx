@@ -251,7 +251,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             {!mapped.length && <text x={(margin.left + right) / 2} y={(margin.top + bottom) / 2} textAnchor="middle" className="chart-axis">Prediction unavailable; observed values only</text>}
           </svg>)}
         {selected && <div id={chartId + '-tooltip'} role="tooltip" className="chart-tooltip"
-          style={{ left: x(selected.time) > (margin.left + right) / 2 ? 8 : undefined, right: x(selected.time) <= (margin.left + right) / 2 ? 8 : undefined }}>
+          style={{ left: x(selected.time) > (margin.left + right) / 2 ? margin.left + 8 : undefined, right: x(selected.time) <= (margin.left + right) / 2 ? 8 : undefined }}>
           <strong>{selected.kind === 'observed' ? 'Observed CGM' : `Forecast · +${selected.point?.offset_min} min`}</strong>
           <time dateTime={selectedTimestamp} title={selectedTimestamp}>{formatTime(selectedTimestamp)} UTC</time>
           <dl>

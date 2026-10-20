@@ -999,7 +999,7 @@ export default async function EvidencePage() {
                   </div>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Held-out test cohort</h3>
                   <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                    Sealed evaluation on the held-out test split (a separate set of 44 patients, not the 44 validation patients) was strictly not executed.
+                    Sealed evaluation on the held-out test split (a separate set of 44 patients, not the 44 validation patients) has not been run.
                   </p>
                   <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
                     <div><strong>Why it is not run:</strong> the model was trained from code that had not been committed, and two training source files have changed since, so a test result could not be tied to exactly reproducible code.</div>

@@ -271,7 +271,7 @@ describe('Workspace Loading Skeletons and Lifecycle', () => {
 
     // Error alert is shown
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Service Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Service unavailable')).toBeInTheDocument();
     expect(screen.getByText('Disconnected')).toBeInTheDocument();
 
     // Existing valid results are preserved — NOT replaced with skeletons
@@ -296,7 +296,7 @@ describe('Workspace Loading Skeletons and Lifecycle', () => {
 
     // Error alert is shown
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Patient Not Found')).toBeInTheDocument();
+    expect(screen.getByText('Patient not found')).toBeInTheDocument();
 
     // Skeletons are completely suppressed (no ghost skeletons)
     expect(container.querySelectorAll('.skeleton').length).toBe(0);

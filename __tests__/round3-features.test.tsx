@@ -79,9 +79,10 @@ describe('Home hero: genuine replayed forecasts only', () => {
     expect(hero.observed.map(o => o.v)).toEqual([130, 148]);
     expect(hero.current).toBe(148);
     render(<HeroForecast data={hero} />);
-    const eq = screen.getByText(/twin \+ learned adjustment = forecast/).closest('div')!;
+    const eq = screen.getByText(/physiology twin \+ learned adjustment = forecast/).closest('div')!;
     expect(eq).toHaveTextContent('232.5 + (−15.4) = 217.1 mg/dL');
-    expect(screen.getByText('53.3')).toBeInTheDocument();
+    expect(screen.getByTestId('hero-onset')).toHaveTextContent('New-spike onset risk, next 2 h: 53.3%');
+    expect(screen.getByTestId('hero-high-window')).toHaveTextContent('Median above 180 at +60 min');
     expect(screen.getByRole('img')).toHaveAttribute('aria-label', expect.stringContaining('median peaking at 217.1 mg/dL at +60 min'));
   });
 });

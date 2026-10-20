@@ -79,9 +79,15 @@ export default async function Home() {
             <ol className="landing-steps">
               <li><span className="step-num">01</span><div><h3>Read the record and the streams</h3><p>P0017&apos;s EHR summary and the night and morning before 08:00: CGM and the heart rate, HRV, steps, sleep and meal log the model actually read, on one time axis.</p></div></li>
               <li><span className="step-num">02</span><div><h3>See how the forecast is built</h3><p>The physiology twin&apos;s estimate, plus the learned adjustment, equals the final forecast with its uncertainty bands, at any horizon up to two hours.</p></div></li>
-              <li><span className="step-num">03</span><div><h3>Ask &ldquo;what if?&rdquo;</h3><p>Add a meal or a walk, or skip a usual meal, and the backend re-forecasts from the same moment. Medication changes are refused rather than guessed.</p></div></li>
+              <li><span className="step-num">03</span><div><h3>Ask &ldquo;what if?&rdquo;</h3><p>Add a meal or some activity and the backend re-forecasts from the same moment, beside the physiology twin&apos;s own response. Medication changes are refused rather than guessed.</p></div></li>
             </ol>
           </div>
+          <ol className="pipeline-mobile stage" aria-label="How the forecast is built">
+            <li><span>Inputs</span>EHR record, CGM every 5 min, heart rate, HRV, steps, sleep, meal log</li>
+            <li className="twin"><span>① Physiology twin</span>Glucose–insulin equations tuned to this patient</li>
+            <li className="net"><span>② Learned adjustment</span>A neural network adds what the equations miss</li>
+            <li className="out"><span>③ 2-hour forecast</span>Median with uncertainty bands, onset risk and a backend what-if</li>
+          </ol>
           {hero && <figure className="landing-diagram panel stage">
             <PipelineSchematic />
             <figcaption>A schematic of the pipeline, not data.</figcaption>

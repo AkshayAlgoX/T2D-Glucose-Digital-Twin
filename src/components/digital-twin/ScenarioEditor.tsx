@@ -242,7 +242,7 @@ export function changeSeries(result: ScenarioComparison) {
   return rows.sort((a, c) => a.min - c.min);
 }
 
-export function ScenarioChangeChart({ result, change = null, step = null }: { result: ScenarioComparison; change?: { start: number; end: number | null; label: string } | null; step?: { size: number; offset: number } | null }) {
+export function ScenarioChangeChart({ result, change = null, step = null, twinFirst = false }: { result: ScenarioComparison; change?: { start: number; end: number | null; label: string } | null; step?: { size: number; offset: number } | null; twinFirst?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const rows = changeSeries(result);
   const labelled = width >= 520;
@@ -278,8 +278,8 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
           <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
         </g>}
         {twinRows.length > 1 && <path data-testid="change-gap" d={gap(twinRows) ?? ''} fill="var(--color-ink)" fillOpacity={0.08} />}
-        {twinRows.length > 1 && <path data-testid="change-twin-line" d={twinLine(twinRows) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="2 3" />}
-        <path data-testid="change-final-line" d={finalLine(series) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeLinejoin="round" />
+        {twinRows.length > 1 && <path data-testid="change-twin-line" d={twinLine(twinRows) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={twinFirst ? 2.75 : 1.75} strokeDasharray={twinFirst ? undefined : '2 3'} />}
+        <path data-testid="change-final-line" d={finalLine(series) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={twinFirst ? 2 : 2.5} strokeDasharray={twinFirst ? '6 4' : undefined} strokeLinejoin="round" />
         {step && (() => {
           const r = series.find(q => q.min === step.offset);
           return r ? <circle cx={x(r.min)} cy={y(r.final)} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} aria-hidden="true" /> : null;
@@ -295,8 +295,8 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
         {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
       </svg>
       <div className="whatif-legend" aria-hidden="true">
-        <span><i className="whatif-swatch scenario solid" />Final forecast: with change minus unchanged</span>
-        {twinRows.length > 1 && <span><i className="whatif-swatch twin" />Physiology twin alone: same difference</span>}
+        <span><i className={'whatif-swatch scenario' + (twinFirst ? '' : ' solid')} />Final forecast: with change minus unchanged</span>
+        {twinRows.length > 1 && <span><i className={'whatif-swatch twin' + (twinFirst ? ' solid' : '')} />Physiology twin alone: same difference{twinFirst ? ' (shown first: the input is outside the network\u2019s training range)' : ''}</span>}
         {twinRows.length > 1 && <span><i className="whatif-swatch gap" />Gap: what the learned adjustment adds or removes</span>}
       </div>
     </div>
@@ -354,13 +354,12 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   const change = changeWindow(state.input);
-  const wide = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 600px)').matches;
   return (
     <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
       <h3 ref={titleRef} tabIndex={-1} className="whatif-result-title">Result: {describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></h3>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
         <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
-        <details open={wide}><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
+        <details><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
       </div>}
       <figure className="whatif-figure">
         <figcaption><strong>Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC</span></figcaption>
@@ -368,7 +367,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       </figure>
       <figure className="whatif-figure">
         <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time</span></figcaption>
-        <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} />
+        <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <dl className="whatif-metrics">
         <div>
@@ -498,6 +497,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           );
         })}
       </div>
+      <p className="whatif-preset-note" data-testid="whatif-preset-note">Any added meal is outside the network&apos;s training range, so meal results come with a warning: read them against the physiology twin&apos;s response.</p>
       <p className="whatif-step-label">Or set your own</p>
 
       <form className="whatif-form" onSubmit={e => { e.preventDefault(); submit(form); }}>
@@ -505,7 +505,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           <select value={form.kind} disabled={loading} onChange={e => set({ kind: e.target.value as Kind })}>
             <option value="meal">Add a meal</option>
             <option value="activity">Add activity</option>
-            <option value="skip_habitual_meal">Skip a usual meal</option>
+            <option value="skip_habitual_meal">Skip a usual meal (no effect if none is expected in the next 2 h)</option>
             <option value="medication">Medication change (not modelled)</option>
           </select>
         </label>
