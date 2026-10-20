@@ -463,3 +463,4 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .policy-labels span:first-child { transform: translateX(calc(-100% + 3px)); }
 .policy-labels span:last-child { transform: translateX(-3px); }
 @media (max-width: 420px) { .policy-labels { height: 16px; } .policy-labels span:last-child { top: 0; } }
+.evidence-link { color: var(--color-accent-ink); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }

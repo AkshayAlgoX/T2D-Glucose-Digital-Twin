@@ -506,7 +506,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     // Negative governance findings must be explicit and unhidden
-    expect(screen.getByText('Validation Status & Provenance Register')).toBeInTheDocument();
+    expect(screen.getByText('Validation status and provenance register')).toBeInTheDocument();
     expect(screen.getByText('Synthetic-Data Indistinguishability')).toBeInTheDocument();
     expect(screen.getByText('SEALED & UNEXECUTED')).toBeInTheDocument();
     expect(screen.getByText('ShanghaiT2DM Diagnostic')).toBeInTheDocument();

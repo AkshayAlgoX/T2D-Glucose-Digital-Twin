@@ -946,10 +946,10 @@ export default async function EvidencePage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                 <div>
                   <span className="eyebrow">Scientific Governance</span>
-                  <h2 id="governance-heading" style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 600 }}>Validation Status &amp; Provenance Register</h2>
+                  <h2 id="governance-heading" style={{ margin: '4px 0 0' }}>Validation status and provenance register</h2>
                 </div>
-                <span className="status-badge" style={{ backgroundColor: '#2d1810', color: '#f59e0b', borderColor: '#78350f' }}>
-                  <AlertTriangle size={13} aria-hidden="true" /> Transparency Disclosures
+                <span className="status-badge">
+                  <AlertTriangle size={13} aria-hidden="true" /> Transparency disclosures
                 </span>
               </div>
 
@@ -973,9 +973,12 @@ export default async function EvidencePage() {
                       <div><strong>Acceptance Target:</strong> AUROC &le; 0.65</div>
                       <div><strong>Top Tells:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
                     </div>
-                    <div className="evidence-chart-card" style={{ marginTop: '12px' }}>
-                      <img src="/evidence/gate3_realism_summary.svg" alt="Gate 3 Realism Audit Discriminator Summary" />
-                    </div>
+                    <details className="context-details" style={{ marginTop: '10px' }}>
+                      <summary>Show the Gate 3 summary figure</summary>
+                      <div className="evidence-chart-card" style={{ marginTop: '8px' }}>
+                        <img src="/evidence/gate3_realism_summary.svg" alt="Gate 3 Realism Audit Discriminator Summary" />
+                      </div>
+                    </details>
                     <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--color-ink-3)' }}>
                       Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507).
                     </p>
