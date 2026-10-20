@@ -43,7 +43,7 @@ echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npx next dev --webpack 
 5. **How this forecast is built**: pick +15 / +30 / +60 / +120 min and read ① physiology-based estimate + ② learned model adjustment = ③ final forecast, with its 80% interval.
 6. **Spike risk and model contributions**: the calibrated 2-hour probability, then the contributions, which add up to the forecast median's highest point.
 7. **What-if simulation** (directly under the forecast):
-   - Click *60 g carb meal in 30 min*. At the 05:55 anchor, the highest median goes from 119.7 to 179.8 mg/dL and the largest same-time difference is +83.3 mg/dL at +75 min. The spike risk goes from 10.6% to 17.6%. The scenario curve has a one-step peak at +75 min, so point at the whole curve, not only the headline number.
+   - Click *60 g carb meal in 30 min*. Point at the twin line first: the physiology twin alone rises by up to +70.9 mg/dL by +120 min. The network's curve and the spike risk (10.6% → 21.7%) come next. Say that the service flags this scenario as outside the network's training range, and that the network's highest point (181.7 mg/dL) is a single 5-min step at +75 min. **Do not quote any scenario headline as the effect of the meal.**
    - Click *30 min brisk walk now*. The highest median goes from 119.7 to 117.9 mg/dL, and the service attaches its own approximation warning.
    - Click *Medication change*. The service refuses with `SCENARIO_UNSUPPORTED`. Say that this is deliberate.
 8. **Evidence page**: matched baselines, calibration, and the failed Gate 3.
@@ -81,7 +81,10 @@ You should believe it only as far as the simulator is realistic, which is why we
 At 60 min it brings RMSE from 23.23 (twin only) down to 19.53 mg/dL. The on-screen strip shows the residual for this patient at this moment.
 
 **"Is the what-if a treatment recommendation?"**
-No. It is a *simulated model response, not a validated causal treatment effect*. Neither its direction nor its size has been validated against a reference counterfactual. For P0017 at 07:30 UTC, a 60 g meal in 30 min moves the highest median from 185.0 to 197.7 mg/dL (from +60 to +100 min). The largest same-time difference is +33.6 mg/dL, and the spike probability goes from 10.6% to 16.4%. Medication changes are refused because the served twin has no drug terms.
+No. It is a *simulated model response, not a validated causal treatment effect*. Neither its direction nor its size has been validated against a reference counterfactual. For P0017 at 07:30 UTC, a 60 g meal in 30 min moves the physiology twin by up to +55.3 mg/dL. The network's highest median goes from 185.0 to 199.3 mg/dL, and the spike probability from 10.6% to 17.3%. The service flags meal scenarios as outside the network's training range, and we show that warning on screen. Medication changes are refused because the served twin has no drug terms.
+
+**"Why does the forecast line sometimes have a sharp single-step jump?"**
+The physiology twin is always smooth. The learned adjustment sometimes adds an isolated 5-minute step: more than 20 mg/dL in 19.8% of sampled validation forecasts, and never in the twin alone. We measured this, disclose it, and flag it on the chart. Removing it would need retraining with a smoothness term, which we have not validated (`docs/evidence/model_audit/MODEL_AUDIT_20261020.md`).
 
 **"How do you handle uncertainty?"**
 The forecast has 7 quantiles with conformal adjustment, and the 80% interval reaches 80.00% empirical coverage on the validation partition. The spike probability is isotonic-calibrated. Both are resubstitution diagnostics, because the calibration was fitted on the same partition.

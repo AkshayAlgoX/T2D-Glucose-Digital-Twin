@@ -43,6 +43,12 @@ for as_of in ANCHORS:
                                         and praw.get("metrics", {}).get("baseline_peak_mg_dl") == max(base)
                                         and praw.get("metrics", {}).get("delta_peak_mg_dl") == s["delta_peak_mg_dl"]),
               "max_abs_curve_diff_mg_dl": round(max(abs(a - b) for a, b in zip(scen, base)), 1),
+              # Physiology twin alone: scenario twin rollout minus baseline twin rollout at the same offsets.
+              "twin_largest_same_time_change_mg_dl": (lambda d: round(max(d, key=abs), 1) if d else None)(
+                  [p["twin_p50"] - q["twin_p50"] for p, q in zip(s["points"], braw["forecast"]["points"])
+                   if p.get("twin_p50") is not None and q.get("twin_p50") is not None]),
+              "learned_adjustment_largest_mg_dl": (lambda d: round(max(d, key=abs), 1) if d else None)(
+                  [p["p50"] - p["twin_p50"] for p in s["points"] if p.get("twin_p50") is not None]),
             })
         else:
             row.update({"backend_problem": braw, "proxy_problem": praw})
@@ -51,6 +57,6 @@ json.dump(record, open(OUT, "w"), indent=1)
 for r in record["runs"]:
     if r["backend_status"] == 200:
         print(f'{r["as_of"]} {r["scenario"]:15s} peak {r["baseline_peak_max_p50"]}→{r["scenario_peak_max_p50"]} (backend Δ {r["backend_delta_peak_mg_dl"]}, rederived {r["rederived_delta_peak"]}) '
-              f'risk {r["baseline_p120"]}→{r["scenario_p120"]} Δ{r["backend_delta_probability"]} maxcurveΔ {r["max_abs_curve_diff_mg_dl"]} warn {r["warnings"]} proxy_ok {r["proxy_matches_backend"]} [{r["cohort"]}, fallback={r["fallback_used"]}]')
+              f'risk {r["baseline_p120"]}→{r["scenario_p120"]} Δ{r["backend_delta_probability"]} maxcurveΔ {r["max_abs_curve_diff_mg_dl"]} twinΔ {r["twin_largest_same_time_change_mg_dl"]} learnedmax {r["learned_adjustment_largest_mg_dl"]} warn {r["warnings"]} proxy_ok {r["proxy_matches_backend"]} [{r["cohort"]}, fallback={r["fallback_used"]}]')
     else:
         print(f'{r["as_of"]} {r["scenario"]:15s} backend {r["backend_status"]} {r["backend_problem"].get("code")} proxy {r["proxy_status"]} {r["proxy_problem"].get("code")}')

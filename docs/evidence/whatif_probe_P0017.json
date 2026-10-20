@@ -17,24 +17,28 @@
    "current_mg_dl": 100.0,
    "baseline_peak_max_p50": 101.5,
    "baseline_peak_offset_min": 15,
-   "scenario_peak_max_p50": 133.8,
+   "scenario_peak_max_p50": 133.6,
    "scenario_peak_offset_min": 120,
-   "backend_delta_peak_mg_dl": 32.3,
-   "rederived_delta_peak": 32.3,
+   "backend_delta_peak_mg_dl": 32.1,
+   "rederived_delta_peak": 32.1,
    "baseline_p120": 0.0,
    "scenario_p120": 0.033,
    "backend_delta_probability": 0.033,
-   "warnings": [],
+   "warnings": [
+    "SCENARIO_OUT_OF_RANGE"
+   ],
    "proxy_metrics": {
-    "delta_peak_mg_dl": 32.3,
-    "new_peak_mg_dl": 133.8,
+    "delta_peak_mg_dl": 32.1,
+    "new_peak_mg_dl": 133.6,
     "baseline_peak_mg_dl": 101.5,
     "delta_probability": 0.033,
     "new_probability": 0.033,
     "baseline_probability": 0
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 39.4
+   "max_abs_curve_diff_mg_dl": 39.2,
+   "twin_largest_same_time_change_mg_dl": 71.0,
+   "learned_adjustment_largest_mg_dl": -32.6
   },
   {
    "as_of": "2026-09-28T23:55:00Z",
@@ -71,7 +75,9 @@
     "baseline_probability": 0
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 4.1
+   "max_abs_curve_diff_mg_dl": 4.1,
+   "twin_largest_same_time_change_mg_dl": -4.3,
+   "learned_adjustment_largest_mg_dl": -1.2
   },
   {
    "as_of": "2026-09-28T23:55:00Z",
@@ -104,7 +110,9 @@
     "baseline_probability": 0
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 0.0
+   "max_abs_curve_diff_mg_dl": 0.0,
+   "twin_largest_same_time_change_mg_dl": 0.0,
+   "learned_adjustment_largest_mg_dl": -1.4
   },
   {
    "as_of": "2026-09-28T23:55:00Z",
@@ -147,24 +155,28 @@
    "current_mg_dl": 92.0,
    "baseline_peak_max_p50": 119.7,
    "baseline_peak_offset_min": 120,
-   "scenario_peak_max_p50": 179.8,
+   "scenario_peak_max_p50": 181.7,
    "scenario_peak_offset_min": 75,
-   "backend_delta_peak_mg_dl": 60.2,
-   "rederived_delta_peak": 60.1,
+   "backend_delta_peak_mg_dl": 62.0,
+   "rederived_delta_peak": 62.0,
    "baseline_p120": 0.106,
-   "scenario_p120": 0.176,
-   "backend_delta_probability": 0.07,
-   "warnings": [],
+   "scenario_p120": 0.217,
+   "backend_delta_probability": 0.11,
+   "warnings": [
+    "SCENARIO_OUT_OF_RANGE"
+   ],
    "proxy_metrics": {
-    "delta_peak_mg_dl": 60.2,
-    "new_peak_mg_dl": 179.8,
+    "delta_peak_mg_dl": 62,
+    "new_peak_mg_dl": 181.7,
     "baseline_peak_mg_dl": 119.7,
-    "delta_probability": 0.07,
-    "new_probability": 0.176,
+    "delta_probability": 0.111,
+    "new_probability": 0.217,
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 83.3
+   "max_abs_curve_diff_mg_dl": 85.2,
+   "twin_largest_same_time_change_mg_dl": 70.9,
+   "learned_adjustment_largest_mg_dl": 53.7
   },
   {
    "as_of": "2026-09-29T05:55:00Z",
@@ -201,7 +213,9 @@
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 3.7
+   "max_abs_curve_diff_mg_dl": 3.7,
+   "twin_largest_same_time_change_mg_dl": -3.8,
+   "learned_adjustment_largest_mg_dl": 14.2
   },
   {
    "as_of": "2026-09-29T05:55:00Z",
@@ -234,7 +248,9 @@
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 0.0
+   "max_abs_curve_diff_mg_dl": 0.0,
+   "twin_largest_same_time_change_mg_dl": 0.0,
+   "learned_adjustment_largest_mg_dl": 14.7
   },
   {
    "as_of": "2026-09-29T05:55:00Z",
@@ -277,24 +293,28 @@
    "current_mg_dl": 117.0,
    "baseline_peak_max_p50": 185.0,
    "baseline_peak_offset_min": 60,
-   "scenario_peak_max_p50": 197.7,
-   "scenario_peak_offset_min": 100,
-   "backend_delta_peak_mg_dl": 12.6,
-   "rederived_delta_peak": 12.7,
+   "scenario_peak_max_p50": 199.3,
+   "scenario_peak_offset_min": 95,
+   "backend_delta_peak_mg_dl": 14.2,
+   "rederived_delta_peak": 14.3,
    "baseline_p120": 0.106,
-   "scenario_p120": 0.164,
-   "backend_delta_probability": 0.058,
-   "warnings": [],
+   "scenario_p120": 0.173,
+   "backend_delta_probability": 0.067,
+   "warnings": [
+    "SCENARIO_OUT_OF_RANGE"
+   ],
    "proxy_metrics": {
-    "delta_peak_mg_dl": 12.6,
-    "new_peak_mg_dl": 197.7,
+    "delta_peak_mg_dl": 14.2,
+    "new_peak_mg_dl": 199.3,
     "baseline_peak_mg_dl": 185,
-    "delta_probability": 0.058,
-    "new_probability": 0.164,
+    "delta_probability": 0.067,
+    "new_probability": 0.173,
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 33.6
+   "max_abs_curve_diff_mg_dl": 34.5,
+   "twin_largest_same_time_change_mg_dl": 55.3,
+   "learned_adjustment_largest_mg_dl": -31.8
   },
   {
    "as_of": "2026-10-05T07:30:00Z",
@@ -331,7 +351,9 @@
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 4.7
+   "max_abs_curve_diff_mg_dl": 4.7,
+   "twin_largest_same_time_change_mg_dl": -4.8,
+   "learned_adjustment_largest_mg_dl": 27.0
   },
   {
    "as_of": "2026-10-05T07:30:00Z",
@@ -364,7 +386,9 @@
     "baseline_probability": 0.106
    },
    "proxy_matches_backend": true,
-   "max_abs_curve_diff_mg_dl": 0.0
+   "max_abs_curve_diff_mg_dl": 0.0,
+   "twin_largest_same_time_change_mg_dl": 0.0,
+   "learned_adjustment_largest_mg_dl": 26.6
   },
   {
    "as_of": "2026-10-05T07:30:00Z",
