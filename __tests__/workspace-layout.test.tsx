@@ -14,7 +14,7 @@ it('keeps context, analysis, history and unavailable capabilities in a coherent 
   const risk = screen.getByRole('complementary', { name: 'Risk and model contributions' });
   const history = screen.getByRole('region', { name: 'Risk history' });
   const coverage = screen.getByRole('heading', { name: 'Data coverage' });
-  const simulation = screen.getByRole('heading', { name: 'Simulation' });
+  const simulation = screen.getByRole('heading', { name: 'What-if simulation' });
   const replay = screen.getByText('Pinned-time replay unavailable');
   const disclaimer = screen.getByText('Research Only (Not for clinical decisions)');
   [context, trajectory, risk, history, coverage, simulation, replay].forEach((element, index, elements) => {
@@ -57,7 +57,7 @@ it('collapses mobile context without remounting analysis or losing its history s
     expect(screen.getByRole('button', { name: 'Past 2h' })).toHaveAttribute('aria-pressed', 'true');
     act(() => { compact = true; listeners.forEach(listener => listener()); });
     expect(details).not.toHaveAttribute('open');
-    expect(screen.getAllByRole('heading', { name: 'Simulation' })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { name: 'What-if simulation' })).toHaveLength(1);
   } finally {
     unmount?.();
     if (descriptor) Object.defineProperty(window, 'matchMedia', descriptor);

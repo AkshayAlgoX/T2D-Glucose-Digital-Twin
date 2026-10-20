@@ -103,8 +103,9 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
         {yTicks.map(t => <g key={t}>
           <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} stroke={t === 180 ? 'var(--color-line-control)' : 'var(--color-line)'} strokeDasharray={t === 180 ? '5 4' : undefined} />
           <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className="chart-axis">{t}</text>
+          {t === 180 && <text x={width - m.right} y={y(t) - 5} textAnchor="end" className="chart-axis">spike level</text>}
         </g>)}
-        {[0, 30, 60, 90, 120].map(t => <text key={t} x={x(t)} y={height - 10} textAnchor="middle" className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 10} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
         <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
         <path d={band(scen) ?? ''} fill="var(--color-projection)" fillOpacity={0.14} />
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
