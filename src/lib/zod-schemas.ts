@@ -156,7 +156,8 @@ export const ScenarioPointSchema = z.object({
   offset_min: OffsetMinSchema,
   p10: GlucoseMgDlSchema,
   p50: GlucoseMgDlSchema,
-  p90: GlucoseMgDlSchema
+  p90: GlucoseMgDlSchema,
+  twin_p50: GlucoseMgDlSchema.optional()
 }).strict();
 
 export const ScenarioInputSchema = z.union([

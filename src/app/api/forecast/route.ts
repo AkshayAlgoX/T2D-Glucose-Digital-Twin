@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
       timestamp: new Date(asOfTime + p.offset_min * 60000).toISOString(),
       p10: p.p10,
       p50: p.p50,
-      p90: p.p90
+      p90: p.p90,
+      twin_p50: typeof p.twin_p50 === 'number' && Number.isFinite(p.twin_p50) ? p.twin_p50 : null
     }));
 
     const rawBaselineProb = (resData as any).spike_risk?.probability_120m;

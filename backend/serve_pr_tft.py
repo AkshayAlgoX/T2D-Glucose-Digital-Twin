@@ -264,6 +264,7 @@ class ScenarioPoint(Strict):
     p10: Glucose
     p50: Glucose
     p90: Glucose
+    twin_p50: Optional[Glucose] = None  # the physiology twin's own rollout under this scenario
 
 
 class ScenarioResult(Strict):
@@ -510,6 +511,8 @@ class ServiceContext:
         self.pop = T.population_habit([series[p] for p in split["train"]])
         self.patients: dict[uuid.UUID, PatientCache] = {}
         self.by_pid: dict[str, uuid.UUID] = {}
+        self._train_split = list(split["train"])
+        self._scenario_range: tuple[float, float] | None = None
         
         ukf_file = run_dir / "canonical_ukf_state.npz"
         ukf_data = None
@@ -555,6 +558,18 @@ class ServiceContext:
         if pc is None or pc.ps.pid in self.sealed_pids:
             raise ServiceError(404, "SUBJECT_NOT_FOUND", "Subject not found", f"No subject {subject_id}.")
         return pc
+
+    def scenario_input_range(self) -> tuple[float, float]:
+        """Largest future meal probability and expected carbs per 5-min bin the network saw in training
+        (the habit prior on every eligible training anchor). Computed once, on first use."""
+        if self._scenario_range is None:
+            p_max, c_max = 0.0, 0.0
+            for pid in self._train_split:
+                pc = self.patients[self.by_pid[pid]]
+                prob, carbs = T.habit_features(pc.ps, T.eligible_anchors(pc.ps, self.cfg), self.pop)
+                p_max, c_max = max(p_max, float(prob.max())), max(c_max, float(carbs.max()))
+            self._scenario_range = (p_max, c_max)
+        return self._scenario_range
 
     def served_patients(self) -> list[tuple[uuid.UUID, PatientCache]]:
         return [(sid, pc) for sid, pc in self.patients.items() if pc.ps.pid not in self.sealed_pids]
@@ -888,6 +903,16 @@ def ehr_context(ps: T.PatientSeries) -> dict[str, Any]:
             "med_classes": meds}
 
 
+def scenario_meal_row(offset_min: int) -> int:
+    """Future-block row for a meal `offset_min` after the anchor, binned as logged meals are in training.
+
+    Row k is the 5-min step at anchor + 5(k+1) min, and a meal at minute m is known at step ceil(m / 5)
+    (input_contract.meal_step_index), so the row is ceil(offset / 5) - 1. A meal at the anchor itself
+    (offset 0) goes in the first future row, the earliest the future block can represent.
+    """
+    return min(T.HORIZON - 1, max(0, math.ceil(offset_min / T.STEP_MIN) - 1))
+
+
 def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[ScenarioRequest],
               base_p50: np.ndarray, base_p120: float | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     ps = pc.ps
@@ -903,7 +928,7 @@ def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[Scenario
                                    f"Scenario {sc.scenario_id}: medication changes need the full twin; "
                                    "the linearized twin served here has no drug terms.")
             if isinstance(item, MealInput):
-                extra_carbs[0, min(T.HORIZON - 1, item.offset_min // T.STEP_MIN)] += item.carbs_g
+                extra_carbs[0, scenario_meal_row(item.offset_min)] += item.carbs_g
             elif isinstance(item, ActivityInput):
                 start, stop = item.offset_min, min(T.HORIZON * T.STEP_MIN, item.offset_min + item.duration_min)
                 extra_flux[0, start:stop] -= ALPHA_EX * INTENSITY_DHR[item.intensity] * g_now * ps.vg
@@ -917,6 +942,17 @@ def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[Scenario
                     in_slot = ~np.any([(hours >= a) & (hours < b) for a, b in MEAL_SLOTS_H.values()], axis=0)
                 habit_scale[0, in_slot] = 0.0
         base, _, _, fut, _ = ctx.rollouts(pc, t, extra_carbs, extra_flux, habit_scale)
+        if any(isinstance(i, MealInput) for i in sc.inputs):
+            p_max, c_max = ctx.scenario_input_range()
+            prob_s, carbs_s = float(fut[:, 2].max()), float(fut[:, 3].max() * ctx.norm.carbs_std)
+            if prob_s > p_max + 1e-6 or carbs_s > c_max + 1e-6:
+                notes.append({"type": "about:blank", "title": "Scenario inputs outside the training range",
+                              "code": "SCENARIO_OUT_OF_RANGE",
+                              "detail": f"Scenario {sc.scenario_id}: the future meal channel reaches probability "
+                                        f"{prob_s:.2f} and {carbs_s:.0f} g in one 5-min step; in training it never "
+                                        f"exceeded {p_max:.2f} and {c_max:.0f} g. The learned adjustment is "
+                                        "extrapolating here, so read the whole curve against the physiology "
+                                        "twin's own response."})
         try:
             out = ctx.run_model(pc, t, base, fut)
             is_model_fallback = False
@@ -949,7 +985,8 @@ def scenarios(ctx: ServiceContext, pc: PatientCache, t: int, reqs: list[Scenario
             "scenario_id": sc.scenario_id, **({"label": sc.label} if sc.label else {}),
             "inputs": [i.model_dump(exclude_none=True) for i in sc.inputs],
             "points": [{"offset_min": (k + 1) * T.STEP_MIN, "p10": clamp_g(q[k, T.P10_IDX]),
-                        "p50": clamp_g(q[k, T.MEDIAN_IDX]), "p90": clamp_g(q[k, T.P90_IDX])} for k in range(T.HORIZON)],
+                        "p50": clamp_g(q[k, T.MEDIAN_IDX]), "p90": clamp_g(q[k, T.P90_IDX]),
+                        "twin_p50": clamp_g(base[k])} for k in range(T.HORIZON)],
             "probability_120m": round(sc_p120_val, 3) if sc_p120_val is not None else None,
             "delta_probability": delta_p,
             "delta_peak_mg_dl": round(float(q[:, T.MEDIAN_IDX].max() - base_p50.max()), 1),

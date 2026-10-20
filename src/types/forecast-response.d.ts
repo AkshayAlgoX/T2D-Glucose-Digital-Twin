@@ -350,144 +350,168 @@ export interface ScenarioResult {
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     },
     {
       offset_min: OffsetMin;
       p10: GlucoseMgDl;
       p50: GlucoseMgDl;
       p90: GlucoseMgDl;
+      twin_p50?: GlucoseMgDl;
     }
   ];
   probability_120m: Probability | null;
