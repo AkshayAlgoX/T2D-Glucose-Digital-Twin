@@ -253,13 +253,13 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         {selected && <div id={chartId + '-tooltip'} role="tooltip" className="chart-tooltip"
           style={{ left: x(selected.time) > (margin.left + right) / 2 ? 8 : undefined, right: x(selected.time) <= (margin.left + right) / 2 ? 8 : undefined }}>
           <strong>{selected.kind === 'observed' ? 'Observed CGM' : `Forecast · +${selected.point?.offset_min} min`}</strong>
-          <time dateTime={selectedTimestamp}>{selectedTimestamp}</time>
+          <time dateTime={selectedTimestamp} title={selectedTimestamp}>{formatTime(selectedTimestamp)} UTC</time>
           <dl>
             <div><dt>{selected.kind === 'observed' ? 'Measured glucose' : 'Median (P50)'}</dt><dd>{selected.value} mg/dL</dd></div>
             {selected.point && <>
               <div><dt>P10–P90</dt><dd>{interval(selected.point.p10, selected.point.p90)}</dd></div>
               <div><dt>P05–P95</dt><dd>{interval(selected.point.p05, selected.point.p95)}</dd></div>
-              <div><dt>Forecast horizon</dt><dd>{forecast?.forecast?.horizon_min != null ? `${forecast.forecast.horizon_min} min` : 'Unavailable'}</dd></div>
+              {typeof selected.point.twin_p50 === 'number' && <div><dt>Physiology twin</dt><dd>{quantile(selected.point.twin_p50)} mg/dL</dd></div>}
             </>}
           </dl>
           <span className="tooltip-hint">Arrow keys to inspect · Esc to dismiss</span>
@@ -329,7 +329,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           </div>
           <span className="equation-op" aria-hidden="true">+</span>
           <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
-            <span className="metric-label">② Learned model adjustment</span>
+            <span className="metric-label">② Learned adjustment</span>
             <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
               {!forecast ? '—' : diffDisplay}
             </span>
@@ -409,7 +409,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
       render: () => anySteps ? rows.filter(w => w.steps > 0).map(w => {
         const r = clampRect(x(w.time), step);
-        const bh = Math.max(1, (w.steps / maxSteps) * (h - 4));
+        const bh = Math.max(3, (w.steps / maxSteps) * (h - 4));
         return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} fill="var(--color-ink-3)" opacity={0.7} />;
       }).concat(rows.filter(w => w.steps > 0).length <= 3 ? [<g key="few">{empty(`${Math.round(rows.reduce((t, w) => t + w.steps, 0))} steps recorded in this window`)}</g>] : []) : empty('0 steps recorded in this window') },
     { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),

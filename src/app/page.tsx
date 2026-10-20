@@ -28,8 +28,8 @@ function PipelineSchematic() {
       <desc id="pipeline-desc">EHR record and wearable streams feed a physiology twin; a learned model adjusts the twin; the result is a two-hour glucose forecast with uncertainty, a spike risk and a what-if.</desc>
       {box(10, 20, 170, 100, 'EHR record', ['Age · BMI · HbA1c', 'eGFR · diagnosis', 'Medication classes'], 'in')}
       {box(10, 150, 170, 130, 'Wearable streams', ['CGM every 5 min', 'Heart rate · HRV', 'Steps · Sleep', 'Meal log'], 'in')}
-      {box(225, 20, 170, 120, '① Physiology twin', ['Bergman minimal model', 'UKF state estimate', 'Smooth, mechanistic'], 'twin')}
-      {box(225, 160, 170, 120, '② Learned adjustment', ['PR-TFT network', 'Learns what the', 'physiology misses'], 'net')}
+      {box(225, 20, 170, 120, '① Physiology twin', ['Glucose–insulin equations', 'tuned to this patient', '(Bergman model + UKF)'], 'twin')}
+      {box(225, 160, 170, 120, '② Learned adjustment', ['A neural network adds', 'what the equations', 'miss (PR-TFT)'], 'net')}
       {box(440, 70, 170, 160, '③ 2-hour forecast', ['Median + P10–P90', 'and P05–P95 bands', 'Calibrated spike risk', 'Backend what-if', 'for meals & activity'], 'out')}
       {arrow(180, 70, 225, 80)}
       {arrow(180, 215, 225, 220)}

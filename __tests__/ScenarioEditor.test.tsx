@@ -91,7 +91,7 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     respond(200, okBody({ scenario_forecast: curve(120, 0.5), warnings: [{ code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'delayed sensitivity boost is not modelled.' }],
       metrics: { delta_peak_mg_dl: -12, new_peak_mg_dl: 131, baseline_peak_mg_dl: 143, delta_probability: -0.05, new_probability: 0.06, baseline_probability: 0.11 } }));
     render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
-    fireEvent.click(screen.getByRole('button', { name: '30 min brisk walk now' }));
+    fireEvent.click(screen.getByRole('button', { name: '30 min moderate activity now' }));
     await screen.findByTestId('scenario-result');
     const sent = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(sent.scenarios[0].inputs).toEqual([{ kind: 'activity', offset_min: 0, duration_min: 30, intensity: 'moderate' }]);

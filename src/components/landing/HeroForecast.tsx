@@ -68,7 +68,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
         <div><dt>Now</dt><dd>{fmt(data.current)}<small> mg/dL</small></dd></div>
         {at60 && at60.twin_p50 != null && <div className="hero-equation">
           <dt>At +60 min: twin + learned adjustment = forecast</dt>
-          <dd><span className="t-twin">{fmt(at60.twin_p50)}</span> <span className="op">{at60.p50 - at60.twin_p50 < 0 ? '−' : '+'}</span> <span className="t-learn">{fmt(Math.abs(at60.p50 - at60.twin_p50))}</span> <span className="op">=</span> <span className="t-final">{fmt(at60.p50)}</span><small> mg/dL</small></dd>
+          <dd><span className="t-twin">{fmt(at60.twin_p50)}</span> <span className="op">+</span> <span className="t-learn">{at60.p50 - at60.twin_p50 < 0 ? `(${signed(at60.p50 - at60.twin_p50)})` : signed(at60.p50 - at60.twin_p50)}</span> <span className="op">=</span> <span className="t-final">{fmt(at60.p50)}</span><small> mg/dL</small></dd>
         </div>}
         {data.probability != null && <div><dt>Spike risk, next 2 h{data.calibrated ? ' (calibrated)' : ''}</dt><dd>{(data.probability * 100).toFixed(1)}<small>%</small></dd></div>}
       </dl>

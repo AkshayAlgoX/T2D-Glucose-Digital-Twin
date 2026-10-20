@@ -80,8 +80,68 @@ describe('Home hero: genuine replayed forecasts only', () => {
     expect(hero.current).toBe(148);
     render(<HeroForecast data={hero} />);
     const eq = screen.getByText(/twin \+ learned adjustment = forecast/).closest('div')!;
-    expect(eq).toHaveTextContent('232.5 − 15.4 = 217.1 mg/dL');
+    expect(eq).toHaveTextContent('232.5 + (−15.4) = 217.1 mg/dL');
     expect(screen.getByText('53.3')).toBeInTheDocument();
     expect(screen.getByRole('img')).toHaveAttribute('aria-label', expect.stringContaining('median peaking at 217.1 mg/dL at +60 min'));
+  });
+});
+
+import { act, renderHook } from '@testing-library/react';
+import { aboveLevel, RiskPanel } from '../src/components/digital-twin/RiskPanel';
+import { announce, learnedBlip } from '../src/components/digital-twin/ScenarioEditor';
+import { useReplayHold } from '../src/hooks/useReplayHold';
+
+describe('Risk card: the forecast window above 180 is read from the bands only', () => {
+  const pts = [5, 10, 15, 20, 25].map((m, i) => ({ offset_min: m, p10: [150, 175, 185, 182, 170][i], p50: [170, 185, 200, 190, 175][i], p90: [190, 200, 220, 210, 195][i] }));
+  it('reports median, lower-bound and upper-bound windows', () => {
+    expect(aboveLevel(pts)).toEqual({ median: [10, 20], medianContiguous: true, lower: [15, 20], upper: [5, 25] });
+    expect(aboveLevel(pts.map(p => ({ ...p, p50: 100, p10: 90 }))).median).toBeNull();
+  });
+  it('shows the window first and names the onset probability as a separate output', () => {
+    render(<RiskPanel forecast={{ as_of: '2026-09-29T08:00:00Z', forecast: { points: pts }, spike_risk: { probability_120m: 0.3, calibrated: true, spike_in_progress: true }, alert: { state: 'none' } } as never} />);
+    expect(screen.getByTestId('risk-high-window')).toHaveTextContent('Median above 180 mg/dL from +10 to +20 min');
+    expect(screen.getByTestId('risk-high-window')).toHaveTextContent('Even the lower 10% bound is above 180 from +15 to +20 min.');
+    expect(screen.getByText('New-spike onset risk')).toBeInTheDocument();
+    expect(screen.getByText(/calibrated on the validation split; not independently tested/)).toBeInTheDocument();
+    expect(screen.getByTestId('spike-in-progress')).toBeInTheDocument();
+  });
+});
+
+describe('What-If: single-step blips are flagged, never smoothed', () => {
+  it('finds a one-step departure in the learned part that its neighbours do not share', () => {
+    const series = [0, 0, 0, 7, 0.5, 1, 2].map((f, i) => ({ min: i * 5, final: f, twin: 0 }));
+    expect(learnedBlip(series)).toEqual({ min: 15, final: 7, size: 6.75 });
+    expect(learnedBlip(series.map((r, i) => ({ ...r, final: i * 2 })))).toBeNull();
+  });
+  it('announces one sentence, not the whole result', () => {
+    const result = {
+      pinned_as_of: anchor, subject_id: 's', fallback_used: null, current_mg_dl: 150,
+      baseline_forecast: curve(150, 0, () => 150), scenario_forecast: curve(150, 0.5, i => 150 + 2 * i),
+      warnings: [{ code: 'SCENARIO_OUT_OF_RANGE', title: 'x' }], metrics: { delta_peak_mg_dl: 0, new_peak_mg_dl: 0, baseline_peak_mg_dl: 0, delta_probability: 0.1, new_probability: 0.5, baseline_probability: 0.4 },
+    };
+    expect(announce({ status: 'result', patientId: 's', asOf: anchor, input: { kind: 'meal', offset_min: 30, carbs_g: 60 }, result } as never))
+      .toBe('Result ready: 60 g carbohydrate meal in 30 min. Largest change at the same time +11.5 mg/dL at +120 min. Spike onset risk 40.0% to 50.0%. Inputs are outside the training range.');
+  });
+});
+
+describe('Replay hold', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+  it('follows the catch-up burst, freezes on its last forecast, and resumes the live replay on request', () => {
+    const f = (t: string) => ({ as_of: t });
+    const { result, rerender } = renderHook(({ fc }) => useReplayHold(fc, { n: fc?.as_of }, 'p1'), { initialProps: { fc: f('07:55') as { as_of: string } | null } });
+    expect(result.current.settling).toBe(true);
+    rerender({ fc: f('08:00') });
+    act(() => { jest.advanceTimersByTime(1600); });
+    expect(result.current.paused).toBe(true);
+    rerender({ fc: f('08:05') });
+    expect(result.current.forecast).toEqual(f('08:00'));
+    expect(result.current.cache).toEqual({ n: '08:00' });
+    act(() => result.current.resume());
+    expect(result.current.forecast).toEqual(f('08:05'));
+    expect(result.current.paused).toBe(false);
+    act(() => result.current.pause());
+    rerender({ fc: f('08:10') });
+    expect(result.current.forecast).toEqual(f('08:05'));
   });
 });

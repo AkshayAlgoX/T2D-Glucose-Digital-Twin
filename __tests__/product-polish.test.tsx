@@ -139,7 +139,8 @@ describe('Observed and forecast inspection', () => {
     fireEvent.focus(chart);
     let tooltip = within(screen.getByRole('tooltip'));
     expect(tooltip.getByText('121.25 mg/dL')).toBeVisible();
-    expect(tooltip.getByText('2026-10-04T11:50:12.345Z')).toBeVisible();
+    // The exact source timestamp stays machine-readable; the visible time matches the axis.
+    expect(tooltip.getByText('11:50 UTC')).toHaveAttribute('dateTime', '2026-10-04T11:50:12.345Z');
     expect(tooltip.queryByText('Forecast horizon')).not.toBeInTheDocument();
     fireEvent.keyDown(chart, { key: 'ArrowRight' });
     fireEvent.keyDown(chart, { key: 'ArrowRight' });
@@ -148,9 +149,9 @@ describe('Observed and forecast inspection', () => {
     expect(tooltip.getByText('130.3 mg/dL')).toBeVisible();
     expect(tooltip.getByText('108.2–151.4 mg/dL')).toBeVisible();
     expect(tooltip.getByText('99.1–162.5 mg/dL')).toBeVisible();
-    expect(tooltip.getByText('120 min')).toBeVisible();
+    expect(tooltip.queryByText('Forecast horizon')).not.toBeInTheDocument();
     fireEvent.keyDown(chart, { key: 'End' });
-    expect(within(screen.getByRole('tooltip')).getByText('2026-10-04T14:00:00Z')).toBeVisible();
+    expect(within(screen.getByRole('tooltip')).getByText('14:00 UTC')).toHaveAttribute('dateTime', '2026-10-04T14:00:00Z');
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     fireEvent.keyDown(chart, { key: 'Home' });
@@ -164,7 +165,7 @@ describe('Observed and forecast inspection', () => {
     expect(within(screen.getByRole('tooltip')).getByText('121.25 mg/dL')).toBeVisible();
     rerender(<ForecastCanvas forecast={{ ...forecast, forecast: { points: [{ offset_min: 5, p50: 130.3 }] } } as ForecastResponse} cache={cache} />);
     fireEvent.keyDown(screen.getByRole('img'), { key: 'End' });
-    expect(within(screen.getByRole('tooltip')).getAllByText('Unavailable')).toHaveLength(3);
+    expect(within(screen.getByRole('tooltip')).getAllByText('Unavailable')).toHaveLength(2);
   });
 
   it('inspects both sides with a pointer and dismisses until pointer re-entry', () => {

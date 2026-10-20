@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, ArrowRight, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
@@ -23,6 +23,8 @@ function compactContext() {
 }
 const serverContext = () => false;
 
+export interface ReplayControl { paused: boolean; settling: boolean; onPause: () => void; onResume: () => void }
+
 export interface PatientWorkspaceProps {
   patientId: string;
   forecast: ForecastResponse | null;
@@ -33,6 +35,7 @@ export interface PatientWorkspaceProps {
   connectionStatus?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
   retryCount?: number;
   onRetry?: () => void;
+  replay?: ReplayControl;
 }
 
 const medicationClassLabels: Record<MedClass, string> = {
@@ -231,6 +234,7 @@ export function PatientWorkspace({
   connectionStatus,
   retryCount,
   onRetry,
+  replay,
 }: PatientWorkspaceProps) {
   const compact = useSyncExternalStore(subscribeToContextLayout, compactContext, serverContext);
   const [contextExpanded, setContextExpanded] = useState(false);
@@ -290,7 +294,10 @@ export function PatientWorkspace({
               : 'Disconnected'}
           </span>
           {isStale && <span className="status-badge status-watch">Stale</span>}
-          {forecast?.as_of && <span className="tw-clock">Replay time <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
+          {forecast?.as_of && <span className="tw-clock">{replay?.paused ? 'Replay paused at' : 'Replay time'} <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
+          {replay && forecast && !replay.settling && <button type="button" className="replay-toggle" data-testid="replay-toggle" aria-pressed={replay.paused} onClick={replay.paused ? replay.onResume : replay.onPause}>
+            {replay.paused ? <><Play size={13} aria-hidden="true" />Resume replay</> : <><Pause size={13} aria-hidden="true" />Pause replay</>}
+          </button>}
           {qualityLabel && <span className={'tw-quality ' + (forecast?.data_quality?.status ?? '')}>{qualityLabel}</span>}
         </div>
       </header>
@@ -324,24 +331,27 @@ export function PatientWorkspace({
           )}
         </div>
       )}
+      {!forecast && !error && isReconnecting && <div role="status" className="workspace-reconnect" data-testid="workspace-reconnect">
+        <strong>Can&apos;t reach the subject stream.</strong> Retrying{retryCount ? ` (attempt ${retryCount})` : ''}… Nothing is shown until real data arrives.
+      </div>}
       {!(error && !forecast) && <div ref={tabsRef} className="tw-section-tabs" role="group" aria-label="Workspace view">
         {SECTIONS.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={SECTION_TARGET[id]} onClick={() => selectSection(id)}>{label}</button>)}
       </div>}
       {error && !forecast ? (
         <section className="workspace-unavailable-panel panel" aria-label="Workspace unavailable">
           <div className="empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>Workspace Unavailable</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>Workspace unavailable</h2>
             <p style={{ maxWidth: '480px', margin: '0 auto 24px', fontSize: '13px', color: 'var(--color-ink-3)', lineHeight: 1.6 }}>
               {error.message === 'patient-not-found'
                 ? 'The requested patient identifier was not found in the synthetic cohort.'
                 : error.message === 'contract-invalid'
                 ? 'The received stream failed contract validation. No unvalidated forecasts will be shown.'
-                : 'The subject stream could not be loaded. Please verify the backend service or return to the cohort directory.'}
+                : 'Check that the inference backend is running, then retry the connection, or return to the cohort.'}
             </p>
             <div className="empty-actions" style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
               <Link href="/cohort" className="primary-button" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <ArrowLeft size={14} aria-hidden="true" />
-                Return to Cohort Directory
+                Return to the cohort
               </Link>
             </div>
           </div>

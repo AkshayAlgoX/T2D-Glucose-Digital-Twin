@@ -155,10 +155,10 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Not yet evaluated')).toBeInTheDocument();
     expect(screen.getByText('Evaluation unavailable')).toBeInTheDocument();
     // Benchmark tables must NEVER appear beside an absent artifact
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
     expect(screen.queryByText('PR-TFT (Arm D)')).not.toBeInTheDocument();
     // Historical baseline reference remains visible as a separate, fixed record
-    expect(screen.getByText('Historical Development Reference (18-Subject Partition)')).toBeInTheDocument();
+    expect(screen.getByText('Historical development reference (18-subject partition)')).toBeInTheDocument();
   });
 
   it('renders "Invalid or incomplete evaluation artifacts" when JSON is malformed and does not show benchmark tables', async () => {
@@ -169,7 +169,7 @@ describe('EvidencePage', () => {
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
     expect(screen.getByText('Evaluation unavailable')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders "Invalid or incomplete evaluation artifacts" when required fields are missing', async () => {
@@ -183,7 +183,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders "Invalid or incomplete evaluation artifacts" when metric is NaN, null, or Infinity', async () => {
@@ -200,7 +200,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state when a primary horizon is missing (e.g. missing rmse_30 in pr_tft)', async () => {
@@ -217,7 +217,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state when confidence interval bounds are inverted (low > high)', async () => {
@@ -234,7 +234,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state on denominator mismatch in subgroups (evaluable rows > eligible anchors)', async () => {
@@ -252,7 +252,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state when patient wins count exceeds total patients', async () => {
@@ -270,7 +270,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state when comparator denominators mismatch in patient wins', async () => {
@@ -288,7 +288,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Invalid or incomplete evaluation artifacts')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders provenance-mismatch error state when a non-checkpoint manifest field is altered while checkpoint hash matches', async () => {
@@ -310,8 +310,8 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Evaluation artifact provenance mismatch')).toBeInTheDocument();
     expect(screen.getByText('Evaluation unavailable')).toBeInTheDocument();
     // Benchmark tables must NOT appear beside mismatched artifact
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
-    expect(screen.queryByText('Patient-Level Pairwise Win Rates (Exact Clopper-Pearson Binomial Intervals)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Patient-level pairwise win rates (Exact Clopper-Pearson Binomial Intervals)')).not.toBeInTheDocument();
   });
 
   it('renders error state and excludes benchmark tables when checkpoint hash mismatches', async () => {
@@ -332,7 +332,7 @@ describe('EvidencePage', () => {
 
     expect(screen.getByText('Evaluation artifact provenance mismatch')).toBeInTheDocument();
     expect(screen.getByText('Evaluation unavailable')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders error state and excludes benchmark tables when run_id mismatches', async () => {
@@ -353,7 +353,7 @@ describe('EvidencePage', () => {
 
     expect(screen.getByText('Evaluation artifact provenance mismatch')).toBeInTheDocument();
     expect(screen.getByText('Evaluation unavailable')).toBeInTheDocument();
-    expect(screen.queryByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matched baseline comparisons and patient-clustered uncertainty')).not.toBeInTheDocument();
   });
 
   it('renders verified benchmark tables when full evaluation artifact and manifest are perfectly valid', async () => {
@@ -370,11 +370,11 @@ describe('EvidencePage', () => {
     expect(screen.queryByText('Invalid or incomplete evaluation artifacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Evaluation artifact provenance mismatch')).not.toBeInTheDocument();
 
-    expect(screen.getByText('Matched Baseline Comparisons & Patient-Clustered Uncertainty')).toBeInTheDocument();
+    expect(screen.getByText('Matched baseline comparisons and patient-clustered uncertainty')).toBeInTheDocument();
     expect(screen.getAllByText('PR-TFT (Arm D)').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Patient-Level Pairwise Win Rates (Exact Clopper-Pearson Binomial Intervals)')).toBeInTheDocument();
-    expect(screen.getByText('Subgroup Robustness Across Clinical Strata')).toBeInTheDocument();
-    expect(screen.getByText('Historical Development Reference (18-Subject Partition)')).toBeInTheDocument();
+    expect(screen.getByText('Patient-level pairwise win rates (Exact Clopper-Pearson Binomial Intervals)')).toBeInTheDocument();
+    expect(screen.getByText('Subgroup robustness across clinical strata')).toBeInTheDocument();
+    expect(screen.getByText('Historical development reference (18-subject partition)')).toBeInTheDocument();
 
     // Verify unsupported language is completely absent
     expect(screen.queryByText(/Rule of Three/i)).not.toBeInTheDocument();
@@ -394,33 +394,33 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    // 10-Second Executive Summary Section
+    // 10-Second Executive summary Section
     expect(screen.getByText('Development validation at a glance')).toBeInTheDocument();
 
     // Pillar 1: Scope & Cohort
-    expect(screen.getByText('1. Evaluation Basis')).toBeInTheDocument();
-    expect(screen.getByText('44 Subjects')).toBeInTheDocument();
+    expect(screen.getByText('1. Evaluation basis')).toBeInTheDocument();
+    expect(screen.getByText('44 patients')).toBeInTheDocument();
     expect(screen.getByText('15 Healthy · 19 Prediabetes · 10 T2D')).toBeInTheDocument();
-    expect(screen.getByText('Synthetic Validation Split')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic validation split')).toBeInTheDocument();
 
     // Pillar 2: Baseline Comparison & Error Reduction
-    expect(screen.getByText('2. Forecast Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('2. Forecast accuracy')).toBeInTheDocument();
     // Headline is the hybrid vs the physiology twin alone; persistence is secondary text.
-    expect(screen.getByTestId('headline-vs-twin')).toHaveTextContent('-16.0%');
+    expect(screen.getByTestId('headline-vs-twin')).toHaveTextContent('−16.0%');
     expect(screen.getByTestId('headline-definition')).toHaveTextContent('60-min RMSE vs the physiology twin alone · 45.8% lower than persistence');
     expect(screen.getByTestId('error-by-horizon')).toHaveTextContent('Physiology twin alone');
-    expect(screen.getByText('Physics + Neural Residual')).toBeInTheDocument();
+    expect(screen.getByText('Twin + learned adjustment')).toBeInTheDocument();
 
     // Pillar 3: Target T2D Subgroup
-    expect(screen.getByText('3. Target Subgroup (T2D)')).toBeInTheDocument();
-    expect(screen.getByText('Δ -5.52 mg/dL')).toBeInTheDocument();
-    expect(screen.getByText('Exploratory · n=10 Subjects')).toBeInTheDocument();
+    expect(screen.getByText('3. Target subgroup (T2D)')).toBeInTheDocument();
+    expect(screen.getByText('Δ −4.49 mg/dL')).toBeInTheDocument();
+    expect(screen.getByText('Exploratory · 10 patients')).toBeInTheDocument();
 
     // Pillar 4: Realism & Limitations
-    expect(screen.getByText('4. Governance & Realism')).toBeInTheDocument();
+    expect(screen.getByText('4. Governance and realism')).toBeInTheDocument();
     expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
     expect(screen.getByText('AUROC 0.9320 (Target ≤ 0.65)')).toBeInTheDocument();
-    expect(screen.getByText('No Clinical Generalization')).toBeInTheDocument();
+    expect(screen.getByText('No clinical generalization')).toBeInTheDocument();
   });
 
   it('renders technical reproducibility details inside collapsible disclosure with byte verification', async () => {
@@ -433,7 +433,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Cryptographic Provenance & Verification Register')).toBeInTheDocument();
+    expect(screen.getByText('Artifact hashes and verification')).toBeInTheDocument();
     expect(screen.getByText('SHA-256 Verified')).toBeInTheDocument();
     expect(screen.getByText(MANIFEST_SHA)).toBeInTheDocument();
     expect(screen.getByText('b'.repeat(64))).toBeInTheDocument();
@@ -470,7 +470,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Resubstitution Diagnostics · Not Clinical Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('Resubstitution diagnostics · not clinical recommendations')).toBeInTheDocument();
     expect(screen.getByText(/Brier Score \(Raw → Calibrated\)/i)).toBeInTheDocument();
     expect(screen.getByText('0.0703')).toBeInTheDocument();
     expect(screen.getByText(/47,629 at-risk anchors/i)).toBeInTheDocument();
@@ -490,7 +490,7 @@ describe('EvidencePage', () => {
 
     expect(screen.getByAltText('Matched Baselines with 95% Patient-Clustered Bootstrap CIs')).toBeInTheDocument();
     expect(screen.getByAltText('Forecast Error Trajectory Across Horizons (5 to 120 min)')).toBeInTheDocument();
-    expect(screen.getByAltText('Subgroup Robustness Across Clinical Strata')).toBeInTheDocument();
+    expect(screen.getByAltText('Subgroup robustness across clinical strata')).toBeInTheDocument();
     expect(screen.getByAltText('Calibration Reliability Diagram with Equal-Width Probability Bins')).toBeInTheDocument();
     expect(screen.getByAltText('Gate 3 Realism Audit Discriminator Summary')).toBeInTheDocument();
   });
@@ -507,11 +507,11 @@ describe('EvidencePage', () => {
 
     // Negative governance findings must be explicit and unhidden
     expect(screen.getByText('Validation status and provenance register')).toBeInTheDocument();
-    expect(screen.getByText('Synthetic-Data Indistinguishability')).toBeInTheDocument();
-    expect(screen.getByText('SEALED & UNEXECUTED')).toBeInTheDocument();
-    expect(screen.getByText('ShanghaiT2DM Diagnostic')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic-data indistinguishability')).toBeInTheDocument();
+    expect(screen.getByText('Sealed · not run')).toBeInTheDocument();
+    expect(screen.getByText('ShanghaiT2DM diagnostic')).toBeInTheDocument();
     expect(screen.getByText('NO-GO')).toBeInTheDocument();
-    expect(screen.getByText('EW-01 Protocol')).toBeInTheDocument();
+    expect(screen.getByText('EW-01 protocol')).toBeInTheDocument();
     expect(screen.getByText('UNEXECUTED')).toBeInTheDocument();
   });
 
@@ -526,10 +526,10 @@ describe('EvidencePage', () => {
     const appendix = screen.getByTestId('methodology-appendix');
     expect(appendix.tagName).toBe('DETAILS');
     expect(appendix).not.toHaveAttribute('open');
-    expect(appendix).toContainElement(screen.getByText('Historical Development Reference (18-Subject Partition)'));
+    expect(appendix).toContainElement(screen.getByText('Historical development reference (18-subject partition)'));
     expect(appendix.querySelector('details.reproducibility-details')).not.toBeNull();
     // The negative register stays outside the appendix.
-    expect(appendix).not.toContainElement(screen.getByText('Synthetic-Data Indistinguishability'));
+    expect(appendix).not.toContainElement(screen.getByText('Synthetic-data indistinguishability'));
   });
 
   it('answers the four essential questions on the first screen hero', async () => {
@@ -544,7 +544,7 @@ describe('EvidencePage', () => {
 
     // Question 1: What data was evaluated?
     expect(screen.getByText('What data was evaluated?')).toBeInTheDocument();
-    expect(screen.getByText('44 Subjects')).toBeInTheDocument();
+    expect(screen.getByText('44 patients')).toBeInTheDocument();
     expect(screen.getByText('15 Healthy · 19 Prediabetes · 10 T2D')).toBeInTheDocument();
     expect(screen.getByText(/repeated 5-minute time points/i)).toBeInTheDocument();
 
@@ -554,7 +554,7 @@ describe('EvidencePage', () => {
 
     // Question 3: What was observed in target T2D?
     expect(screen.getByText('What was observed in T2D?')).toBeInTheDocument();
-    expect(screen.getByText('Δ -5.52 mg/dL')).toBeInTheDocument();
+    expect(screen.getByText('Δ −4.49 mg/dL')).toBeInTheDocument();
     expect(screen.getByText(/Exploratory evidence from only 10 simulated T2D subjects/i)).toBeInTheDocument();
 
     // Question 4: What remains unproven?
@@ -593,7 +593,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Provenance hashes match')).toBeInTheDocument();
+    expect(screen.getByText('Artifacts match the run manifest')).toBeInTheDocument();
     expect(screen.queryByText('Audited Validation Benchmark')).not.toBeInTheDocument();
     expect(screen.queryByText(/Recorded artifact — review required/i)).not.toBeInTheDocument();
   });

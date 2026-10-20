@@ -121,7 +121,7 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       expect(note.textContent).toContain('an empirical model adjustment, not a causal effect or accuracy improvement, and not a separately validated mechanism.');
 
       const adjustmentLabel = screen.getByTestId('forecast-adjustment-card').querySelector('.metric-label');
-      expect(adjustmentLabel?.textContent).toBe('② Learned model adjustment');
+      expect(adjustmentLabel?.textContent).toBe('② Learned adjustment');
       // Strictly avoid claiming causal effect or accuracy improvement
       expect(adjustmentLabel?.textContent).not.toContain('causal effect');
       expect(adjustmentLabel?.textContent).not.toContain('accuracy improvement');

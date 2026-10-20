@@ -7,8 +7,38 @@ const driverLabels: Record<string, string> = {
   return_to_personal_baseline: 'Return to personal baseline',
   logged_meals_absorbing: 'Logged meal absorption',
   expected_habitual_meal: 'Expected habitual meal',
-  learned_correction: 'Learned correction',
+  learned_correction: 'Learned adjustment',
 };
+
+type Window = [number, number] | null;
+const span = (offsets: number[]): Window => (offsets.length ? [Math.min(...offsets), Math.max(...offsets)] : null);
+
+/** When the forecast trajectory sits above a glucose level: arithmetic on the returned quantiles only. */
+export function aboveLevel(points: ReadonlyArray<{ offset_min: number; p10?: number | null; p50: number; p90?: number | null }>, level = 180) {
+  const sorted = [...points].sort((a, b) => a.offset_min - b.offset_min);
+  const median = sorted.filter(p => p.p50 > level).map(p => p.offset_min);
+  const step = sorted.length > 1 ? sorted[1].offset_min - sorted[0].offset_min : 5;
+  return {
+    median: span(median),
+    medianContiguous: median.length < 2 || (median[median.length - 1] - median[0]) / step + 1 === median.length,
+    lower: span(sorted.filter(p => typeof p.p10 === 'number' && p.p10 > level).map(p => p.offset_min)),
+    upper: span(sorted.filter(p => typeof p.p90 === 'number' && p.p90 > level).map(p => p.offset_min)),
+  };
+}
+
+function HighGlucoseWindow({ points }: { points: NonNullable<ForecastResponse['forecast']>['points'] }) {
+  const w = aboveLevel(points);
+  const range = (r: [number, number]) => (r[0] === r[1] ? `at +${r[0]} min` : `from +${r[0]} to +${r[1]} min`);
+  return (
+    <div className={'risk-high' + (w.median ? ' is-high' : '')} data-testid="risk-high-window">
+      <span className="risk-kicker">Forecast glucose vs 180 mg/dL</span>
+      {w.median ? <p className="risk-high-main">Median above 180 mg/dL {w.medianContiguous ? range(w.median) : `at times between +${w.median[0]} and +${w.median[1]} min`}</p>
+        : w.upper ? <p className="risk-high-main">Median stays below 180 mg/dL; the upper 10% bound is above it {range(w.upper)}</p>
+        : <p className="risk-high-main">Below 180 mg/dL across the 80% band for the next 2 h</p>}
+      {w.median && <p className="risk-high-sub">{w.lower ? `Even the lower 10% bound is above 180 ${range(w.lower)}.` : 'The lower 10% bound stays below 180.'} Read from the forecast bands.</p>}
+    </div>
+  );
+}
 
 export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   const risk = forecast?.spike_risk;
@@ -35,7 +65,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   return (
     <div className="risk-panel">
       <section className="risk-summary" aria-labelledby="risk-heading">
-        <div className="section-heading"><h2 id="risk-heading"><Gauge size={16} aria-hidden="true" /> Spike risk</h2><span className="fine-print">Next 120 min</span></div>
+        <div className="section-heading"><h2 id="risk-heading"><Gauge size={16} aria-hidden="true" /> Risk · next 2 hours</h2></div>
         {!forecast ? (
           <>
             <div className="risk-estimate" aria-busy="true"><span className="skeleton skeleton-risk-value" aria-hidden="true" /><span>onset probability</span></div>
@@ -45,10 +75,13 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
           </>
         ) : (
           <>
+            {!!forecast.forecast?.points?.length && <HighGlucoseWindow points={forecast.forecast.points} />}
+            <span className="risk-kicker">New-spike onset risk</span>
             <div className="risk-estimate">{prob != null ? formatPct(prob, 1) : '—'}<span>onset probability</span></div>
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
             <div className={'risk-alert ' + tone}>{alert?.state === 'watch' || alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong></div>
-            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated)' : ' (not calibrated)' : ''}.</p>
+            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}. A separate model output from the curve: it can fall while glucose is already high.</p>
+            {risk?.spike_in_progress && <p className="risk-in-progress" data-testid="spike-in-progress">The service reports a spike already in progress.</p>}
             <p className="fine-print risk-definition" data-testid="risk-definition">Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min, and stays there 15 min.</p>
             {!!checkpoints.length && <div className="cumulative-summary">
               <span>Cumulative onset probability · next&nbsp;2&nbsp;h</span>

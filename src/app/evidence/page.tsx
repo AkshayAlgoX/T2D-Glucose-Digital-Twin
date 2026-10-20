@@ -205,6 +205,9 @@ const ReportSchema = z.object({
   }).passthrough(),
 }).passthrough();
 
+/** Signed value with a true minus sign, to two decimals. */
+const minus = (v: number | undefined) => (v == null ? '—' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(2));
+
 /** Collapsible evidence block: the title row stays visible, detail opens on demand; content stays in the DOM. */
 function EvidenceDisclosure({ labelledBy, label, defaultOpen = false, children }: { labelledBy: string; label: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
@@ -314,7 +317,7 @@ export default async function EvidencePage() {
         {/* Page Header */}
         <header className="workspace-heading">
           <div>
-            <span className="eyebrow">Scientific Evidence &amp; Governance Registry</span>
+            <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
           </div>
@@ -335,7 +338,7 @@ export default async function EvidencePage() {
               ) : (
                 <>
                   <CheckCircle2 size={14} aria-hidden="true" />
-                  Provenance hashes match
+                  Artifacts match the run manifest
                 </>
               )}
             </span>
@@ -381,11 +384,11 @@ export default async function EvidencePage() {
           </div>
         )}
 
-        {/* 10-Second Executive Summary Hero - Answering Four Essential Questions */}
+        {/* 10-Second Executive summary Hero - Answering Four Essential Questions */}
         {!errorState && report && metrics && (
           <section className="panel evidence-hero" aria-labelledby="exec-summary-heading">
             <div className="evidence-hero-header">
-              <span className="eyebrow">Executive Summary</span>
+              <span className="eyebrow">Executive summary</span>
               <h2 id="exec-summary-heading">Development validation at a glance</h2>
               <p>
                 Core scientific findings and negative boundaries evaluated on the 44 simulated demonstration subjects in the validation cohort. Four questions, answered from the recorded evaluation:
@@ -397,11 +400,11 @@ export default async function EvidencePage() {
               <div className="evidence-pillar-card pillar-scope">
                 <div>
                   <div className="pillar-label">
-                    <span>1. Evaluation Basis</span>
+                    <span>1. Evaluation basis</span>
                     <Users size={14} aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">What data was evaluated?</h3>
-                  <div className="pillar-stat">44 Subjects</div>
+                  <div className="pillar-stat">44 patients</div>
                   <div className="pillar-substat">15 Healthy · 19 Prediabetes · 10 T2D</div>
                   <details className="pillar-more"><summary>What the rows are</summary>
                   <p className="pillar-desc">
@@ -410,67 +413,67 @@ export default async function EvidencePage() {
                   </p>
                   </details>
                 </div>
-                <span className="pillar-tag">Synthetic Validation Split</span>
+                <span className="pillar-tag">Synthetic validation split</span>
               </div>
 
               {/* Question 2: How did the hybrid model compare? */}
               <div className="evidence-pillar-card pillar-performance">
                 <div>
                   <div className="pillar-label">
-                    <span>2. Forecast Accuracy</span>
+                    <span>2. Forecast accuracy</span>
                     <TrendingDown size={14} aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">How did the hybrid model compare?</h3>
                   <div className="pillar-stat stat-accent" data-testid="headline-vs-twin">
-                    {paired ? `-${paired.pr_minus_twin_rmse_60.relative_reduction_pct.toFixed(1)}%` : '—'}
+                    {paired ? `−${paired.pr_minus_twin_rmse_60.relative_reduction_pct.toFixed(1)}%` : '—'}
                   </div>
                   <div className="pillar-substat" data-testid="headline-definition">
                     60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
                   </div>
                   <details className="pillar-more"><summary>Per-horizon values and how to read them</summary>
                   <div className="pillar-compact-summary">
-                    <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_30.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_30.diff.toFixed(2)} vs PE)</span></div>
-                    <div className="summary-row"><span>60m:</span> <strong>{metrics.rmse_60.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_60.ci_95 ? `${metrics.rmse_60.ci_95[0].toFixed(2)}–${metrics.rmse_60.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_60.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_60.diff.toFixed(2)} vs PE)</span></div>
-                    <div className="summary-row"><span>120m:</span> <strong>{metrics.rmse_120.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_120.ci_95 ? `${metrics.rmse_120.ci_95[0].toFixed(2)}–${metrics.rmse_120.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_120.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_120.diff.toFixed(2)} vs PE)</span></div>
+                    <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {minus(paired?.pr_minus_twin_rmse_30.diff)} vs twin alone; {minus(paired?.pr_minus_persistence_rmse_30.diff)} vs persistence)</span></div>
+                    <div className="summary-row"><span>60m:</span> <strong>{metrics.rmse_60.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_60.ci_95 ? `${metrics.rmse_60.ci_95[0].toFixed(2)}–${metrics.rmse_60.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {minus(paired?.pr_minus_twin_rmse_60.diff)} vs twin alone; {minus(paired?.pr_minus_persistence_rmse_60.diff)} vs persistence)</span></div>
+                    <div className="summary-row"><span>120m:</span> <strong>{metrics.rmse_120.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_120.ci_95 ? `${metrics.rmse_120.ci_95[0].toFixed(2)}–${metrics.rmse_120.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {minus(paired?.pr_minus_twin_rmse_120.diff)} vs twin alone; {minus(paired?.pr_minus_persistence_rmse_120.diff)} vs persistence)</span></div>
                   </div>
                   <p className="pillar-desc">
                     <strong style={{ color: 'var(--color-ink-2)' }}>What this means:</strong> Lower RMSE (Root Mean Square Error in mg/dL) means predicted glucose tracks closer to actual readings, reducing large trajectory errors. Paired differences are strictly negative in 10,000/10,000 bootstrap draws.
                   </p>
                   </details>
                 </div>
-                <span className="pillar-tag">Physics + Neural Residual</span>
+                <span className="pillar-tag">Twin + learned adjustment</span>
               </div>
 
               {/* Question 3: What was observed in target T2D? */}
               <div className="evidence-pillar-card pillar-subgroup">
                 <div>
                   <div className="pillar-label">
-                    <span>3. Target Subgroup (T2D)</span>
+                    <span>3. Target subgroup (T2D)</span>
                     <Activity size={14} aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">What was observed in T2D?</h3>
                   <div className="pillar-stat">
-                    {subgroups?.['Type 2'] ? `\u0394 -5.52 mg/dL` : '—'}
+                    {subgroups?.['Type 2'] ? `\u0394 −4.49 mg/dL` : '—'}
                   </div>
                   <div className="pillar-substat">
-                    T2D 120m RMSE: {subgroups?.['Type 2']?.rmse_120.toFixed(2) ?? '26.55'} vs 32.07 (Twin) vs 50.83 (PE)
+                    60-min RMSE: {subgroups?.['Type 2']?.rmse_60.toFixed(2) ?? '19.18'} hybrid vs 23.67 twin alone vs 36.04 persistence
                   </div>
-                  <p className="pillar-note">Exploratory: 10 simulated subjects, no interval on the subgroup difference.</p>
+                  <p className="pillar-note">At 120 min: {subgroups?.['Type 2']?.rmse_120.toFixed(2) ?? '26.55'} vs 32.07 vs 50.83 (Δ −5.52). Exploratory: 10 simulated patients, no interval on the subgroup difference.</p>
                   <details className="pillar-more"><summary>Details</summary>
                   <p className="pillar-desc">
-                    At 120 minutes, the hybrid model achieves 26.55 mg/dL RMSE vs 32.07 for UKF-only and 50.83 for persistence. The hybrid-vs-UKF difference is -5.52 mg/dL—the largest margin among subgroups (vs -2.47 mg/dL in Healthy). Subgroup values from docs/evidence/validation_ceiling_results.json; 10 subjects, no interval on the subgroup difference, so exploratory.
+                    The hybrid-minus-twin difference is the largest of the three subgroups at both horizons (60 min: −4.49 vs −3.03 Healthy and −3.82 Prediabetes; 120 min: −5.52 vs −2.47 and −3.37). Hybrid values come from the verified evaluation report; twin and persistence subgroup values from docs/evidence/validation_ceiling_results.json. 10 patients and no interval on the subgroup difference, so exploratory.
                     <br /><strong style={{ color: 'var(--color-ink-2)' }}>Exploratory boundary:</strong> Exploratory evidence from only 10 simulated T2D subjects in the development partition; clinical validation in real patients is required.
                   </p>
                   </details>
                 </div>
-                <span className="pillar-tag">Exploratory · n=10 Subjects</span>
+                <span className="pillar-tag">Exploratory · 10 patients</span>
               </div>
 
               {/* Question 4: What remains unproven? */}
               <div className="evidence-pillar-card pillar-limitations">
                 <div>
                   <div className="pillar-label">
-                    <span>4. Governance &amp; Realism</span>
+                    <span>4. Governance and realism</span>
                     <XCircle size={14} color="var(--color-danger)" aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">What remains unproven?</h3>
@@ -488,7 +491,7 @@ export default async function EvidencePage() {
                   </ul>
                 </div>
                 <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
-                  No Clinical Generalization
+                  No clinical generalization
                 </span>
               </div>
             </div>
@@ -547,13 +550,13 @@ export default async function EvidencePage() {
             <EvidenceDisclosure labelledBy="baselines-heading" label="Matched-baseline table · RMSE, MAE, MARD and paired differences">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                 <div>
-                  <span className="eyebrow">Controlled Benchmarks</span>
+                  <span className="eyebrow">Controlled benchmarks</span>
                   <h2 id="baselines-heading" style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 600 }}>
-                    Matched Baseline Comparisons &amp; Patient-Clustered Uncertainty
+                    Matched baseline comparisons and patient-clustered uncertainty
                   </h2>
                 </div>
                 <span className="status-badge" style={{ background: 'transparent', borderColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
-                  n=44 Subjects · B=10,000 Cluster Resamples (Primary)
+                  n=44 patients · B=10,000 Cluster Resamples (Primary)
                 </span>
               </div>
 
@@ -691,13 +694,13 @@ export default async function EvidencePage() {
               <EvidenceDisclosure labelledBy="patient-wins-heading" label="Patient-level pairwise wins">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                   <div>
-                    <span className="eyebrow">Subject-Level Consistency</span>
+                    <span className="eyebrow">Subject-level consistency</span>
                     <h2 id="patient-wins-heading" style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 600 }}>
-                      Patient-Level Pairwise Win Rates (Exact Clopper-Pearson Binomial Intervals)
+                      Patient-level pairwise win rates (Exact Clopper-Pearson Binomial Intervals)
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: 'var(--color-accent-ink)', color: 'var(--color-accent-ink)' }}>
-                    n=44 Subjects · Exact Binomial Test
+                    n=44 patients · Exact Binomial Test
                   </span>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
@@ -743,9 +746,9 @@ export default async function EvidencePage() {
               <EvidenceDisclosure labelledBy="subgroups-heading" label="Subgroups · Healthy, Prediabetes, Type 2">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                   <div>
-                    <span className="eyebrow">Diagnostic Stratification</span>
+                    <span className="eyebrow">Diagnostic stratification</span>
                     <h2 id="subgroups-heading" style={{ fontSize: '16px', fontWeight: 600, margin: '4px 0 0' }}>
-                      Subgroup Robustness Across Clinical Strata
+                      Subgroup robustness across clinical strata
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: '#8c5b0c', color: '#8c5b0c', background: 'rgba(140, 91, 12, 0.08)' }}>
@@ -772,7 +775,7 @@ export default async function EvidencePage() {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                           <strong style={{ fontSize: '14px', color: isT2D ? '#8c5b0c' : 'var(--color-ink)' }}>
-                            {groupName} {isT2D ? '(Target Clinical Focus)' : ''}
+                            {groupName} {isT2D ? '(target clinical focus)' : ''}
                           </strong>
                           <span className="status-badge" style={{ fontSize: '11px' }}>
                             n={sg.n_patients} pts · {sg.n_anchors_eligible?.toLocaleString()} eligible
@@ -801,7 +804,7 @@ export default async function EvidencePage() {
                 </div>
 
                 <div className="evidence-chart-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
-                  <img src="/evidence/subgroup_robustness.svg" alt="Subgroup Robustness Across Clinical Strata" />
+                  <img src="/evidence/subgroup_robustness.svg" alt="Subgroup robustness across clinical strata" />
                 </div>
               </EvidenceDisclosure>
             )}
@@ -811,9 +814,9 @@ export default async function EvidencePage() {
               <EvidenceDisclosure labelledBy="patient-dist-heading" label="Per-patient error dispersion">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                   <div>
-                    <span className="eyebrow">Cohort Dispersion</span>
+                    <span className="eyebrow">Cohort dispersion</span>
                     <h2 id="patient-dist-heading" style={{ fontSize: '16px', fontWeight: 600, margin: '4px 0 0' }}>
-                      Patient-Level Error Distribution
+                      Patient-level error distribution
                     </h2>
                   </div>
                   <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
@@ -859,13 +862,13 @@ export default async function EvidencePage() {
               <EvidenceDisclosure labelledBy="cal-limits-heading" label="Calibration and interval coverage (resubstitution diagnostics)">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                   <div>
-                    <span className="eyebrow">Secondary Diagnostics</span>
+                    <span className="eyebrow">Secondary diagnostics</span>
                     <h2 id="cal-limits-heading" style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 600 }}>
-                      Calibration Diagnostics &amp; Saturation Disclosures (RESUBSTITUTION)
+                      Calibration diagnostics and saturation disclosures (RESUBSTITUTION)
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: '#8c5b0c', color: '#8c5b0c' }}>
-                    Resubstitution Diagnostics · Not Clinical Recommendations
+                    Resubstitution diagnostics · not clinical recommendations
                   </span>
                 </div>
 
@@ -945,11 +948,11 @@ export default async function EvidencePage() {
               </EvidenceDisclosure>
             )}
 
-            {/* 6. Scientific Governance & Boundary Disclosures Register */}
+            {/* 6. Scientific governance & Boundary Disclosures Register */}
             <section className="panel evidence-section" aria-labelledby="governance-heading" style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                 <div>
-                  <span className="eyebrow">Scientific Governance</span>
+                  <span className="eyebrow">Scientific governance</span>
                   <h2 id="governance-heading" style={{ margin: '4px 0 0' }}>Validation status and provenance register</h2>
                 </div>
               </div>
@@ -964,7 +967,7 @@ export default async function EvidencePage() {
                         <XCircle size={12} aria-hidden="true" /> {gate3.status}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Synthetic-Data Indistinguishability</h3>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Synthetic-data indistinguishability</h3>
                     <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
                       A classifier can tell our synthetic glucose windows from those of an independent mock-real generator (16,719 synthetic vs 16,443 mock-real windows). The comparison data are also synthetic, so this says nothing about realism against people.
                     </p>
@@ -991,12 +994,12 @@ export default async function EvidencePage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Sealed Test Split</span>
                     <span className="status-badge" style={{ color: '#4b5563', borderColor: '#9ca3af', background: 'rgba(75, 85, 99, 0.08)' }}>
-                      SEALED &amp; UNEXECUTED
+                      Sealed · not run
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Held-Out Test Cohort</h3>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Held-out test cohort</h3>
                   <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                    Sealed evaluation on the held-out test split (44 patients) was strictly not executed.
+                    Sealed evaluation on the held-out test split (a separate set of 44 patients, not the 44 validation patients) was strictly not executed.
                   </p>
                   <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
                     <div><strong>Why it is not run:</strong> the model was trained from code that had not been committed, and two training source files have changed since, so a test result could not be tied to exactly reproducible code.</div>
@@ -1017,7 +1020,7 @@ export default async function EvidencePage() {
                       <AlertCircle size={12} aria-hidden="true" /> NO-GO
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>ShanghaiT2DM Diagnostic</h3>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>ShanghaiT2DM diagnostic</h3>
                   <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
                     Assessed diagnostically for input-contract feasibility with the locked model.
                   </p>
@@ -1031,7 +1034,7 @@ export default async function EvidencePage() {
                   </p>
                 </div>
 
-                {/* EW-01 Protocol */}
+                {/* EW-01 protocol */}
                 <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Early Warning</span>
@@ -1039,7 +1042,7 @@ export default async function EvidencePage() {
                       UNEXECUTED
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>EW-01 Protocol</h3>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>EW-01 protocol</h3>
                   <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
                     The pre-registered study of early-warning spike alerts has not been run.
                   </p>
@@ -1059,16 +1062,16 @@ export default async function EvidencePage() {
 
         {/* Methodology appendix: everything a reviewer may audit, out of the reading path. */}
         <details className="panel evidence-section evidence-disclosure methodology-appendix" data-testid="methodology-appendix">
-          <summary><span>Methodology appendix<small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
+          <summary><span>Methodology appendix <small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
         <section className="evidence-disclosure-body" aria-labelledby="historical-record-heading">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate Fixed Evidence Record</span>
+            <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate fixed evidence record</span>
             <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
               Historical Baseline Reference
             </span>
           </div>
           <h2 id="historical-record-heading" style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 8px' }}>
-            Historical Development Reference (18-Subject Partition)
+            Historical development reference (18-subject partition)
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: 0 }}>
             Earlier development reference recorded in <code>backend/runs/pr_tft_demo/evaluation_baseline.json</code> evaluated 18 subjects under demo checkpoint <code>stage2_observed-epoch=01-val_loss=0.3096.ckpt</code> (Persistence RMSE120: 50.66, Twin-only RMSE120: 40.20). This historical record is preserved separately for reference only; direct numerical superiority claims over it are cohort-unverified.
@@ -1080,8 +1083,8 @@ export default async function EvidencePage() {
           <details className="reproducibility-details" style={{ marginBottom: '16px' }}>
             <summary className="reproducibility-summary">
               <div className="reproducibility-summary-title">
-                <span className="eyebrow" style={{ color: 'var(--color-accent)' }}>Technical Methodology &amp; Reproducibility</span>
-                <h3>Cryptographic Provenance &amp; Verification Register</h3>
+                <span className="eyebrow" style={{ color: 'var(--color-accent)' }}>Technical methodology and reproducibility</span>
+                <h3>Artifact hashes and verification</h3>
                 <p>Click to inspect SHA-256 byte manifests, training checkpoint provenance, data integrity digests, and pipeline parameters.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

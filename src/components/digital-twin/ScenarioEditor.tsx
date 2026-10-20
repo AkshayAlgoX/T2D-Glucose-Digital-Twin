@@ -20,8 +20,7 @@ const PRESET_ICONS: Record<string, React.ComponentType<{ size?: number; 'aria-hi
 
 const PRESETS: Array<{ id: string; label: string; form: Partial<FormState> }> = [
   { id: 'meal', label: '60 g carb meal in 30 min', form: { kind: 'meal', carbs: '60', offset: '30' } },
-  { id: 'walk', label: '30 min brisk walk now', form: { kind: 'activity', duration: '30', intensity: 'moderate', offset: '0' } },
-  { id: 'skip', label: 'Skip usual dinner', form: { kind: 'skip_habitual_meal', slot: 'dinner' } },
+  { id: 'walk', label: '30 min moderate activity now', form: { kind: 'activity', duration: '30', intensity: 'moderate', offset: '0' } },
   // Kept as a one-click demonstration of the refusal: the backend answers SCENARIO_UNSUPPORTED.
   { id: 'medication', label: 'Medication change', form: { kind: 'medication' } },
 ];
@@ -260,11 +259,12 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
   const finalLine = d3Shape.line<{ min: number; final: number }>().x(r => x(r.min)).y(r => y(r.final));
   const twinLine = d3Shape.line<{ min: number; twin: number }>().x(r => x(r.min)).y(r => y(r.twin));
   const gap = d3Shape.area<{ min: number; final: number; twin: number }>().x(r => x(r.min)).y0(r => y(r.twin)).y1(r => y(r.final));
+  const blip = learnedBlip(series);
   const lastFinal = series[series.length - 1];
   const lastTwin = twinRows[twinRows.length - 1];
   const finalMax = rows.reduce<typeof rows[number] | null>((b, r) => (!b || Math.abs(r.final) > Math.abs(b.final) ? r : b), null);
   const twinMax = rows.filter(r => r.twin != null).reduce<typeof rows[number] | null>((b, r) => (!b || Math.abs(r.twin as number) > Math.abs(b.twin as number) ? r : b), null);
-  const label = `Change from the plan at each time. Final forecast: largest ${finalMax ? signed(finalMax.final, 1, ' mg/dL') + ' at +' + finalMax.min + ' min' : 'unavailable'}.` +
+  const label = `Change from the plan at each time.${blip ? ` A single 5-min blip in the learned adjustment at +${blip.min} min.` : ''} Final forecast: largest ${finalMax ? signed(finalMax.final, 1, ' mg/dL') + ' at +' + finalMax.min + ' min' : 'unavailable'}.` +
     (twinMax ? ` Physiology twin alone: largest ${signed(twinMax.twin as number, 1, ' mg/dL')} at +${twinMax.min} min.` : '');
   return (
     <div ref={ref} className="whatif-change-chart" data-testid="whatif-change-chart">
@@ -284,6 +284,10 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
           const r = series.find(q => q.min === step.offset);
           return r ? <circle cx={x(r.min)} cy={y(r.final)} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} aria-hidden="true" /> : null;
         })()}
+        {blip && <g data-testid="change-blip" aria-hidden="true">
+          <circle cx={x(blip.min)} cy={y(blip.final)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
+          <text x={x(blip.min) + (blip.min > 60 ? -10 : 10)} y={y(blip.final) - 8} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis step-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
+        </g>}
         {labelled && <g aria-hidden="true">{spreadLabels([
           { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
           ...(lastTwin ? [{ key: 't', y: y(lastTwin.twin), text: 'Twin alone', cls: 'lbl-twin' }] : []),
@@ -297,6 +301,24 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
       </div>
     </div>
   );
+}
+
+/**
+ * A single 5-min departure in the learned adjustment's part of the change (final change minus the
+ * twin's change) that its neighbours do not share: a known behaviour of the shipped network
+ * (docs/evidence/model_audit/MODEL_AUDIT_20261020.md). Flagged, never smoothed.
+ */
+export function learnedBlip(series: Array<{ min: number; final: number; twin: number | null }>, minSize = 4) {
+  let best: { min: number; final: number; size: number } | null = null;
+  for (let i = 1; i < series.length - 1; i++) {
+    const [a, b, c] = [series[i - 1], series[i], series[i + 1]];
+    if (a.twin == null || b.twin == null || c.twin == null) continue;
+    const la = a.final - a.twin, lb = b.final - b.twin, lc = c.final - c.twin;
+    const size = Math.abs(lb - (la + lc) / 2);
+    const reverts = Math.sign(lb - la) !== 0 && Math.sign(lb - la) === -Math.sign(lc - lb);
+    if (reverts && size > minSize && (!best || size > best.size)) best = { min: b.min, final: b.final, size };
+  }
+  return best;
 }
 
 /** Every returned value at 15-minute steps, for reading without the charts. */
@@ -316,6 +338,7 @@ function ChangeTable({ result }: { result: ScenarioComparison }) {
 
 function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 'result' }>; liveAsOf?: string | null }) {
   const resultRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const el = resultRef.current;
     if (!el || typeof el.scrollIntoView !== 'function') return;
@@ -323,6 +346,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
     const rect = el.getBoundingClientRect();
     // Only scroll when the new result is mostly off-screen (typically on phones).
     if (rect.top > window.innerHeight * 0.6) el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    titleRef.current?.focus({ preventScroll: true });
   }, [state.asOf, state.result]);
   const { metrics, warnings, fallback_used } = state.result;
   const riskAvailable = metrics.baseline_probability != null && metrics.new_probability != null;
@@ -330,12 +354,13 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   const change = changeWindow(state.input);
+  const wide = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 600px)').matches;
   return (
     <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
-      <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
+      <h3 ref={titleRef} tabIndex={-1} className="whatif-result-title">Result: {describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></h3>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
         <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
-        <details open><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
+        <details open={wide}><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
       </div>}
       <figure className="whatif-figure">
         <figcaption><strong>Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC</span></figcaption>
@@ -382,6 +407,8 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
 
 function ErrorPanel({ state }: { state: Extract<ScenarioState, { status: 'error' }> }) {
   const { error } = state;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.focus({ preventScroll: true }); }, [error]);
   const body = {
     unsupported: 'The twin served here has no drug terms, so medication changes are refused rather than guessed. Meal, activity and skipped-meal scenarios are supported.',
     insufficient: 'The service will not simulate without a valid baseline forecast at this time point. No values have been substituted.',
@@ -390,7 +417,7 @@ function ErrorPanel({ state }: { state: Extract<ScenarioState, { status: 'error'
     unavailable: 'Check that the inference backend is running, then try again. Nothing has been simulated locally.',
   }[error.kind];
   return (
-    <div className={`whatif-error ${error.kind === 'unsupported' ? 'neutral' : ''}`} data-testid="scenario-error" data-kind={error.kind}>
+    <div ref={ref} tabIndex={-1} className={`whatif-error ${error.kind === 'unsupported' ? 'neutral' : ''}`} data-testid="scenario-error" data-kind={error.kind}>
       <strong>{error.title}</strong>
       <p>{body}</p>
       {error.detail && <p className="fine-print">Service detail ({error.code}): {error.detail}</p>}
@@ -416,6 +443,18 @@ export function useSettlingAnchor(asOf: string | null, quietMs = 1500) {
     return () => clearTimeout(timer);
   }, [asOf, quietMs]);
   return settling;
+}
+
+/** One sentence for screen readers when the scenario state changes. */
+export function announce(state: ScenarioState): string {
+  if (state.status === 'loading') return `Simulating ${describeInput(state.input)}.`;
+  if (state.status === 'error') return `${state.error.title}.`;
+  if (state.status !== 'result') return '';
+  const sum = summarizeComparison(state.result);
+  const m = state.result.metrics;
+  const risk = m.baseline_probability != null && m.new_probability != null ? ` Spike onset risk ${pct(m.baseline_probability)} to ${pct(m.new_probability)}.` : '';
+  const warn = state.result.warnings.some(w => w.code === 'SCENARIO_OUT_OF_RANGE') ? ' Inputs are outside the training range.' : '';
+  return `Result ready: ${describeInput(state.input)}. Largest change at the same time ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
 }
 
 export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast?: ForecastResponse | null }) {
@@ -503,7 +542,8 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         {'error' in built && <p role="alert" className="whatif-invalid">{built.error}</p>}
       </form>
 
-      <div aria-live="polite" aria-busy={loading} className="whatif-output">
+      <p className="sr-only" aria-live="polite" data-testid="scenario-announcement">{announce(state)}</p>
+      <div aria-busy={loading} className="whatif-output">
         {!asOf && !settling && <p className="fine-print" data-testid="scenario-waiting">Waiting for the first forecast before a scenario can run.</p>}
         {settling && <p className="fine-print" data-testid="scenario-settling">Loading recent history; simulation is available once the stream reaches the latest reading.</p>}
         {asOf && insufficient && state.status === 'idle' && <p className="fine-print" data-testid="scenario-insufficient-hint">Current data quality is insufficient; the service is expected to refuse a simulation at this point.</p>}

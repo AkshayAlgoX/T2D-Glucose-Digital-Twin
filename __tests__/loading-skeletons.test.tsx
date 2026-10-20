@@ -302,8 +302,8 @@ describe('Workspace Loading Skeletons and Lifecycle', () => {
     expect(container.querySelectorAll('.skeleton').length).toBe(0);
 
     // Clean empty state card with Return to Cohort Directory link
-    expect(screen.getByText('Workspace Unavailable')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Return to Cohort Directory/i })).toBeInTheDocument();
+    expect(screen.getByText('Workspace unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Return to the cohort/i })).toBeInTheDocument();
   });
 
   it('verifies reduced-motion CSS rules for skeletons in globals.css', () => {

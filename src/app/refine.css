@@ -207,3 +207,30 @@
 /* Let the What-If charts measure their real container width (a fixed-width SVG must not prop the layout open). */
 .whatif-panel, .whatif-panel > *, .whatif-output, .whatif-result, .whatif-figure, .whatif-chart, .whatif-change-chart { min-width: 0; max-width: 100%; }
 .whatif-chart svg, .whatif-change-chart svg { max-width: 100%; height: auto; }
+
+/* --- Replay hold and risk card --------------------------------------------- */
+.replay-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.replay-toggle:hover { border-color: var(--color-ink); }
+.replay-toggle[aria-pressed="true"] { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-bg); }
+.risk-kicker { display: block; margin: 14px 0 4px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-2); }
+.risk-high { margin: 4px 0 6px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-line); background: var(--color-surface-2); }
+.risk-high .risk-kicker { margin-top: 0; }
+.risk-high.is-high { border-color: #d8a548; background: #fbf1dc; }
+.risk-high-main { margin: 0; font-family: var(--font-display); font-size: 21px; line-height: 1.25; color: var(--color-ink); }
+.risk-high.is-high .risk-high-main { color: #6b4508; }
+.risk-high-sub { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--color-ink-2); }
+.risk-in-progress { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--color-ink); }
+.evidence-pillar-grid { align-items: start; }
+.evidence-pillar-card { height: auto; }
+
+/* --- Size floor for the remaining small labels ------------------------------ */
+.eyebrow { font-size: 11.5px; }
+.clinical-fields small, .chart-window button, .policy-labels, .tooltip-hint, .trajectory-header .status-badge, .directory-table thead { font-size: 12px; }
+.provenance-fields .hash-value { font-size: 11.5px; }
+.lane-text, .lane-empty { font-size: 12px; }
+.tw-details-heading { text-transform: none; letter-spacing: 0; font-family: var(--font-display); font-size: 22px; font-weight: 500; color: var(--color-ink); }
+.landing-audience { font-size: 18px; line-height: 1.45; }
+.landing-lead { font-size: 16px; }
+.whatif-swatch.twin { border-top: 2px dashed var(--color-physics); }
+.workspace-reconnect { margin: 0 0 14px; padding: 12px 14px; border-left: 3px solid #d8a548; border-radius: 0 8px 8px 0; background: #fbf1dc; color: #6b4508; font-size: 14px; }
+.workspace-reconnect strong { color: var(--color-ink); }
