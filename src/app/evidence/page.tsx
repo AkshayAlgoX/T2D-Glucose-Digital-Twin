@@ -324,7 +324,7 @@ export default async function EvidencePage() {
               style={{
                 borderColor: errorState ? 'var(--color-danger)' : 'var(--color-ok)',
                 color: errorState ? 'var(--color-danger)' : 'var(--color-ok)',
-                backgroundColor: errorState ? 'rgba(220, 38, 38, 0.08)' : 'rgba(11, 113, 107, 0.08)',
+                backgroundColor: 'var(--color-surface)',
               }}
             >
               {errorState ? (
