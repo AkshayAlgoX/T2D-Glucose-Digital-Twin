@@ -47,18 +47,23 @@ describe('Risk history plot density', () => {
     const { container } = render(<RiskStrip forecast={null} cache={input} />);
     resize(width);
     const svg = screen.getByRole('img');
-    expect(svg).toHaveAttribute('viewBox', `0 0 ${width} 70`);
-    expect(svg).toHaveAttribute('height', '70');
-    expect(svg).toHaveAttribute('preserveAspectRatio', 'none');
+    // Drawn at the measured width without stretching (no preserveAspectRatio="none"), 150 px tall,
+    // plot area x 40..width-10, y 10..128 on a fixed 0-100% scale.
+    expect(svg).toHaveAttribute('viewBox', `0 0 ${width} 150`);
+    expect(svg).toHaveAttribute('height', '150');
+    expect(svg).not.toHaveAttribute('preserveAspectRatio');
     const reference = screen.getByTestId('risk-reference-line');
-    expect(reference).toHaveAttribute('x1', '12');
-    expect(reference).toHaveAttribute('x2', String(width - 12));
-    expect(Number(reference.getAttribute('y1'))).toBeCloseTo(62 - 0.35 * 54);
+    expect(reference).toHaveAttribute('x1', '40');
+    expect(reference).toHaveAttribute('x2', String(width - 10));
+    expect(Number(reference.getAttribute('y1'))).toBeCloseTo(128 - 0.35 * 118);
+    expect(Number(screen.getByTestId('risk-warning-line').getAttribute('y1'))).toBeCloseTo(128 - 0.6 * 118);
     const path = screen.getByTestId('risk-history-path');
-    expect(path).toHaveAttribute('vector-effect', 'non-scaling-stroke');
     // d3 rounds display coordinates to three decimals, preserving source values.
-    const y = (p: number) => Number((62 - p * 54).toFixed(3));
-    expect(path.getAttribute('d')).toBe(`M12,${y(input.risk[0].p)}L${12 + (width - 24) * 0.4},${y(input.risk[0].p)}L${12 + (width - 24) * 0.4},${y(input.risk[1].p)}L${width - 12},${y(input.risk[1].p)}L${width - 12},${y(input.risk[2].p)}`);
+    const y = (p: number) => Number((128 - p * 118).toFixed(3));
+    const xm = Number((40 + (width - 50) * 0.4).toFixed(3));
+    expect(path.getAttribute('d')).toBe(`M40,${y(input.risk[0].p)}L${xm},${y(input.risk[0].p)}L${xm},${y(input.risk[1].p)}L${width - 10},${y(input.risk[1].p)}L${width - 10},${y(input.risk[2].p)}`);
+    expect(screen.getByTestId('risk-history-stats')).toHaveTextContent('Latest received23.5%');
+    expect(screen.getByTestId('risk-history-stats')).toHaveTextContent('Highest in window45.7%');
     expect(Array.from(container.querySelectorAll('.history-time-labels time')).map(time => time.dateTime)).toEqual([first, last]);
     expect(screen.getByText('35% reference')).toBeInTheDocument();
     expect(JSON.stringify(input)).toBe(before);
@@ -83,8 +88,9 @@ describe('Risk history plot density', () => {
     expect(screen.getByText(/Fixed probability scale: 0–100%/)).toBeInTheDocument();
     const markers = screen.getAllByTestId('risk-snapshot-marker');
     expect(markers).toHaveLength(2);
-    expect(Math.abs(Number(markers[0].getAttribute('cy')) - Number(markers[1].getAttribute('cy')))).toBeLessThan(0.001);
-    expect(screen.getByTestId('risk-reference-line')).toHaveAttribute('y1', String(62 - 0.35 * 54));
+    // Fixed 0-100% scale: a 0.00001 difference stays 0.00001 x 118 px, i.e. invisible, never stretched.
+    expect(Math.abs(Number(markers[0].getAttribute('cy')) - Number(markers[1].getAttribute('cy')))).toBeLessThanOrEqual(0.00001 * 118 + 1e-6);
+    expect(Number(screen.getByTestId('risk-reference-line').getAttribute('y1'))).toBeCloseTo(128 - 0.35 * 118);
   });
 
   it('keeps longer histories compact while retaining every actual observation in an accessible disclosure', () => {
@@ -115,7 +121,7 @@ describe('Risk history plot density', () => {
     expect(element.isConnected).toBe(true);
     expect(observe).toHaveBeenCalledTimes(1);
     resize(320);
-    expect(screen.getByRole('img')).toHaveAttribute('viewBox', '0 0 320 70');
+    expect(screen.getByRole('img')).toHaveAttribute('viewBox', '0 0 320 150');
     unmount();
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
