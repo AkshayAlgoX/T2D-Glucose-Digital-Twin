@@ -2,8 +2,8 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-38%20suites%20%7C%20378%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-125%20passed-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-40%20suites%20%7C%20394%20tests-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -143,10 +143,10 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 38 Jest test suites (378 tests: unit, integration, contracts, safety invariants):
+# Run all 40 Jest test suites (394 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run all 125 backend tests (provenance, contracts, causality, safety, sealed-split access):
+# Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
