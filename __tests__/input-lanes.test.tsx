@@ -54,3 +54,19 @@ it('calls out an isolated one-step jump in the returned forecast median, and sta
   rerender(<ForecastCanvas forecast={forecast} cache={store([])} />);
   expect(screen.queryByTestId('isolated-step-note')).not.toBeInTheDocument();
 });
+
+it('distinguishes genuinely empty lanes: no meals logged, recorded zero steps, missing readings, awake throughout', () => {
+  const wearables: WearableView[] = [
+    { t: at(10), heartRate: null, hrv: null, steps: 0, asleep: false, carbs: 0 },
+    { t: at(5), heartRate: null, hrv: null, steps: 0, asleep: false, carbs: 0 },
+    { t: at(0), heartRate: null, hrv: null, steps: 0, asleep: false, carbs: 0 },
+  ];
+  render(<ForecastCanvas forecast={forecast} cache={store(wearables)} />);
+  expect(within(screen.getByTestId('lane-meals')).getByText('No meals logged in this window')).toBeInTheDocument();
+  expect(within(screen.getByTestId('lane-steps')).getByText('0 steps recorded in this window')).toBeInTheDocument();
+  expect(within(screen.getByTestId('lane-hr')).getByText('No heart-rate readings received')).toBeInTheDocument();
+  expect(within(screen.getByTestId('lane-hrv')).getByText('No HRV readings received')).toBeInTheDocument();
+  expect(within(screen.getByTestId('lane-sleep')).getByText('Awake throughout this window')).toBeInTheDocument();
+  // Nothing is drawn as if it were data.
+  expect(screen.getByTestId('lane-steps').querySelectorAll('rect[fill="var(--color-ink-3)"]')).toHaveLength(0);
+});

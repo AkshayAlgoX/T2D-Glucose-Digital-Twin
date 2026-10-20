@@ -430,3 +430,4 @@ body { background: var(--color-bg); color: var(--color-ink); }
   .cohort-directory .directory-table tbody tr > td:last-child { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
   .cohort-directory .directory-table td.numeric::before { content: attr(data-label); display: block; font-family: var(--font-sans); font-size: 10.5px; color: var(--color-ink-3); }
 }
+.lane-empty { font-family: var(--font-sans); font-size: 11px; fill: var(--color-ink-3); font-style: italic; }

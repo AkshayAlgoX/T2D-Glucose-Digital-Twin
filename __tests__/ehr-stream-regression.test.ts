@@ -60,7 +60,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=97`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -75,7 +75,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=97&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -90,7 +90,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=300&include=ehr_context%2Ctwin_overlay&catch_up=72`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=300&include=ehr_context%2Ctwin_overlay&catch_up=97`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -119,7 +119,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=72`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&catch_up=97`,
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'text/event-stream',
@@ -144,7 +144,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=unsupported_field&catch_up=72`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=unsupported_field&catch_up=97`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(422);
@@ -163,7 +163,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=${encoded}&catch_up=72`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=${encoded}&catch_up=97`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);

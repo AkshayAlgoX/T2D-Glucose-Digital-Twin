@@ -379,21 +379,36 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
   const hrv = series(w => w.hrv);
   const maxSteps = Math.max(50, ...rows.map(w => w.steps));
   const fmt = (v: number | null, d = 0) => (v == null ? '—' : v.toFixed(d));
+  // Bars and bands stay inside the observed window [axis start, forecast anchor].
+  const clampRect = (cx: number, w: number) => {
+    const x0 = Math.max(left, cx - w / 2), x1 = Math.min(x(anchor), cx + w / 2);
+    return { x: x0, width: Math.max(0, x1 - x0) };
+  };
+  const meals = rows.filter(w => w.carbs > 0);
+  const anySteps = rows.some(w => w.steps > 0);
+  const anyAsleep = rows.some(w => w.asleep);
+  const empty = (text: string) => <text x={(left + x(anchor)) / 2} y={h / 2 + 4} textAnchor="middle" className="lane-empty">{text}</text>;
   const lanes: Lane[] = [
-    { key: 'meals', label: 'Logged meals', unit: 'g carbohydrate', latest: `${rows.filter(w => w.carbs > 0).length} in view`,
-      render: () => rows.filter(w => w.carbs > 0).map(w => <g key={w.t}>
+    { key: 'meals', label: 'Logged meals', unit: 'g carbohydrate', latest: meals.length ? `${meals.length} in view` : 'none logged',
+      render: () => meals.length ? meals.map(w => <g key={w.t}>
         <line x1={x(w.time)} x2={x(w.time)} y1={4} y2={h} stroke="var(--color-amber)" strokeWidth={2} />
         <text x={x(w.time) + 4} y={12} className="lane-text">{Math.round(w.carbs)} g</text>
-      </g>) },
+      </g>) : empty('No meals logged in this window') },
     { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
-      render: () => rows.filter(w => w.steps > 0).map(w => <rect key={w.t} x={x(w.time) - step / 2} width={step}
-        y={h - Math.max(1, (w.steps / maxSteps) * (h - 4))} height={Math.max(1, (w.steps / maxSteps) * (h - 4))} fill="var(--color-ink-3)" opacity={0.7} />) },
+      render: () => anySteps ? rows.filter(w => w.steps > 0).map(w => {
+        const r = clampRect(x(w.time), step);
+        const bh = Math.max(1, (w.steps / maxSteps) * (h - 4));
+        return <rect key={w.t} x={r.x} width={r.width} y={h - bh} height={bh} fill="var(--color-ink-3)" opacity={0.7} />;
+      }) : empty('0 steps recorded in this window') },
     { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
-      render: () => hr && <path d={hr.path ?? ''} fill="none" stroke="var(--color-danger)" strokeWidth={1.5} /> },
+      render: () => hr ? <path d={hr.path ?? ''} fill="none" stroke="var(--color-danger)" strokeWidth={1.5} /> : empty('No heart-rate readings received') },
     { key: 'hrv', label: 'HRV (RMSSD)', unit: 'ms', latest: fmt(last.hrv),
-      render: () => hrv && <path d={hrv.path ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} /> },
+      render: () => hrv ? <path d={hrv.path ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} /> : empty('No HRV readings received') },
     { key: 'sleep', label: 'Sleep', unit: 'asleep / awake', latest: last.asleep ? 'Asleep' : 'Awake',
-      render: () => rows.filter(w => w.asleep).map(w => <rect key={w.t} x={x(w.time) - step / 2} width={step * 1.25} y={6} height={h - 12} fill="var(--color-forecast)" opacity={0.35} />) },
+      render: () => anyAsleep ? rows.filter(w => w.asleep).map(w => {
+        const r = clampRect(x(w.time), step * 1.25);
+        return <rect key={w.t} x={r.x} width={r.width} y={6} height={h - 12} fill="var(--color-forecast)" opacity={0.35} />;
+      }) : empty('Awake throughout this window') },
   ];
   return (
     <section className="input-lanes" aria-label="Wearable and log inputs the model used" data-testid="input-lanes">
