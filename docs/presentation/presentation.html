@@ -469,14 +469,14 @@
     <div class="header">
       <div>
         <h2 class="slide-title">What-If Simulation: Capability & Boundary</h2>
-        <p class="slide-subtitle">Scenario Exploration API and Current Dashboard State</p>
+        <p class="slide-subtitle">Interactive, backend-driven scenarios in the patient workspace</p>
       </div>
       <span class="slide-num">09 / 12</span>
     </div>
     <div class="content">
       <div class="grid-2">
         <div class="card">
-          <h4>Implemented Backend API Capability</h4>
+          <h4>Implemented: Clinician What-If Panel</h4>
           <ul>
             <li><code>serve_pr_tft.py::scenarios</code> endpoint supports counterfactual simulation:
               <ul>
@@ -485,22 +485,23 @@
                 <li>Skipping habitual meals.</li>
               </ul>
             </li>
-            <li>Re-runs UKF and PR-TFT with modified input vectors.</li>
-            <li>Returns scenario quantile bands and estimated peak glucose changes.</li>
+            <li>Re-runs the linearized twin and PR-TFT on the modified plan, from the same anchor as the baseline.</li>
+            <li>Panel shows baseline vs. scenario bands, highest median (with time), largest same-time difference and calibrated 2-h spike risk.</li>
+            <li>Example, P0017 (validation), 07:30 UTC, 60 g meal in 30 min: 185.0 &rarr; 197.7 mg/dL; risk 10.6% &rarr; 16.4%.</li>
           </ul>
         </div>
         <div class="card">
           <h4>Current Implementation Boundaries</h4>
           <ul>
-            <li><strong>Dashboard UI:</strong> <code>ScenarioEditor.tsx</code> has interactive controls explicitly disabled (<code>disabled = true</code>).</li>
-            <li><strong>Medication Unsupported:</strong> Pharmacological simulations are rejected (<code>SCENARIO_UNSUPPORTED</code>).</li>
+            <li><strong>Label on every result:</strong> &ldquo;Simulated model response &mdash; not a validated causal treatment effect.&rdquo;</li>
+            <li><strong>Medication Unsupported:</strong> Requests are sent and the backend refuses them (<code>SCENARIO_UNSUPPORTED</code>); nothing is simulated locally.</li>
             <li><strong>Approximation Only:</strong> Activity modeling omits delayed insulin sensitivity effects.</li>
-            <li><strong>Not Causal Treatment Effects:</strong> Scenario responses have not been validated against prospective human clinical trials.</li>
+            <li><strong>Not Causal Treatment Effects:</strong> Neither direction nor size has been validated against a reference counterfactual or human data.</li>
           </ul>
         </div>
       </div>
       <div class="alert-box">
-        <strong>Truth in Advertising:</strong> We present the What-If capability as an API-level research architecture, not a completed interactive clinical tool.
+        <strong>Truth in Advertising:</strong> The What-If is a working research interface on synthetic data, not a clinical decision tool.
       </div>
     </div>
     <div class="footer">

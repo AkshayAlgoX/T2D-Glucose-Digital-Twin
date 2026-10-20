@@ -75,6 +75,8 @@ SERVICE_VERSION = "0.1.0"
 CONTRACT_VERSION = "1.0.0"
 ALERT_POLICY_VERSION = "ap-1.0"
 SIMULATOR_VERSION = "generate_health_data_v2"
+# Held-out partitions the service must not expose (enumeration, forecasts, twin cards, streams).
+SEALED_SPLITS = frozenset({"test"})
 SUBJECT_NAMESPACE = uuid.UUID("6f0c3a52-9d1e-4c57-8a2b-3e41d7b9c0aa")
 INTENDED_USE = "research_only_not_for_clinical_decisions"
 
@@ -491,6 +493,9 @@ class ServiceContext:
         if T.meal_log_sha256(series) != manifest["meal_log_sha256"]:
             raise ValueError("meal logs differ from the ones the run was trained on")
         self.split_of = {pid: name for name, ids in split.items() for pid in ids}
+        # Sealed partitions stay loaded (the meal-log hash and OOD reference cover the whole run) but are
+        # never served: patient() refuses them exactly as it refuses unknown ids.
+        self.sealed_pids = frozenset(pid for pid, name in self.split_of.items() if name in SEALED_SPLITS)
         self.pop = T.population_habit([series[p] for p in split["train"]])
         self.patients: dict[uuid.UUID, PatientCache] = {}
         self.by_pid: dict[str, uuid.UUID] = {}
@@ -536,9 +541,12 @@ class ServiceContext:
 
     def patient(self, subject_id: uuid.UUID) -> PatientCache:
         pc = self.patients.get(subject_id)
-        if pc is None:
+        if pc is None or pc.ps.pid in self.sealed_pids:
             raise ServiceError(404, "SUBJECT_NOT_FOUND", "Subject not found", f"No subject {subject_id}.")
         return pc
+
+    def served_patients(self) -> list[tuple[uuid.UUID, PatientCache]]:
+        return [(sid, pc) for sid, pc in self.patients.items() if pc.ps.pid not in self.sealed_pids]
 
     def anchor_index(self, pc: PatientCache, as_of: dt.datetime | None) -> int:
         ps = pc.ps
@@ -1049,13 +1057,13 @@ def create_app(run_dir: Path, data_dir: Path | None = None, simulator_seed: int 
     def health(c: ServiceContext = Depends(ctx)):
         return {"status": "ok", "model_version": f"{SERVICE_VERSION} ({c.run_id})",
                 "simulator_version": SIMULATOR_VERSION, "contract_version": CONTRACT_VERSION,
-                "subjects": len(c.patients)}
+                "subjects": len(c.served_patients())}
 
     @app.get("/v1/subjects", dependencies=[Depends(auth)])
     def subjects(c: ServiceContext = Depends(ctx)):
         return [{"subject_id": str(sid), "patient_id": pc.ps.pid, "group": pc.ps.group,
                  "split": c.split_of.get(pc.ps.pid), "first_as_of": utc(pc.ps.stamps[T.FIRST_ANCHOR]).isoformat(),
-                 "last_as_of": utc(pc.ps.stamps[-1]).isoformat()} for sid, pc in c.patients.items()]
+                 "last_as_of": utc(pc.ps.stamps[-1]).isoformat()} for sid, pc in c.served_patients()]
 
     @app.post("/v1/forecasts", dependencies=[Depends(auth)])
     async def forecasts(req: ForecastRequest, c: ServiceContext = Depends(ctx)):

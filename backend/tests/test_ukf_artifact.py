@@ -32,7 +32,7 @@ def test_inference_equivalence(run_dir, tmp_path):
     ctx_stat = ServiceContext(run_dir)
     
     # Compare
-    for pid in list(ctx_dyn.by_pid.keys())[:5]:
+    for pid in [p for p in ctx_dyn.by_pid if p not in ctx_dyn.sealed_pids][:5]:
         sid = ctx_dyn.by_pid[pid]
         pc_dyn = ctx_dyn.patient(sid)
         pc_stat = ctx_stat.patient(sid)

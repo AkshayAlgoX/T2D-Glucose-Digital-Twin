@@ -59,22 +59,43 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     expect(sent.scenarios[0].scenario_id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(sent.scenarios[0].inputs).toEqual([{ kind: 'meal', offset_min: 30, carbs_g: 60 }]);
 
-    expect(screen.getByTestId('scenario-peak')).toHaveTextContent('143 → 189 mg/dL (+46.0)');
-    expect(screen.getByTestId('scenario-risk')).toHaveTextContent('11% → 42% (+31 pts)');
+    expect(screen.getByTestId('scenario-peak')).toHaveTextContent('143.0 → 189.0 mg/dL (+46.0)');
+    expect(screen.getByTestId('scenario-peak-timing')).toHaveTextContent('at +120 min → at +120 min');
+    expect(screen.getByTestId('scenario-largest-diff')).toHaveTextContent('+46.0 mg/dL at +120 min');
+    expect(screen.getByTestId('scenario-risk')).toHaveTextContent('11.0% → 42.0% (+31.0 pts)');
+    expect(screen.getByTestId('scenario-definitions')).toHaveTextContent('not a measured or validated treatment effect');
     expect(screen.getByTestId('whatif-baseline-line').getAttribute('d')).toBeTruthy();
     expect(screen.getByTestId('whatif-scenario-line').getAttribute('d')).toBeTruthy();
   });
 
   it('runs a preset activity scenario and shows backend approximation warnings', async () => {
-    respond(200, okBody({ warnings: [{ code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'delayed sensitivity boost is not modelled.' }],
+    respond(200, okBody({ scenario_forecast: curve(120, 0.5), warnings: [{ code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'delayed sensitivity boost is not modelled.' }],
       metrics: { delta_peak_mg_dl: -12, new_peak_mg_dl: 131, baseline_peak_mg_dl: 143, delta_probability: -0.05, new_probability: 0.06, baseline_probability: 0.11 } }));
     render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
     fireEvent.click(screen.getByRole('button', { name: '30 min brisk walk now' }));
     await screen.findByTestId('scenario-result');
     const sent = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(sent.scenarios[0].inputs).toEqual([{ kind: 'activity', offset_min: 0, duration_min: 30, intensity: 'moderate' }]);
-    expect(screen.getByTestId('scenario-peak')).toHaveTextContent('(−12.0)');
+    expect(screen.getByTestId('scenario-peak')).toHaveTextContent('143.0 → 131.5 mg/dL (−11.5)');
     expect(screen.getByTestId('scenario-warning')).toHaveTextContent('Activity modelled as immediate uptake');
+  });
+
+  it('derives every readout number from the two same-anchor curves (peaks at different times, as in the live P0017 07:30 response)', async () => {
+    // Shape of the real backend response: unchanged plan peaks 185.0 at +60 min; the meal moves the peak to 197.7 at +100 min.
+    const at = (i: number) => new Date(Date.parse(anchor) + (i + 1) * 300000).toISOString();
+    const baseline = Array.from({ length: 24 }, (_, i) => { const v = i === 11 ? 185.04 : 150 + i; return { timestamp: at(i), p10: v - 10, p50: v, p90: v + 10 }; });
+    const scenario = baseline.map((p, i) => { const v = i === 19 ? 197.66 : i === 5 ? p.p50 + 33.6 : p.p50; return { ...p, p10: v - 10, p50: v, p90: v + 10 }; });
+    respond(200, okBody({ baseline_forecast: baseline, scenario_forecast: scenario,
+      metrics: { delta_peak_mg_dl: 12.6, new_peak_mg_dl: 197.66, baseline_peak_mg_dl: 185.04, delta_probability: 0.058, new_probability: 0.164, baseline_probability: 0.106 } }));
+    render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    await screen.findByTestId('scenario-result');
+    // Delta is the difference of the displayed values, so the arithmetic on screen always adds up.
+    expect(screen.getByTestId('scenario-peak')).toHaveTextContent('185.0 → 197.7 mg/dL (+12.7)');
+    expect(screen.getByTestId('scenario-peak-timing')).toHaveTextContent('at +60 min → at +100 min');
+    expect(screen.getByTestId('scenario-largest-diff')).toHaveTextContent('+33.6 mg/dL at +30 min');
+    expect(screen.getByTestId('scenario-risk')).toHaveTextContent('10.6% → 16.4% (+5.8 pts)');
+    expect(screen.queryByTestId('scenario-no-change')).not.toBeInTheDocument();
   });
 
   it('reports unavailable risk honestly on a physics-only fallback', async () => {

@@ -2,8 +2,8 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-38%20passed%20%7C%20361%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-111%20passed-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-38%20suites%20%7C%20378%20tests-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-125%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -139,14 +139,14 @@ echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local
 # Launch Next.js dev server with Webpack bundler (port 3000):
 npx next dev --webpack -p 3000
 ```
-Open `http://localhost:3000/cohort` or `http://localhost:3000/patients/19dba1b5-d8b3-5634-a184-aeb831ea6d36` in your browser.
+Open `http://localhost:3000/cohort` or the validation-split demonstration subject P0017 at `http://localhost:3000/patients/6f50ef50-b6e5-5408-a70c-d8f0509d6012`. Use `localhost`, not `127.0.0.1`: the Next.js dev server does not serve its client runtime to other origins, and the page stays on "Connecting".
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 38 Jest test suites (361 tests: unit, integration, contracts, safety invariants):
+# Run all 38 Jest test suites (378 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run all 111 backend tests (provenance, contracts, causality, safety):
+# Run all 125 backend tests (provenance, contracts, causality, safety, sealed-split access):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
@@ -175,9 +175,11 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 - **Status**: **METRICS EXCLUDED**
 - **Detail**: `backend/runs/pr_tft_demo/evaluation_baseline.json` references an absent checkpoint (`stage2_observed-epoch=01-val_loss=0.3096.ckpt`). Its metrics are strictly excluded from performance claims.
 
-### 4. Disabled Scenario UI
-- **Status**: **API-ONLY PROTOTYPE**
-- **Detail**: While backend routes support meal/activity simulation, `ScenarioEditor.tsx` in the dashboard is explicitly disabled. Pharmacological scenarios are rejected (`SCENARIO_UNSUPPORTED`). Scenario outputs do not represent human causal treatment effects.
+### 4. Meal / Activity What-If (Simulated Model Response)
+- **Status**: **INTERACTIVE, BACKEND-DRIVEN — NOT A VALIDATED CAUSAL EFFECT**
+- **Detail**: The patient workspace sends meal, activity and skip-a-usual-meal scenarios through `/api/forecast` to `POST /v1/forecasts`. The linearized twin re-rolls the plan and the network re-scores it. Baseline and scenario come from the same response at the same anchor. The panel shows the highest median in the next 2 h for each (with its time), the largest same-time difference, and the calibrated 2-h spike probability before and after.
+- **Example (genuine backend output, P0017, validation split, anchor 2026-10-05T07:30Z, 60 g carbohydrate meal in 30 min)**: highest median 185.0 → 197.7 mg/dL (peaks at +60 → +100 min), largest same-time difference +33.6 mg/dL, spike probability 10.6% → 16.4%. At anchor 2026-09-28T23:55Z the same meal gives 101.5 → 133.8 mg/dL and 0.0% → 3.3%.
+- **Boundary**: These are synthetic-model outputs. Neither their direction nor their size has been validated against a reference counterfactual. Activity is modelled as immediate insulin-independent uptake only (the service attaches `SCENARIO_APPROXIMATION`). Medication changes are refused with `SCENARIO_UNSUPPORTED` because the served twin has no drug terms.
 
 ### 5. Validation Trajectory Benchmark & Matched Baseline Audit
 - **Scope**: Evaluated on the **44 validation patients** (54,281 eligible anchors; 53,920 / 53,906 / 53,849 evaluable rows at 30 / 60 / 120 min) from the pre-registered split (`split_293.json`). (Note: 47,629 was the at-risk hazard calibration subset).
@@ -187,7 +189,7 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
   - **120-min**: PR-TFT **25.03** [23.67, 26.27] (MAE 16.76, MARD 13.66%) vs. UKF Twin **28.64** [26.67, 30.51] vs. Persistence **48.36** [45.06, 51.46]. Paired diff: $\Delta = \mathbf{-23.33}$ [-25.31, -21.23] vs. PE (48.24% reduction); $\Delta = \mathbf{-3.61}$ [-4.44, -2.81] vs. Twin (12.61% reduction); 10,000/10,000 draws negative.
 - **Aggregation Reporting**: Both pooled micro-averages and unweighted patient macro-averages are reported side-by-side (e.g., at 60 min, Macro 19.27 mg/dL vs. Micro 19.53 mg/dL) as distinct aggregation perspectives.
 - **Patient Win Rates (Exact 95% Clopper-Pearson Binomial CIs)**: 44/44 (100% [92.0%, 100.0%]) at 30m & 60m; at 120m: 44/44 (100% [92.0%, 100.0%]) vs. Persistence, 41/44 (93.2% [81.3%, 98.6%]) vs. UKF Twin. *Sampling assumption:* Independent Bernoulli trials across the 44 subjects in simulated cohort; strictly limited to this simulated cohort.
-- **Probabilistic Calibration (Resubstitution Diagnostics)**: 80% conformal interval empirical coverage is **80.00%** (mean width 37.30 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, Brier score **0.0703** (raw 0.1650), and ECE **0.000094** on 47,629 at-risk anchors. Because calibration parameters were estimated on this validation set, all calibration metrics are resubstitution diagnostics; evaluated thresholds (0.35 and 0.60) are empirical diagnostics, not approved clinical operating points.
+- **Probabilistic Calibration (Resubstitution Diagnostics)**: 80% conformal interval empirical coverage is **80.00%** (mean width 37.30 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, Brier score **0.0703** (raw 0.1650), and ECE **0.000094** on 47,629 at-risk anchors (source: `runs/pr_tft_ablation_arm_d/run_manifest.json` → `validation.hazard_calibrated`; raw AUROC 0.9221, AUPRC 0.6388). Isotonic calibration is monotone, so discrimination is essentially unchanged, and an ECE near zero is expected when the calibrator is scored on the anchors it was fitted to. Because calibration parameters were estimated on this validation set, all calibration metrics are resubstitution diagnostics; evaluated thresholds (0.35 and 0.60) are empirical diagnostics, not approved clinical operating points.
 - **Explicit Boundary & Ledger Caveat**: These figures are simulated development-validation results derived from the development validation partition (`split_293.json`) which was used for both checkpoint selection and calibration. They establish architecture-level validation error metrics under simulated conditions, but are explicitly **NOT** independent held-out generalization to human patients. The 44-subject test cohort remains sealed and strictly unexecuted under protocol.
 
 ---
@@ -197,6 +199,7 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 A repository security scan across tracked files, commit history, and branches confirmed:
 - **Credentials & API Keys**: Zero leaked AWS tokens, GitHub PATs, or live service passwords.
 - **Protected Cohorts**: No quarantined or restricted H1 / WIF-02 truth datasets are tracked.
+- **Sealed Test Partition**: The 44 test-split subjects are loaded only for provenance checks and are never served. `/v1/subjects` omits them, and forecast, scenario, twin-card and stream requests for them return the same `404 SUBJECT_NOT_FOUND` as an unknown id (`backend/tests/test_sealed_split_access.py`).
 - **Local Path Sanitization Finding**: Tracked pycache file `backend/__pycache__/train_pr_tft.cpython-312.pyc` has been removed from tracking. `backend/final_config.json` uses portable relative path `"data_dir": "synthetic_v2"` with `T2D_DATA_DIR` environment override support. `experiments/early_warning_ew01/ew01_trust.py` supports `EW01_REGISTRY_ROOT` override with fail-closed validation.
 
 ---

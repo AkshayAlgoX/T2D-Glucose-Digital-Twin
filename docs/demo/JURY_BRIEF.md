@@ -36,13 +36,13 @@ python -B backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d --host 12
 echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npx next dev --webpack -p 3000
 ```
 
-1. Open `/cohort`, filter **split = val** and **group = Type 2**, and open a subject such as `P0017`. Do not demo `train` subjects (in-sample) or `test` subjects (sealed partition).
+1. Open `/cohort`, filter **split = val** and **group = Type 2**, and open `P0017`. Training subjects are in-sample; sealed test subjects are not served at all.
 2. **Patient context** (left): EHR fields and twin physiological state, all synthetic.
 3. **Trajectory**: observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, and the 180 mg/dL spike line.
 4. **How this forecast is built**: switch +15 / +30 / +60 / +120 min and read twin → residual → final.
 5. **Risk panel**: 2-hour spike probability and the driver waterfall.
 6. **What-if simulation**:
-   - Click *60 g carb meal in 30 min*. The backend returns a new trajectory, and the panel shows peak and risk before and after.
+   - Click *60 g carb meal in 30 min*. The backend returns a new trajectory, and the panel shows the highest median (with its time), the largest same-time difference, and the spike risk before and after.
    - Click *30 min brisk walk now*. The peak moves down, and the service attaches its own approximation warning.
    - Click *Medication change*. The service refuses with `SCENARIO_UNSUPPORTED`. Say that this is deliberate.
 7. **Evidence page**: matched baselines, calibration, and the failed Gate 3.
@@ -80,7 +80,7 @@ You should believe it only as far as the simulator is realistic, which is why we
 At 60 min it brings RMSE from 23.23 (twin only) down to 19.53 mg/dL. The on-screen strip shows the residual for this patient at this moment.
 
 **"Is the what-if a treatment recommendation?"**
-No. It is a *simulated model response, not a validated causal treatment effect*. The direction of the response is meaningful; its size has not been validated. Internal pilot work suggests meal-response magnitudes are attenuated. Medication changes are refused because the served twin has no drug terms.
+No. It is a *simulated model response, not a validated causal treatment effect*. Neither its direction nor its size has been validated against a reference counterfactual. For P0017 at 07:30 UTC, a 60 g meal in 30 min moves the highest median from 185.0 to 197.7 mg/dL (from +60 to +100 min). The largest same-time difference is +33.6 mg/dL, and the spike probability goes from 10.6% to 16.4%. Medication changes are refused because the served twin has no drug terms.
 
 **"How do you handle uncertainty?"**
 The forecast has 7 quantiles with conformal adjustment, and the 80% interval reaches 80.00% empirical coverage on the validation partition. The spike probability is isotonic-calibrated. Both are resubstitution diagnostics, because the calibration was fitted on the same partition.

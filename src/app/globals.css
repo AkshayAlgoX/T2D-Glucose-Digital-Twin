@@ -1054,3 +1054,6 @@ p.fine-print { margin: 10px 0 0; }
   .whatif-actions button { flex: 1; }
   .whatif-metrics { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
+.whatif-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.whatif-metrics dd small { display: block; margin-top: 2px; font-size: 11px; color: var(--color-ink-3); }
+@media (max-width: 900px) { .whatif-metrics { grid-template-columns: minmax(0, 1fr); gap: 8px; } }

@@ -61,7 +61,35 @@ export function describeInput(input: ScenarioInput): string {
 }
 
 const signed = (v: number, digits = 0, unit = '') => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v).toFixed(digits)}${unit}`;
-const pct = (p: number | null) => (p == null ? 'Unavailable' : `${Math.round(p * 100)}%`);
+const pct = (p: number | null) => (p == null ? 'Unavailable' : `${(p * 100).toFixed(1)}%`);
+const round1 = (v: number) => Math.round(v * 10) / 10;
+
+/** Everything the readout shows, derived from the two same-anchor median curves the backend returned. */
+export function summarizeComparison(result: ScenarioComparison) {
+  const anchor = Date.parse(result.pinned_as_of);
+  const offset = (p: ScenarioCurvePoint) => Math.round((Date.parse(p.timestamp) - anchor) / 60000);
+  const peakOf = (curve: ScenarioCurvePoint[]) => curve.reduce((best, p) => (p.p50 > best.p50 ? p : best), curve[0]);
+  const base = peakOf(result.baseline_forecast);
+  const scen = peakOf(result.scenario_forecast);
+  const byTime = new Map(result.baseline_forecast.map(p => [Date.parse(p.timestamp), p.p50]));
+  let largest = { diff: 0, offset: 0 };
+  for (const p of result.scenario_forecast) {
+    const b = byTime.get(Date.parse(p.timestamp));
+    if (b == null) continue;
+    const diff = round1(p.p50 - b);
+    if (Math.abs(diff) > Math.abs(largest.diff)) largest = { diff, offset: offset(p) };
+  }
+  const baselinePeak = round1(base.p50);
+  const scenarioPeak = round1(scen.p50);
+  const deltaPoints = result.metrics.delta_probability == null ? null : round1(result.metrics.delta_probability * 100);
+  return {
+    baselinePeak, baselinePeakMin: offset(base), scenarioPeak, scenarioPeakMin: offset(scen),
+    deltaPeak: round1(scenarioPeak - baselinePeak),
+    largestDiff: largest.diff, largestDiffMin: largest.offset,
+    deltaPoints,
+    noChange: largest.diff === 0 && (deltaPoints ?? 0) === 0,
+  };
+}
 
 function useWidth<T extends HTMLElement>(fallback: number) {
   const ref = useRef<T>(null);
@@ -123,25 +151,32 @@ export function ScenarioComparisonChart({ result }: { result: ScenarioComparison
 function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 'result' }>; liveAsOf?: string | null }) {
   const { metrics, warnings, fallback_used } = state.result;
   const riskAvailable = metrics.baseline_probability != null && metrics.new_probability != null;
+  const sum = summarizeComparison(state.result);
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   return (
     <div className="whatif-result" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
       <dl className="whatif-metrics">
         <div>
-          <dt>Predicted peak (median)</dt>
-          <dd data-testid="scenario-peak">{Math.round(metrics.baseline_peak_mg_dl)} → {Math.round(metrics.new_peak_mg_dl)} mg/dL <strong>({signed(metrics.delta_peak_mg_dl, 1)})</strong></dd>
+          <dt>Highest median glucose in the next 2 h</dt>
+          <dd data-testid="scenario-peak">{sum.baselinePeak.toFixed(1)} → {sum.scenarioPeak.toFixed(1)} mg/dL <strong>({signed(sum.deltaPeak, 1)})</strong>
+            <small data-testid="scenario-peak-timing">at +{sum.baselinePeakMin} min → at +{sum.scenarioPeakMin} min</small></dd>
         </div>
         <div>
-          <dt>Spike risk within 2 h</dt>
+          <dt>Largest difference at the same time</dt>
+          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small></dd>
+        </div>
+        <div>
+          <dt>Spike risk within 2 h (calibrated)</dt>
           <dd data-testid="scenario-risk">
             {riskAvailable
-              ? <>{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)} <strong>({signed(Math.round((metrics.delta_probability ?? 0) * 100), 0, ' pts')})</strong></>
+              ? <>{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)} <strong>({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
               : <>Unavailable{fallback_used === 'twin_only' ? ' (physics-only fallback; no calibrated risk)' : ''}</>}
           </dd>
         </div>
       </dl>
-      {metrics.delta_peak_mg_dl === 0 && (metrics.delta_probability ?? 0) === 0 && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
+      <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
+      {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
       <ScenarioComparisonChart result={state.result} />
       {warnings.map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
       {moved && <p className="fine-print" data-testid="scenario-pinned-note">Pinned to the {formatTime(state.asOf)} UTC forecast; the live view has since advanced. Run again to simulate from the latest reading.</p>}

@@ -291,15 +291,15 @@
       </div>
 
       <div class="card highlight-amber">
-        <h3><span class="badge badge-warn">Safety Boundary</span> Scenario Exploration (What-If API vs. Dashboard UI)</h3>
+        <h3><span class="badge badge-warn">Safety Boundary</span> Scenario Exploration (Interactive What-If)</h3>
         <div class="grid-2" style="margin-top:4px;">
           <div>
-            <strong>Backend API Capabilities (Supported):</strong>
-            <p style="color:#475569; margin-top:2px;">Routes <code>/api/forecast</code> and <code>/v1/forecasts</code> accept hypothetical meal additions/skips and physical activity inputs, re-solving the linearized twin and generating comparison ribbons (&Delta;peak mg/dL, &Delta;probability).</p>
+            <strong>Supported (UI &rarr; <code>/api/forecast</code> &rarr; <code>/v1/forecasts</code>):</strong>
+            <p style="color:#475569; margin-top:2px;">Routes <code>/api/forecast</code> and <code>/v1/forecasts</code> accept hypothetical meal additions/skips and physical activity inputs, re-solving the linearized twin and re-scoring with PR-TFT from the same anchor. The patient workspace shows baseline vs. scenario ribbons, highest median, largest same-time difference and &Delta;probability.</p>
           </div>
           <div>
-            <strong>Clinical Boundary & UI Disablement (Enforced):</strong>
-            <p style="color:#475569; margin-top:2px;"><code>ScenarioEditor.tsx</code> in the dashboard is explicitly disabled. Pharmacological scenarios return <code>SCENARIO_UNSUPPORTED</code> (422). Counterfactual treatment effects have not been validated in humans and must not guide therapy.</p>
+            <strong>Clinical Boundary (Enforced):</strong>
+            <p style="color:#475569; margin-top:2px;">Every result is labelled &ldquo;Simulated model response &mdash; not a validated causal treatment effect.&rdquo; Pharmacological scenarios return <code>SCENARIO_UNSUPPORTED</code> (422). Counterfactual treatment effects have not been validated in humans and must not guide therapy.</p>
           </div>
         </div>
       </div>
