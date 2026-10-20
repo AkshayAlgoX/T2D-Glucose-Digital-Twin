@@ -298,3 +298,6 @@
 .cohort-page dt, .cohort-page .eyebrow, .landing .eyebrow { font-size: 12px !important; }
 .trajectory-panel .chart-anchor-label { font-size: 12px; }
 @media (max-width: 600px) { .hero-forecast .hero-forecast-chart .chart-axis { font-size: 23px; } }
+/* Long option text must not widen the form beyond the screen. */
+.whatif-form, .whatif-form > *, .whatif-form label { min-width: 0; max-width: 100%; }
+.whatif-form select, .whatif-form input { width: 100%; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
