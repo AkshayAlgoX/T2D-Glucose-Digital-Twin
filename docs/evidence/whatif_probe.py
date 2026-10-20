@@ -17,7 +17,7 @@ INPUTS = {
   "skip_lunch": {"kind": "skip_habitual_meal", "meal_slot": "lunch"},
   "medication": {"kind": "medication", "offset_min": 0, "med_class": "metformin", "taken": True},
 }
-ANCHORS = ["2026-09-28T23:55:00Z", "2026-10-05T07:30:00Z"]
+ANCHORS = ["2026-09-28T23:55:00Z", "2026-09-29T05:55:00Z", "2026-10-05T07:30:00Z"]
 record = {"subject_id": SID, "patient_id": "P0017", "runs": []}
 for as_of in ANCHORS:
     for name, inp in INPUTS.items():

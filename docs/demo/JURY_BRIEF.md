@@ -36,16 +36,17 @@ python -B backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d --host 12
 echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npx next dev --webpack -p 3000
 ```
 
-1. Open `/cohort`, filter **split = val** and **group = Type 2**, and open `P0017`. Training subjects are in-sample; sealed test subjects are not served at all.
-2. **Patient context** (left): EHR fields and twin physiological state, all synthetic.
-3. **Trajectory**: observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, and the 180 mg/dL spike line.
-4. **How this forecast is built**: switch +15 / +30 / +60 / +120 min and read twin → residual → final.
-5. **Risk panel**: 2-hour spike probability and the driver waterfall.
-6. **What-if simulation**:
-   - Click *60 g carb meal in 30 min*. The backend returns a new trajectory, and the panel shows the highest median (with its time), the largest same-time difference, and the spike risk before and after.
-   - Click *30 min brisk walk now*. The peak moves down, and the service attaches its own approximation warning.
+1. Open `/cohort` and click **Open P0017** in the *Start here* panel (validation split, Type 2). Training subjects are in-sample; sealed test subjects are not served at all.
+2. **Header**: the EHR record in one line (age, sex, BMI, HbA1c, diagnosis duration, medication), the replay clock and data quality. The page opens on six hours of real replayed history (72 readings sent quickly at connect, each a full forecast), with the replay at 05:55 UTC on 29 Sep.
+3. **Glucose trajectory**: observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the forecast-median peak.
+4. **Wearable and log inputs the model read**: meal log, steps, heart rate, HRV and sleep, on the same time axis as the chart. These are the values the network consumed at each reading.
+5. **How this forecast is built**: pick +15 / +30 / +60 / +120 min and read ① physiology-based estimate + ② learned model adjustment = ③ final forecast, with its 80% interval.
+6. **Spike risk and model contributions**: the calibrated 2-hour probability, then the contributions, which add up to the forecast median's highest point.
+7. **What-if simulation** (directly under the forecast):
+   - Click *60 g carb meal in 30 min*. At the 05:55 anchor, the highest median goes from 119.7 to 179.8 mg/dL and the largest same-time difference is +83.3 mg/dL at +75 min. The spike risk goes from 10.6% to 17.6%. The scenario curve has a one-step peak at +75 min, so point at the whole curve, not only the headline number.
+   - Click *30 min brisk walk now*. The highest median goes from 119.7 to 117.9 mg/dL, and the service attaches its own approximation warning.
    - Click *Medication change*. The service refuses with `SCENARIO_UNSUPPORTED`. Say that this is deliberate.
-7. **Evidence page**: matched baselines, calibration, and the failed Gate 3.
+8. **Evidence page**: matched baselines, calibration, and the failed Gate 3.
 
 **If the backend is down**: the What-If shows "Simulation service unavailable — nothing has been simulated locally". Switch to the recorded video segment; never show fixtures as live inference.
 

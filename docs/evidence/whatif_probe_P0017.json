@@ -133,6 +133,136 @@
    }
   },
   {
+   "as_of": "2026-09-29T05:55:00Z",
+   "scenario": "meal_60g_+30",
+   "input": {
+    "kind": "meal",
+    "offset_min": 30,
+    "carbs_g": 60
+   },
+   "backend_status": 200,
+   "proxy_status": 200,
+   "cohort": "synthetic-v2/val",
+   "fallback_used": null,
+   "current_mg_dl": 92.0,
+   "baseline_peak_max_p50": 119.7,
+   "baseline_peak_offset_min": 120,
+   "scenario_peak_max_p50": 179.8,
+   "scenario_peak_offset_min": 75,
+   "backend_delta_peak_mg_dl": 60.2,
+   "rederived_delta_peak": 60.1,
+   "baseline_p120": 0.106,
+   "scenario_p120": 0.176,
+   "backend_delta_probability": 0.07,
+   "warnings": [],
+   "proxy_metrics": {
+    "delta_peak_mg_dl": 60.2,
+    "new_peak_mg_dl": 179.8,
+    "baseline_peak_mg_dl": 119.7,
+    "delta_probability": 0.07,
+    "new_probability": 0.176,
+    "baseline_probability": 0.106
+   },
+   "proxy_matches_backend": true,
+   "max_abs_curve_diff_mg_dl": 83.3
+  },
+  {
+   "as_of": "2026-09-29T05:55:00Z",
+   "scenario": "walk_30min_now",
+   "input": {
+    "kind": "activity",
+    "offset_min": 0,
+    "duration_min": 30,
+    "intensity": "moderate"
+   },
+   "backend_status": 200,
+   "proxy_status": 200,
+   "cohort": "synthetic-v2/val",
+   "fallback_used": null,
+   "current_mg_dl": 92.0,
+   "baseline_peak_max_p50": 119.7,
+   "baseline_peak_offset_min": 120,
+   "scenario_peak_max_p50": 117.9,
+   "scenario_peak_offset_min": 120,
+   "backend_delta_peak_mg_dl": -1.8,
+   "rederived_delta_peak": -1.8,
+   "baseline_p120": 0.106,
+   "scenario_p120": 0.106,
+   "backend_delta_probability": -0.001,
+   "warnings": [
+    "SCENARIO_APPROXIMATION"
+   ],
+   "proxy_metrics": {
+    "delta_peak_mg_dl": -1.8,
+    "new_peak_mg_dl": 117.9,
+    "baseline_peak_mg_dl": 119.7,
+    "delta_probability": 0,
+    "new_probability": 0.106,
+    "baseline_probability": 0.106
+   },
+   "proxy_matches_backend": true,
+   "max_abs_curve_diff_mg_dl": 3.7
+  },
+  {
+   "as_of": "2026-09-29T05:55:00Z",
+   "scenario": "skip_lunch",
+   "input": {
+    "kind": "skip_habitual_meal",
+    "meal_slot": "lunch"
+   },
+   "backend_status": 200,
+   "proxy_status": 200,
+   "cohort": "synthetic-v2/val",
+   "fallback_used": null,
+   "current_mg_dl": 92.0,
+   "baseline_peak_max_p50": 119.7,
+   "baseline_peak_offset_min": 120,
+   "scenario_peak_max_p50": 119.7,
+   "scenario_peak_offset_min": 120,
+   "backend_delta_peak_mg_dl": 0.0,
+   "rederived_delta_peak": 0.0,
+   "baseline_p120": 0.106,
+   "scenario_p120": 0.106,
+   "backend_delta_probability": 0.0,
+   "warnings": [],
+   "proxy_metrics": {
+    "delta_peak_mg_dl": 0,
+    "new_peak_mg_dl": 119.7,
+    "baseline_peak_mg_dl": 119.7,
+    "delta_probability": 0,
+    "new_probability": 0.106,
+    "baseline_probability": 0.106
+   },
+   "proxy_matches_backend": true,
+   "max_abs_curve_diff_mg_dl": 0.0
+  },
+  {
+   "as_of": "2026-09-29T05:55:00Z",
+   "scenario": "medication",
+   "input": {
+    "kind": "medication",
+    "offset_min": 0,
+    "med_class": "metformin",
+    "taken": true
+   },
+   "backend_status": 422,
+   "proxy_status": 422,
+   "backend_problem": {
+    "type": "https://schemas.glucose-twin.dev/problems/scenario_unsupported",
+    "title": "Scenario input not supported",
+    "status": 422,
+    "code": "SCENARIO_UNSUPPORTED",
+    "detail": "Scenario what-if: medication changes need the full twin; the linearized twin served here has no drug terms."
+   },
+   "proxy_problem": {
+    "type": "https://schemas.glucose-twin.dev/problems/scenario_unsupported",
+    "title": "Scenario input not supported",
+    "status": 422,
+    "code": "SCENARIO_UNSUPPORTED",
+    "detail": "Scenario what-if: medication changes need the full twin; the linearized twin served here has no drug terms."
+   }
+  },
+  {
    "as_of": "2026-10-05T07:30:00Z",
    "scenario": "meal_60g_+30",
    "input": {
