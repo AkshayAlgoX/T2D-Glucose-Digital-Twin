@@ -28,4 +28,26 @@ describe('BFF Proxy Failure Path', () => {
     const text = await response.text();
     expect(text).toBe('fetch failed');
   });
+
+  it('includes twin_overlay in upstream stream query by default and preserves explicit includes', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(new Response(new ReadableStream(), {
+      headers: { 'Content-Type': 'text/event-stream' },
+    }));
+
+    // Default include
+    const req1 = new NextRequest('http://localhost/api/patients/123/stream');
+    await streamGET(req1, { params: Promise.resolve({ id: '123' }) });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay'),
+      expect.anything()
+    );
+
+    // Explicit include is preserved as requested
+    const req2 = new NextRequest('http://localhost/api/patients/123/stream?include=drivers');
+    await streamGET(req2, { params: Promise.resolve({ id: '123' }) });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('include=drivers'),
+      expect.anything()
+    );
+  });
 });

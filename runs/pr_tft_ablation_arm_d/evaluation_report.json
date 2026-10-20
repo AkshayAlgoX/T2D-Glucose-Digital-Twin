@@ -1,0 +1,386 @@
+{
+  "schema": "pr_tft_evaluation/v1",
+  "generated_at": "2026-10-19T20:52:00Z",
+  "provenance": {
+    "run_manifest_sha256": "0ae8ca75cdbd7986e9c990909656cb671b98e2193887fc2997aba1ac4e859f51",
+    "checkpoint_sha256": "fb49cadfafdab18bbb582855c8d9814e8dc29b0b09842f0de0a3fe178f09a0c0",
+    "data_sha256": {
+      "patients_ehr.csv": "c9c3d3d3e4d8b0dc77732715cb4f8d90e48920162a4538103377cb4f68ae8254",
+      "patient_cgm_telemetry.csv": "d4585ae39009da43d95f8560409fc1ede5e2e3eeb57eee4fd6519df4c3e3544f"
+    }
+  },
+  "populations": {
+    "primary": {
+      "name": "Synthetic Validation Cohort (Split: val, n=44, N=54,281 eligible anchors; 53,920 / 53,906 / 53,849 evaluable rows at 30 / 60 / 120 min; 10,000-draw patient-clustered bootstrap)",
+      "disclaimer": "DEVELOPMENT_VALIDATION_ONLY_NOT_HUMAN_GENERALIZATION",
+      "calibration_status": "RESUBSTITUTION_DIAGNOSTIC (fitted and evaluated on the same validation split)",
+      "models": {
+        "pr_tft": {
+          "rmse_30": {
+            "estimate": 12.36367,
+            "ci_95": [
+              11.89244,
+              12.83912
+            ]
+          },
+          "mae_30": {
+            "estimate": 8.42788
+          },
+          "mard_30": {
+            "estimate": 7.21838
+          },
+          "rmse_60": {
+            "estimate": 19.52711,
+            "ci_95": [
+              18.55579,
+              20.48474
+            ]
+          },
+          "mae_60": {
+            "estimate": 12.4339
+          },
+          "mard_60": {
+            "estimate": 10.15617
+          },
+          "rmse_120": {
+            "estimate": 25.03194,
+            "ci_95": [
+              23.67314,
+              26.27241
+            ]
+          },
+          "mae_120": {
+            "estimate": 16.75728
+          },
+          "mard_120": {
+            "estimate": 13.66412
+          },
+          "coverage_80_conformal": {
+            "estimate": 0.80002
+          },
+          "coverage_80_conformal_resubstitution": {
+            "estimate": 0.80002
+          },
+          "width_80_conformal_mg_dl": {
+            "estimate": 37.29641
+          }
+        },
+        "twin_only": {
+          "rmse_30": {
+            "estimate": 15.24477,
+            "ci_95": [
+              14.30472,
+              16.15712
+            ]
+          },
+          "mae_30": {
+            "estimate": 9.53143
+          },
+          "mard_30": {
+            "estimate": 7.91878
+          },
+          "rmse_60": {
+            "estimate": 23.23479,
+            "ci_95": [
+              21.76135,
+              24.63592
+            ]
+          },
+          "mae_60": {
+            "estimate": 14.24337
+          },
+          "mard_60": {
+            "estimate": 11.26892
+          },
+          "rmse_120": {
+            "estimate": 28.64231,
+            "ci_95": [
+              26.67189,
+              30.51009
+            ]
+          },
+          "mae_120": {
+            "estimate": 19.17085
+          },
+          "mard_120": {
+            "estimate": 15.26292
+          }
+        },
+        "persistence": {
+          "rmse_30": {
+            "estimate": 21.63999,
+            "ci_95": [
+              20.43844,
+              22.78954
+            ]
+          },
+          "mae_30": {
+            "estimate": 14.34425
+          },
+          "mard_30": {
+            "estimate": 11.47041
+          },
+          "rmse_60": {
+            "estimate": 36.05396,
+            "ci_95": [
+              33.84807,
+              38.1289
+            ]
+          },
+          "mae_60": {
+            "estimate": 23.44184
+          },
+          "mard_60": {
+            "estimate": 18.92529
+          },
+          "rmse_120": {
+            "estimate": 48.35709,
+            "ci_95": [
+              45.06027,
+              51.45639
+            ]
+          },
+          "mae_120": {
+            "estimate": 32.92622
+          },
+          "mard_120": {
+            "estimate": 28.21303
+          }
+        }
+      },
+      "paired_comparisons": {
+        "pr_minus_persistence_rmse_30": {
+          "diff": -9.27632,
+          "ci_95": [
+            -10.04919,
+            -8.42539
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 42.87,
+          "relative_reduction_ci_95": [
+            41.03,
+            44.42
+          ],
+          "direction": "PR_TFT - Persistence < 0"
+        },
+        "pr_minus_twin_rmse_30": {
+          "diff": -2.8811,
+          "ci_95": [
+            -3.37472,
+            -2.37982
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 18.9,
+          "relative_reduction_ci_95": [
+            16.57,
+            20.99
+          ],
+          "direction": "PR_TFT - Twin < 0"
+        },
+        "pr_minus_persistence_rmse_60": {
+          "diff": -16.52684,
+          "ci_95": [
+            -17.77083,
+            -15.17338
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 45.84,
+          "relative_reduction_ci_95": [
+            44.53,
+            46.98
+          ],
+          "direction": "PR_TFT - Persistence < 0"
+        },
+        "pr_minus_twin_rmse_60": {
+          "diff": -3.70768,
+          "ci_95": [
+            -4.26641,
+            -3.14698
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 15.96,
+          "relative_reduction_ci_95": [
+            14.28,
+            17.51
+          ],
+          "direction": "PR_TFT - Twin < 0"
+        },
+        "pr_minus_persistence_rmse_120": {
+          "diff": -23.32515,
+          "ci_95": [
+            -25.30571,
+            -21.22539
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 48.24,
+          "relative_reduction_ci_95": [
+            46.8,
+            49.48
+          ],
+          "direction": "PR_TFT - Persistence < 0"
+        },
+        "pr_minus_twin_rmse_120": {
+          "diff": -3.61037,
+          "ci_95": [
+            -4.44429,
+            -2.81337
+          ],
+          "draws": 10000,
+          "negative_draws": 10000,
+          "relative_reduction_pct": 12.61,
+          "relative_reduction_ci_95": [
+            10.38,
+            14.77
+          ],
+          "direction": "PR_TFT - Twin < 0"
+        }
+      },
+      "patient_pairwise_wins": {
+        "30min": {
+          "pr_vs_persistence": {
+            "wins_count": 44,
+            "n_patients": 44,
+            "win_fraction": 1.0,
+            "exact_binomial_ci_95": [
+              0.91958,
+              1.0
+            ]
+          },
+          "pr_vs_twin": {
+            "wins_count": 44,
+            "n_patients": 44,
+            "win_fraction": 1.0,
+            "exact_binomial_ci_95": [
+              0.91958,
+              1.0
+            ]
+          }
+        },
+        "60min": {
+          "pr_vs_persistence": {
+            "wins_count": 44,
+            "n_patients": 44,
+            "win_fraction": 1.0,
+            "exact_binomial_ci_95": [
+              0.91958,
+              1.0
+            ]
+          },
+          "pr_vs_twin": {
+            "wins_count": 44,
+            "n_patients": 44,
+            "win_fraction": 1.0,
+            "exact_binomial_ci_95": [
+              0.91958,
+              1.0
+            ]
+          }
+        },
+        "120min": {
+          "pr_vs_persistence": {
+            "wins_count": 44,
+            "n_patients": 44,
+            "win_fraction": 1.0,
+            "exact_binomial_ci_95": [
+              0.91958,
+              1.0
+            ]
+          },
+          "pr_vs_twin": {
+            "wins_count": 41,
+            "n_patients": 44,
+            "win_fraction": 0.93182,
+            "exact_binomial_ci_95": [
+              0.81344,
+              0.98571
+            ]
+          }
+        },
+        "sampling_assumption": "Independent Bernoulli trials across the 44 subjects in simulated validation cohort; interpretation strictly limited to this simulated cohort."
+      },
+      "subgroups": {
+        "Healthy": {
+          "n_patients": 15,
+          "n_anchors_eligible": 18486,
+          "n_evaluable_30": 18372,
+          "n_evaluable_60": 18367,
+          "n_evaluable_120": 18339,
+          "rmse_30": 12.298,
+          "rmse_60": 19.312,
+          "rmse_120": 23.455
+        },
+        "Prediabetes": {
+          "n_patients": 19,
+          "n_anchors_eligible": 23485,
+          "n_evaluable_30": 23325,
+          "n_evaluable_60": 23318,
+          "n_evaluable_120": 23306,
+          "rmse_30": 12.584,
+          "rmse_60": 19.873,
+          "rmse_120": 25.41
+        },
+        "Type 2": {
+          "n_patients": 10,
+          "n_anchors_eligible": 12310,
+          "n_evaluable_30": 12223,
+          "n_evaluable_60": 12221,
+          "n_evaluable_120": 12204,
+          "rmse_30": 12.034,
+          "rmse_60": 19.18,
+          "rmse_120": 26.553
+        }
+      },
+      "calibration_resubstitution_diagnostics": {
+        "status": "RESUBSTITUTION_DIAGNOSTIC (fitted and evaluated on the same validation split)",
+        "brier_score_raw": 0.165,
+        "brier_score_calibrated": 0.0703,
+        "at_risk_anchors": 47629,
+        "threshold_evaluations": {
+          "0.35": {
+            "threshold": 0.35,
+            "label": "Evaluated threshold (diagnostic only, not clinical operating recommendation)",
+            "sensitivity": 0.6303,
+            "precision": 0.5868,
+            "alert_rate_pct": 14.2
+          },
+          "0.60": {
+            "threshold": 0.6,
+            "label": "High threshold diagnostic (0.60: sensitivity 29.9%, precision 74.5%)",
+            "sensitivity": 0.2987,
+            "precision": 0.745,
+            "alert_rate_pct": 5.3
+          }
+        }
+      },
+      "gate3_realism_status": {
+        "status": "FAILED",
+        "acceptance_threshold": "<= 0.65",
+        "historical_auroc": 0.932031,
+        "duration_corrected_auroc": 0.928974
+      },
+      "patient_level_distribution": {
+        "rmse_60": {
+          "min": 14.215167045593262,
+          "p25": 17.31657838821411,
+          "median": 18.85917377471924,
+          "p75": 20.738666534423828,
+          "max": 27.131418228149414,
+          "iqr": 3.422088146209717
+        },
+        "rmse_120": {
+          "min": 15.511117935180664,
+          "p25": 20.96123218536377,
+          "median": 24.96411895751953,
+          "p75": 28.3130145072937,
+          "max": 32.98002243041992,
+          "iqr": 7.351782321929932
+        }
+      }
+    }
+  }
+}

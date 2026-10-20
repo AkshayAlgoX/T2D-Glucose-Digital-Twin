@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="100%" height="100%" style="background:#131822; border-radius:8px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <text x="60" y="28" fill="#f8fafc" font-size="15" font-weight="600">Forecast Error Trajectory Across Horizons (5 to 120 min)</text>
+  <text x="60" y="46" fill="#94a3b8" font-size="11">Validation Cohort (44 Patients, 54,281 Eligible Anchors / 53,849-53,920 Evaluable Rows) · RMSE (mg/dL)</text>
+
+  <!-- Legend in dedicated top row -->
+  <g transform="translate(60, 64)">
+    <line x1="0" y1="6" x2="22" y2="6" stroke="#3b82f6" stroke-width="3"/>
+    <text x="28" y="10" fill="#f8fafc" font-size="11" font-weight="600">PR-TFT (Arm D)</text>
+    <line x1="140" y1="6" x2="162" y2="6" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="2,2"/>
+    <text x="168" y="10" fill="#f59e0b" font-size="11">UKF Twin</text>
+    <line x1="260" y1="6" x2="282" y2="6" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="4,4"/>
+    <text x="288" y="10" fill="#ef4444" font-size="11">Persistence</text>
+  </g>
+
+  <line x1="60" y1="348.0" x2="720" y2="348.0" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="352.0" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">0</text><line x1="60" y1="298.2" x2="720" y2="298.2" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="302.2" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">10</text><line x1="60" y1="248.4" x2="720" y2="248.4" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="252.4" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">20</text><line x1="60" y1="198.6" x2="720" y2="198.6" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="202.6" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">30</text><line x1="60" y1="148.9" x2="720" y2="148.9" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="152.9" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">40</text><line x1="60" y1="99.1" x2="720" y2="99.1" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="103.1" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">50</text><line x1="60" y1="49.3" x2="720" y2="49.3" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="52" y="53.3" fill="#94a3b8" font-size="11" text-anchor="end" font-family="sans-serif">60</text><line x1="117.4" y1="88" x2="117.4" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="117.4" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">15m</text><line x1="203.5" y1="88" x2="203.5" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="203.5" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">30m</text><line x1="289.6" y1="88" x2="289.6" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="289.6" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">45m</text><line x1="375.7" y1="88" x2="375.7" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="375.7" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">60m</text><line x1="461.7" y1="88" x2="461.7" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="461.7" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">75m</text><line x1="547.8" y1="88" x2="547.8" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="547.8" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">90m</text><line x1="633.9" y1="88" x2="633.9" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="633.9" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">105m</text><line x1="720.0" y1="88" x2="720.0" y2="348" stroke="#2d3748" stroke-dasharray="3,3" stroke-width="1"/><text x="720.0" y="366" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">120m</text>
+
+  <!-- Persistence -->
+  <polyline fill="none" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="4,4" points="60.0,324.5 88.7,305.0 117.4,287.2 146.1,270.6 174.8,255.0 203.5,240.3 232.2,226.2 260.9,213.0 289.6,200.6 318.3,189.1 347.0,178.4 375.7,168.5 404.3,159.5 433.0,151.3 461.7,143.9 490.4,137.4 519.1,131.5 547.8,126.3 576.5,121.8 605.2,117.9 633.9,114.5 662.6,111.7 691.3,109.3 720.0,107.3"/>
+  <!-- UKF Twin -->
+  <polyline fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="2,2" points="60.0,315.9 88.7,306.3 117.4,297.0 146.1,288.2 174.8,279.9 203.5,272.1 232.2,264.5 260.9,257.2 289.6,250.3 318.3,243.8 347.0,237.8 375.7,232.3 404.3,227.4 433.0,223.2 461.7,219.6 490.4,216.5 519.1,214.0 547.8,212.0 576.5,210.3 605.2,209.0 633.9,207.9 662.6,206.9 691.3,206.2 720.0,205.4"/>
+  <!-- PR-TFT -->
+  <polyline fill="none" stroke="#3b82f6" stroke-width="3" points="60.0,326.9 88.7,317.3 117.4,308.6 146.1,300.6 174.8,293.3 203.5,286.4 232.2,279.6 260.9,272.8 289.6,266.9 318.3,261.0 347.0,255.5 375.7,250.8 404.3,246.4 433.0,241.9 461.7,235.7 490.4,228.7 519.1,227.8 547.8,228.4 576.5,226.7 605.2,226.3 633.9,225.8 662.6,224.9 691.3,224.2 720.0,223.4"/>
+
+  <!-- Key Annotations -->
+  <circle cx="375.7" cy="250.8" r="4" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"/>
+  <text x="375.7" y="240.8" fill="#60a5fa" font-size="11" font-weight="700" text-anchor="middle">PR-TFT 60m: 19.53</text>
+
+  <circle cx="720.0" cy="223.4" r="4" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5"/>
+  <text x="710.0" y="213.4" fill="#60a5fa" font-size="11" font-weight="700" text-anchor="end">PR-TFT 120m: 25.03</text>
+</svg>

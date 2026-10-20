@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" width="100%" height="100%" style="background:#131822; border-radius:8px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <rect x="24" y="20" width="712" height="200" rx="6" fill="rgba(239, 68, 68, 0.08)" stroke="#7f1d1d" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <g transform="translate(44, 48)">
+    <rect x="0" y="0" width="84" height="24" rx="4" fill="#ef4444" opacity="0.2"/>
+    <text x="42" y="16" fill="#ef4444" font-size="12" font-weight="700" text-anchor="middle">FAILED</text>
+    <text x="100" y="17" fill="#f8fafc" font-size="16" font-weight="600">Gate 3 Realism Audit: Indistinguishability Criterion</text>
+    <text x="100" y="36" fill="#94a3b8" font-size="12">Discriminator AUROC exceeds target threshold (&lt;= 0.65) · Strict Negative Disclosure</text>
+  </g>
+
+  <!-- Scorecards -->
+  <g transform="translate(44, 110)">
+    <!-- Historical -->
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="200" height="80" rx="4" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="24" fill="#94a3b8" font-size="11">HISTORICAL AUROC</text>
+      <text x="16" y="56" fill="#ef4444" font-size="24" font-weight="700">0.9320</text>
+      <text x="16" y="72" fill="#64748b" font-size="10">90% CI: 0.9284&#8211;0.9358</text>
+    </g>
+
+    <!-- Duration-Corrected -->
+    <g transform="translate(220, 0)">
+      <rect x="0" y="0" width="220" height="80" rx="4" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="24" fill="#94a3b8" font-size="11">DURATION-CORRECTED AUROC</text>
+      <text x="16" y="56" fill="#f59e0b" font-size="24" font-weight="700">0.9290</text>
+      <text x="16" y="72" fill="#64748b" font-size="10">90% CI: 0.9250&#8211;0.9330</text>
+    </g>
+
+    <!-- Target -->
+    <g transform="translate(460, 0)">
+      <rect x="0" y="0" width="210" height="80" rx="4" fill="#1e293b" stroke="#334155"/>
+      <text x="16" y="24" fill="#94a3b8" font-size="11">ACCEPTANCE TARGET</text>
+      <text x="16" y="56" fill="#22c55e" font-size="24" font-weight="700">&#8804; 0.6500</text>
+      <text x="16" y="72" fill="#64748b" font-size="10">Criterion: Indistinguishable</text>
+    </g>
+  </g>
+</svg>

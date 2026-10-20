@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       request_id: crypto.randomUUID(),
       subject_id: body.patientId,
       as_of: body.pinned_as_of,
-      include: ["scenarios"],
+      include: ["scenarios", "twin_overlay"],
       scenarios: body.scenarios || [] // Pass through scenarios from client
     };
 
@@ -43,7 +43,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!backendRes.ok) {
-      return NextResponse.json({ error: "Backend failed" }, { status: backendRes.status });
+      let errBody: any;
+      try {
+        errBody = await backendRes.json();
+      } catch {
+        errBody = { error: "Backend failed" };
+      }
+      return NextResponse.json(errBody, { status: backendRes.status });
     }
 
     const resData: any = await backendRes.json();

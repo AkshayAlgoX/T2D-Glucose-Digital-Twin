@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-36%20passed%20%7C%20325%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-37%20passed%20%7C%20346%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-111%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
@@ -16,6 +16,7 @@
 | :--- | :--- | :--- |
 | **Project Title** | `T2D Glucose Digital Twin` | Focus: Prediabetes & Type 2 Diabetes Adverse Event Early Warning |
 | **Team & Institution** | **T2D Digital Twin Team**<br>• Akshaya R — BGS College of Engineering and Technology<br>• Nikhil VS — East West Institute of Technology | Descriptive project-team label; independent engineering college affiliations |
+| **Public GitHub Repository** | [`https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.`](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.) | Authoritative GitHub repository (clone: `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git`) |
 | **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch based on commit `67431af9` |
 | **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 3-page landscape document; source in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) |
 | **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
@@ -109,7 +110,11 @@ The setup instructions below have been verified on Linux x86_64:
 
 ### 2. Backend Setup & Service Startup
 ```bash
-# From repository root:
+# Clone the repository:
+git clone https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git
+cd T2D-Glucose-Digital-Twin.
+
+# Pull Git LFS assets and create virtual environment:
 git lfs pull
 python3 -m venv .venv
 source .venv/bin/activate
@@ -138,7 +143,7 @@ Open `http://localhost:3000/cohort` or `http://localhost:3000/patients/19dba1b5-
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 36 Jest test suites (325 tests: unit, integration, contracts, safety invariants):
+# Run all 37 Jest test suites (346 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
 # Run all 111 backend tests (provenance, contracts, causality, safety):
@@ -174,15 +179,16 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 - **Status**: **API-ONLY PROTOTYPE**
 - **Detail**: While backend routes support meal/activity simulation, `ScenarioEditor.tsx` in the dashboard is explicitly disabled. Pharmacological scenarios are rejected (`SCENARIO_UNSUPPORTED`). Scenario outputs do not represent human causal treatment effects.
 
-### 5. Validation Trajectory Benchmark & Baseline Audit
-- **Scope**: Evaluated on the **44 validation patients** (47,629 decision anchors) from the pre-registered split (`split_293.json`).
-- **PR-TFT Arm D Trajectory Errors (RMSE mg/dL)**:
-  - **30-min**: **12.36** (MAE 8.43, MARD 7.22%)
-  - **60-min**: **19.53** (MAE 12.43, MARD 10.16%)
-  - **120-min**: **25.03** (MAE 16.76, MARD 13.66%)
-- **Uncertainty & Hazard**: 80% conformal interval empirical coverage is **80.00%** (width 37.3 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, and Expected Calibration Error (ECE) **0.000094**.
-- **Audit of Baseline Comparability (NO-GO for Direct Superiority Claims)**: Earlier baseline references in `backend/runs/pr_tft_demo/evaluation_baseline.json` report Persistence (RMSE120 50.66) and Twin-only (RMSE120 40.20) on an 18-subject test partition under an earlier demo run (`stage2_observed-epoch=01-val_loss=0.3096.ckpt`). Because this artifact evaluated only 18 subjects, direct apples-to-apples numerical superiority of Arm D over those baselines is marked **cohort-unverified**. Superiority claims on the 44-subject validation split are reserved until baselines are recomputed on the exact same anchors.
-- **Explicit Boundary & Ledger Caveat**: These figures are derived from the development validation partition (`split_293.json`) which was used for checkpoint selection and calibration. They establish architecture-level validation error metrics under simulated conditions, but are explicitly **NOT** independent held-out generalization to human patients. The 44-subject test cohort remains sealed under protocol.
+### 5. Validation Trajectory Benchmark & Matched Baseline Audit
+- **Scope**: Evaluated on the **44 validation patients** (54,281 eligible anchors; 53,920 / 53,906 / 53,849 evaluable rows at 30 / 60 / 120 min) from the pre-registered split (`split_293.json`). (Note: 47,629 was the at-risk hazard calibration subset).
+- **Matched Trajectory Benchmark (95% Patient-Clustered Bootstrap CI, B=10,000 draws)**:
+  - **30-min**: PR-TFT **12.36** [11.89, 12.84] (MAE 8.43, MARD 7.22%) vs. UKF Twin **15.24** [14.30, 16.16] vs. Persistence **21.64** [20.44, 22.79]. Paired diff: $\Delta = \mathbf{-9.28}$ [-10.05, -8.43] vs. PE (42.87% reduction); $\Delta = \mathbf{-2.88}$ [-3.37, -2.38] vs. Twin (18.90% reduction); 10,000/10,000 draws negative.
+  - **60-min**: PR-TFT **19.53** [18.56, 20.48] (MAE 12.43, MARD 10.16%) vs. UKF Twin **23.23** [21.76, 24.64] vs. Persistence **36.05** [33.85, 38.13]. Paired diff: $\Delta = \mathbf{-16.53}$ [-17.77, -15.17] vs. PE (45.84% reduction); $\Delta = \mathbf{-3.71}$ [-4.27, -3.15] vs. Twin (15.96% reduction); 10,000/10,000 draws negative.
+  - **120-min**: PR-TFT **25.03** [23.67, 26.27] (MAE 16.76, MARD 13.66%) vs. UKF Twin **28.64** [26.67, 30.51] vs. Persistence **48.36** [45.06, 51.46]. Paired diff: $\Delta = \mathbf{-23.33}$ [-25.31, -21.23] vs. PE (48.24% reduction); $\Delta = \mathbf{-3.61}$ [-4.44, -2.81] vs. Twin (12.61% reduction); 10,000/10,000 draws negative.
+- **Aggregation Reporting**: Both pooled micro-averages and unweighted patient macro-averages are reported side-by-side (e.g., at 60 min, Macro 19.27 mg/dL vs. Micro 19.53 mg/dL) as distinct aggregation perspectives.
+- **Patient Win Rates (Exact 95% Clopper-Pearson Binomial CIs)**: 44/44 (100% [92.0%, 100.0%]) at 30m & 60m; at 120m: 44/44 (100% [92.0%, 100.0%]) vs. Persistence, 41/44 (93.2% [81.3%, 98.6%]) vs. UKF Twin. *Sampling assumption:* Independent Bernoulli trials across the 44 subjects in simulated cohort; strictly limited to this simulated cohort.
+- **Probabilistic Calibration (Resubstitution Diagnostics)**: 80% conformal interval empirical coverage is **80.00%** (mean width 37.30 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, Brier score **0.0703** (raw 0.1650), and ECE **0.000094** on 47,629 at-risk anchors. Because calibration parameters were estimated on this validation set, all calibration metrics are resubstitution diagnostics; evaluated thresholds (0.35 and 0.60) are empirical diagnostics, not approved clinical operating points.
+- **Explicit Boundary & Ledger Caveat**: These figures are simulated development-validation results derived from the development validation partition (`split_293.json`) which was used for both checkpoint selection and calibration. They establish architecture-level validation error metrics under simulated conditions, but are explicitly **NOT** independent held-out generalization to human patients. The 44-subject test cohort remains sealed and strictly unexecuted under protocol.
 
 ---
 

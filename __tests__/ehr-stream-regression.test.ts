@@ -54,13 +54,13 @@ describe('EHR stream proxy URL', () => {
     jest.restoreAllMocks();
   });
 
-  it('defaults to speed=60 and the encoded drivers,twin_state,ehr_context list', async () => {
+  it('defaults to speed=60 and the encoded drivers,twin_state,ehr_context,twin_overlay list', async () => {
     const request = new NextRequest(`http://localhost/api/patients/${subjectId}/stream`);
     const response = await GET(request, { params: Promise.resolve({ id: subjectId }) });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -75,7 +75,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay&as_of=2026-10-04T17%3A30%3A00%2B05%3A30`,
       expect.objectContaining({ signal: request.signal }),
     );
     expect(response.status).toBe(200);
@@ -104,7 +104,7 @@ describe('EHR stream proxy URL', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context`,
+      `http://127.0.0.1:8001/v1/subjects/${subjectId}/stream?speed=60&include=drivers%2Ctwin_state%2Cehr_context%2Ctwin_overlay`,
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'text/event-stream',

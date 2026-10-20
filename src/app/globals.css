@@ -115,7 +115,7 @@ p.fine-print { margin: 10px 0 0; }
 .current-glucose span { font-size: 12px; letter-spacing: 0; color: var(--color-ink-3); margin-left: 8px; }
 .forecast-metadata { display: flex; flex-direction: column; text-align: right; gap: 5px; font-size: 11px; color: var(--color-ink-3); }
 .forecast-metadata span:first-child { color: var(--color-ink-2); text-transform: capitalize; }
-.chart-frame { height: clamp(300px, 34vh, 390px); padding: 0 8px; }
+.chart-frame { height: auto; min-height: 420px; padding: 0 8px; }
 .forecast-canvas { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; }
 .chart-toolbar { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 6px; }
 .chart-window { display: flex; gap: 2px; margin: 0 12px 8px; padding: 2px; background: var(--color-surface-2); border: 1px solid var(--color-line); border-radius: 5px; }
@@ -129,7 +129,7 @@ p.fine-print { margin: 10px 0 0; }
 .chart-legend .legend-outer { height: 8px; background: #edf3fc; border: 1px dotted var(--color-forecast); }
 .chart-legend .legend-physics { height: 0; background: transparent; border-top: 2px dashed var(--color-physics); }
 .chart-legend .legend-peak { width: 8px; height: 8px; border-radius: 50%; background: var(--color-forecast); }
-.forecast-plot { min-height: 0; flex: 1; position: relative; width: 100%; }
+.forecast-plot { min-height: 240px; height: clamp(240px, 32vh, 420px); flex: 1 0 240px; position: relative; width: 100%; }
 .forecast-plot > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .chart-axis { font-size: 13px; fill: var(--color-ink-2); font-family: var(--font-sans); }
 .chart-anchor-label { font-size: 12px; fill: var(--color-ink-2); font-weight: 600; }
@@ -487,7 +487,7 @@ p.fine-print { margin: 10px 0 0; }
   .current-summary { align-items: end; gap: 10px; }
   .forecast-metadata { font-size: 10px; max-width: 150px; }
   .current-glucose { font-size: 32px; }
-  .chart-frame { height: 350px; padding: 0 4px; }
+  .chart-frame { height: auto; min-height: 420px; padding: 0 4px; }
   .chart-legend { gap: 8px 12px; font-size: 11px; }
   .chart-readout { font-size: 11px; }
   .model-caption { padding: 12px 18px; }
@@ -571,7 +571,7 @@ p.fine-print { margin: 10px 0 0; }
 .workspace-page .current-glucose { font-size: 44px; line-height: 1.2; letter-spacing: -1.8px; }
 .workspace-page .current-glucose > span { font-family: var(--font-sans); font-size: 13px; }
 .workspace-page .forecast-metadata { font-size: 12px; }
-.workspace-page .chart-frame { flex: 1 0 340px; min-height: 340px; height: auto; padding: 0 12px; }
+.workspace-page .chart-frame { flex: 1 0 auto; min-height: 420px; height: auto; padding: 0 12px; }
 .workspace-page .chart-legend { font-size: 12px; gap: 10px 16px; padding-bottom: 14px; }
 .workspace-page .chart-window button { font-size: 11px; min-height: 28px; }
 .workspace-page .chart-readout { min-height: 40px; padding-block: 10px; }
@@ -610,7 +610,7 @@ p.fine-print { margin: 10px 0 0; }
 }
 @media (max-width: 1024px) {
   .workspace-page .workspace-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "trajectory" "insights" "support"; }
-  .workspace-page .chart-frame { flex-basis: 350px; min-height: 350px; }
+  .workspace-page .chart-frame { flex-basis: auto; min-height: 420px; height: auto; }
   .workspace-page .insights-panel { border-left: 0 !important; border-top: 1px solid var(--color-line) !important; }
   .workspace-page .insights-panel .risk-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .workspace-page .contributions { border-top: 0; border-left: 1px solid var(--color-line); }
@@ -637,7 +637,7 @@ p.fine-print { margin: 10px 0 0; }
   .workspace-page .current-summary { padding: 0 16px 16px; }
   .workspace-page .current-glucose { font-size: 38px; }
   .workspace-page .forecast-metadata { font-size: 11px; }
-  .workspace-page .chart-frame { padding: 0 4px; flex-basis: 350px; }
+  .workspace-page .chart-frame { padding: 0 4px; flex-basis: auto; min-height: 420px; height: auto; }
   .workspace-page .chart-legend { font-size: 11px; gap: 8px 12px; }
   .workspace-page .insights-panel .risk-panel, .workspace-page .workspace-grid > .workspace-support { display: block; }
   .workspace-page .contributions, .workspace-page .data-availability { border-left: 0 !important; border-top: 1px solid var(--color-line) !important; }

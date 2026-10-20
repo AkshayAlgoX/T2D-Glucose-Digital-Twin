@@ -712,5 +712,62 @@ describe('/api/forecast proxy', () => {
       expect(data.metrics.new_probability).toBe(0.7);
       expect(data.metrics.delta_probability).toBe(0.5); // Recomputed, not -0.8
     });
+
+    it('includes twin_overlay in backend request include array', async () => {
+      const payload = makeValidUpstreamPayload();
+      let sentBody: any;
+      (global.fetch as jest.Mock).mockImplementation((_url, init) => {
+        sentBody = JSON.parse(init.body);
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(payload),
+        });
+      });
+
+      const req = new NextRequest('http://localhost/api/forecast', {
+        method: 'POST',
+        body: JSON.stringify({
+          patientId: '550e8400-e29b-41d4-a716-446655440000',
+          pinned_as_of: '2026-09-28T11:55:00Z',
+          scenarios: [{ scenario_id: "meal1", inputs: [{ kind: 'meal', offset_min: 0, carbs_g: 45 }] }]
+        })
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(sentBody.include).toEqual(['scenarios', 'twin_overlay']);
+    });
+
+    it('forwards structured CALIBRATION_FAILED problem details on calibration error', async () => {
+      const problemPayload = {
+        type: 'about:blank',
+        title: 'Scenario calibration failed',
+        status: 500,
+        code: 'CALIBRATION_FAILED',
+        detail: 'Scenario meal1: calibration failed: non-converged isotonic regression',
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve(problemPayload),
+      });
+
+      const req = new NextRequest('http://localhost/api/forecast', {
+        method: 'POST',
+        body: JSON.stringify({
+          patientId: '550e8400-e29b-41d4-a716-446655440000',
+          pinned_as_of: '2026-09-28T11:55:00Z',
+          scenarios: [{ scenario_id: "meal1", inputs: [{ kind: 'meal', offset_min: 0, carbs_g: 45 }] }]
+        })
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(500);
+      const data = await res.json();
+      expect(data.code).toBe('CALIBRATION_FAILED');
+      expect(data.title).toBe('Scenario calibration failed');
+      expect(data.detail).toContain('Scenario meal1: calibration failed');
+    });
   });
 });

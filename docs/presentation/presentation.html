@@ -510,7 +510,7 @@
   </div>
 
   <!-- Slide 10: Scientific Evidence Ledger -->
-  <div class="slide">
+  <div class="slide" style="padding: 16mm 28mm 14mm 28mm;">
     <div class="header">
       <div>
         <h2 class="slide-title">The Scientific Evidence Ledger</h2>
@@ -519,38 +519,47 @@
       <span class="slide-num">10 / 12</span>
     </div>
     <div class="content">
-      <div class="grid-3">
-        <div class="card">
-          <h4>Tier 1: Verified Implementation</h4>
-          <p style="color:#16a34a; font-weight:700;">CONFIRMED BY CODE & TESTS</p>
-          <ul>
-            <li>Observable-input contract enforcement.</li>
-            <li>PR-TFT + UKF S3 model architecture.</li>
-            <li>Chunk-invariant SSE proxy & recovery hook.</li>
-            <li>36 Jest suites (325 tests) & 111 backend tests passed.</li>
+      <div style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px;">
+        <div class="card" style="padding: 10px 14px;">
+          <h4>Tier 2: Matched Validation Benchmarks</h4>
+          <p style="color:#d97706; font-weight:700; font-size: 9pt; margin-bottom: 4px;">44 PATIENTS (54,281 ELIGIBLE ANCHORS / 53,849–53,920 EVALUABLE)</p>
+          <ul style="font-size: 9pt; line-height: 1.35;">
+            <li><strong>Matched RMSE (mg/dL · 95% Patient-Cluster CI, B=10,000 draws):</strong>
+              <ul style="margin-top: 2px;">
+                <li><strong>30m:</strong> PR-TFT <strong>12.36</strong> [11.89–12.84] vs. UKF 15.24 [14.30–16.16] vs. Persist 21.64 [20.44–22.79]<br>&Delta; -9.28 vs Persist [-10.05, -8.43], -2.88 vs Twin [-3.37, -2.38]; Rel Red 42.87% / 18.90% (10k draws &lt; 0)</li>
+                <li><strong>60m:</strong> PR-TFT <strong>19.53</strong> [18.56–20.48] vs. UKF 23.23 [21.76–24.64] vs. Persist 36.05 [33.85–38.13]<br>&Delta; -16.53 vs Persist [-17.77, -15.17], -3.71 vs Twin [-4.27, -3.15]; Rel Red 45.84% / 15.96% (10k draws &lt; 0)</li>
+                <li><strong>120m:</strong> PR-TFT <strong>25.03</strong> [23.67–26.27] vs. UKF 28.64 [26.67–30.51] vs. Persist 48.36 [45.06–51.46]<br>&Delta; -23.33 vs Persist [-25.31, -21.23], -3.61 vs Twin [-4.44, -2.81]; Rel Red 48.24% / 12.61% (10k draws &lt; 0)</li>
+              </ul>
+            </li>
+            <li style="margin-top: 3px;"><strong>Patient Wins (Exact 95% Binomial CI):</strong> 44/44 (100% [92.0–100%]) at 30m &amp; 60m; 120m: 44/44 (100%) vs Persist, 41/44 (93.2% [81.3–98.6%]) vs Twin. <em>Cohort-limited Bernoulli assumption.</em></li>
+            <li style="margin-top: 3px;"><strong>Subgroup Robustness (RMSE60):</strong> Healthy 19.31 (n=15, 18.5k elig / 18.4k eval), Prediabetes 19.87 (n=19, 23.5k elig / 23.3k eval), Type 2 19.18 (n=10, 12.3k elig / 12.2k eval).</li>
+            <li style="margin-top: 3px;"><strong>Resubstitution Diagnostics:</strong> 80% conformal coverage 80.00% (width 37.3 mg/dL); Brier score 0.0703 (raw 0.1650 on 47.6k at-risk anchors). Evaluated on val split; not clinical operating recommendations.</li>
+            <li style="margin-top: 3px;"><em>Boundary:</em> Validation cohort used in model selection; reflects simulated development validation, not human generalization.</li>
           </ul>
         </div>
-        <div class="card">
-          <h4>Tier 2: Validation Trajectory Benchmark</h4>
-          <p style="color:#d97706; font-weight:700;">44 PATIENTS (47,629 ANCHORS)</p>
-          <ul>
-            <li><strong>PR-TFT Arm D:</strong> RMSE30 12.36, RMSE60 19.53, RMSE120 25.03 mg/dL.</li>
-            <li><strong>Uncertainty:</strong> 80% conformal coverage 80.00% (width 37.3); calibrated ECE 0.000094.</li>
-            <li><strong>Baseline Audit:</strong> Historical demo baselines (Persistence 50.66, UKF 40.20) used 18 subjects; direct comparison marked unverified.</li>
-            <li><em>Caveat:</em> Validation split used for checkpointing; not independent human generalization.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Tier 3: Unexecuted Work</h4>
-          <p style="color:#dc2626; font-weight:700;">EXCLUDED FROM CLAIMS</p>
-          <ul>
-            <li>EW-01 scientific evaluation harness remains unexecuted.</li>
-            <li>Demo baseline references missing checkpoint; metrics excluded.</li>
-            <li>Zero prospective clinical outcome claims.</li>
-          </ul>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="card" style="padding: 10px 14px;">
+            <h4>Tier 1: Verified Implementation</h4>
+            <p style="color:#16a34a; font-weight:700; font-size: 9pt;">CONFIRMED BY CODE & TESTS</p>
+            <ul style="font-size: 9.5pt; line-height: 1.4;">
+              <li>Observable-input contract enforcement.</li>
+              <li>PR-TFT + UKF S3 model architecture.</li>
+              <li>Chunk-invariant SSE proxy & recovery hook.</li>
+              <li>37 Jest suites (346 tests) & 111 backend tests passed.</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 10px 14px;">
+            <h4>Tier 3: Unexecuted Work</h4>
+            <p style="color:#dc2626; font-weight:700; font-size: 9pt;">EXCLUDED FROM CLAIMS</p>
+            <ul style="font-size: 9.5pt; line-height: 1.4;">
+              <li>EW-01 scientific evaluation harness remains unexecuted.</li>
+              <li>Demo baseline references missing checkpoint; metrics excluded.</li>
+              <li>Zero prospective clinical outcome claims.</li>
+            </ul>
+          </div>
         </div>
       </div>
-      <div class="alert-box">
+      <div class="alert-box" style="padding: 6px 12px; margin-top: -4px;">
         <strong>Evidence Integrity:</strong> We do not manufacture benchmark bars or promote historical training-set validation metrics as prospective generalization proof.
       </div>
     </div>
@@ -564,7 +573,7 @@
   <div class="slide">
     <div class="header">
       <div>
-        <h2 class="slide-title">Reproducibility & Scientific Limitations</h2>
+        <h2 class="slide-title">Reproducibility &amp; Scientific Limitations</h2>
         <p class="slide-subtitle">Synthetic Data Realism Gate 3 and Governance Status</p>
       </div>
       <span class="slide-num">11 / 12</span>
@@ -575,12 +584,12 @@
           <h4>Synthetic Data Realism Audit (Gate 3)</h4>
           <div class="danger-box" style="margin-bottom: 8px;">
             <strong>Gate 3 Result: FAILED</strong><br>
-            Discriminator AUROC: <strong>0.9320</strong> (historical) / <strong>0.9290</strong> (duration-corrected) vs. Target: <strong>&le; 0.65</strong>.
+            Discriminator AUROC: <strong>0.9320</strong> (historical, 90% CI: 0.928–0.936) / <strong>0.9290</strong> (duration-corrected, 90% CI: 0.925–0.933) vs. Target: <strong>&le; 0.65</strong>.
           </div>
           <ul>
-            <li>A machine learning discriminator reliably distinguishes synthetic ODE trajectories from mock-real generator records (top tell: <code>jerk_sd</code>).</li>
-            <li>Controlled factorial drift experiments confirm empirical AR(1) background drift (SD 8–16 mg/dL) accounts for a portion of trajectory curvature differences, but not the entire multivariate failure.</li>
-            <li>Sampling duration fix (+307 windows) verified; no unscientific parameter gaming applied.</li>
+            <li>A gradient-boosted discriminator reliably distinguishes synthetic ODE trajectories from mock-real generator records (top tell: <code>jerk_sd</code>, SHAP 0.8878; <code>roc_max_fall</code>).</li>
+            <li>Controlled factorial experiments confirm AR(1) drift (SD 8–16 mg/dL) accounts for partial curvature divergence, but multivariate ODE dynamics remain distinguishable. Null control: AUROC 0.507.</li>
+            <li><strong>Hazard Calibration (Resubstitution Diagnostic):</strong> Empirical resubstitution diagnostics on 47,629 at-risk anchors show 14.2% anchor alert rate (sensitivity 63.0%, precision 58.7%) at threshold 0.35, and 5.3% anchor alert rate (sensitivity 29.9%, precision 74.5%) at threshold 0.60. Evaluated thresholds are empirical diagnostics on the validation set, not approved clinical operating points; anchor alert fractions do not represent event-level alerts per day.</li>
           </ul>
         </div>
         <div class="card">

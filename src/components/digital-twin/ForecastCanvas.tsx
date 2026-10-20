@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
 import { formatTime } from '@/lib/formatters/date';
-import type { ForecastResponse } from '@/types/forecast-response';
+import type { ForecastResponse, QuantilePoint } from '@/types/forecast-response';
 import type { SubjectStore } from '@/lib/types';
 
 export function ForecastCanvas({ forecast, cache, isStale }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean }) {
@@ -12,6 +12,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const pointerDismissed = useRef(false);
   const keyboardFocused = useRef(false);
   const [historyHours, setHistoryHours] = useState(6);
+  const [selectedHorizon, setSelectedHorizon] = useState<number>(60);
   const chartId = 'trajectory-' + useId().replace(/:/g, '');
 
   useEffect(() => {
@@ -21,6 +22,10 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
     document.addEventListener('keydown', dismiss);
     return () => document.removeEventListener('keydown', dismiss);
   }, []);
+
+  useEffect(() => {
+    setSelection(null);
+  }, [forecast?.subject?.subject_id, forecast?.as_of]);
 
   // The observed element is mounted even while waiting for the first forecast.
   useEffect(() => {
@@ -35,8 +40,9 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
 
   const anchor = forecast?.as_of ? Date.parse(forecast.as_of) : NaN;
   const hasAnchor = Number.isFinite(anchor);
-  const points = forecast?.forecast?.points ?? [];
+  const points = (forecast?.forecast?.points ?? []) as QuantilePoint[];
   const mapped = points.map(point => ({ ...point, time: anchor + point.offset_min * 60000 }));
+  const hasPhysics = mapped.some(point => point.twin_p50 != null);
   const scenario = forecast?.scenarios?.[0]?.points ?? [];
   const mappedScenario = scenario.map(point => ({ ...point, time: anchor + point.offset_min * 60000 }));
   const history = (cache?.cgm ?? []).map(point => ({ ...point, time: Date.parse(point.t) }))
@@ -89,8 +95,50 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const selectAt = (index: number, source: 'pointer' | 'keyboard') => {
     if (inspectable[index]) setSelection({ key: inspectable[index].key, source });
   };
-  const hasPhysics = mapped.some(point => point.twin_p50 != null);
   const isWarning = forecast?.alert?.state === 'warning';
+
+  const availableOffsets = points.map(point => point.offset_min);
+  const activeOffset = selected?.point?.offset_min ?? (
+    availableOffsets.includes(selectedHorizon)
+      ? selectedHorizon
+      : (availableOffsets.includes(60) ? 60 : (availableOffsets[0] ?? 60))
+  );
+
+  const targetPoint = points.find(point => point.offset_min === activeOffset) ?? null;
+  const isFallback = forecast?.model?.fallback_used === 'twin_only';
+
+  const hybridP50 = targetPoint?.p50 ?? null;
+  const physicsP50 = targetPoint?.twin_p50 ?? (isFallback && hybridP50 != null ? hybridP50 : null);
+
+  let diffDisplay = 'Unavailable';
+  let diffClass = '';
+
+  if (hybridP50 != null && physicsP50 != null) {
+    const diff = Number((hybridP50 - physicsP50).toFixed(1));
+    if (diff > 0) {
+      diffDisplay = `+${diff.toFixed(1)} mg/dL`;
+      diffClass = 'adjustment-positive';
+    } else if (diff < 0) {
+      diffDisplay = `${diff.toFixed(1)} mg/dL`;
+      diffClass = 'adjustment-negative';
+    } else {
+      diffDisplay = `0.0 mg/dL`;
+      diffClass = 'adjustment-neutral';
+    }
+  } else if (isFallback && hybridP50 != null) {
+    diffDisplay = '0.0 mg/dL';
+    diffClass = 'adjustment-neutral';
+  } else {
+    diffDisplay = 'Unavailable';
+  }
+
+  const handleSelectHorizon = (offset: number) => {
+    setSelectedHorizon(offset);
+    const target = inspectable.find(p => p.kind === 'forecast' && p.point?.offset_min === offset);
+    if (target) {
+      setSelection({ key: target.key, source: 'pointer' });
+    }
+  };
 
   const inspectPointer = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -198,7 +246,249 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             : `${selectedTimestamp} · Observed CGM ${selected.value} mg/dL`)}
         </span>
       </div>
+
+      <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="Physics prior vs. hybrid forecast">
+        <div className="inspector-header">
+          <div className="inspector-title-row">
+            <span className="inspector-title">Physics prior vs. hybrid forecast</span>
+            {isFallback && <span className="inspector-badge fallback" data-testid="twin-only-fallback-badge">Twin-only fallback</span>}
+            {isStale && <span className="inspector-badge stale" data-testid="stale-stream-badge">Stale stream</span>}
+          </div>
+          <div className="inspector-horizon-controls" role="group" aria-label="Horizon selection">
+            <span className="horizon-label">Horizon:</span>
+            <div className="horizon-pills">
+              {[15, 30, 60, 120].map(h => (
+                <button
+                  key={h}
+                  type="button"
+                  data-testid={`horizon-pill-${h}`}
+                  className={`horizon-pill${activeOffset === h ? ' active' : ''}`}
+                  aria-pressed={activeOffset === h}
+                  disabled={!availableOffsets.includes(h)}
+                  onClick={() => handleSelectHorizon(h)}
+                >
+                  +{h}m
+                </button>
+              ))}
+            </div>
+            {availableOffsets.length > 0 && (
+              <select
+                className="horizon-select"
+                data-testid="horizon-dropdown"
+                aria-label="All forecast horizons"
+                value={activeOffset}
+                onChange={e => handleSelectHorizon(Number(e.target.value))}
+              >
+                {availableOffsets.map(offset => (
+                  <option key={offset} value={offset}>
+                    +{offset} min
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        <div className="inspector-metrics">
+          <div className="inspector-metric-card" data-testid="physics-prior-card">
+            <span className="metric-label">Physics prior (twin_p50)</span>
+            <span className="metric-value" data-testid="physics-prior-value">
+              {physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
+            </span>
+          </div>
+
+          <div className="inspector-metric-card" data-testid="hybrid-forecast-card">
+            <span className="metric-label">Hybrid forecast (p50)</span>
+            <span className="metric-value" data-testid="hybrid-forecast-value">
+              {hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
+            </span>
+          </div>
+
+          <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
+            <span className="metric-label">Forecast adjustment (p50 − twin_p50)</span>
+            <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
+              {diffDisplay}
+            </span>
+          </div>
+        </div>
+
+        <div className="inspector-footnote" data-testid="inspector-note">
+          <span>Empirical model adjustment · Not a causal effect or accuracy improvement.</span>
+          {forecast?.as_of && (
+            <span className="inspector-timestamp">
+              Anchor: <time dateTime={forecast.as_of}>{formatTime(Date.parse(forecast.as_of))} UTC</time>
+              {forecast.subject?.subject_id ? ` · ${forecast.subject.subject_id}` : ''}
+            </span>
+          )}
+        </div>
+      </div>
+
       {!!mappedScenario.length && <p className="fine-print">Existing scenario overlay · projection under model assumptions, not validated human causal effects.</p>}
+      <style>{`
+        .hybrid-inspector {
+          margin: 4px 12px 8px;
+          padding: 8px 12px;
+          border: 1px solid var(--color-line, #e2e8f0);
+          border-radius: 6px;
+          background: var(--color-surface, #ffffff);
+          font-size: 11px;
+          color: var(--color-ink, #0f172a);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .inspector-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .inspector-title-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .inspector-title {
+          font-weight: 600;
+          font-size: 11px;
+          color: var(--color-ink, #1e293b);
+        }
+        .inspector-badge {
+          font-size: 9px;
+          font-weight: 600;
+          padding: 1px 6px;
+          border-radius: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .inspector-badge.fallback {
+          background: #fef3c7;
+          color: #92400e;
+          border: 1px solid #fcd34d;
+        }
+        .inspector-badge.stale {
+          background: #fee2e2;
+          color: #991b1b;
+          border: 1px solid #fca5a5;
+        }
+        .inspector-horizon-controls {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .horizon-label {
+          color: var(--color-ink-3, #64748b);
+          font-size: 10px;
+        }
+        .horizon-pills {
+          display: flex;
+          gap: 2px;
+          background: var(--color-surface-2, #f1f5f9);
+          padding: 2px;
+          border-radius: 4px;
+          border: 1px solid var(--color-line, #e2e8f0);
+        }
+        .horizon-pill {
+          padding: 2px 6px;
+          font-size: 10px;
+          font-weight: 500;
+          border: none;
+          background: transparent;
+          color: var(--color-ink-2, #475569);
+          border-radius: 3px;
+          cursor: pointer;
+        }
+        .horizon-pill:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .horizon-pill.active {
+          background: #ffffff;
+          color: var(--color-accent, #0f766e);
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+          font-weight: 600;
+        }
+        .horizon-select {
+          font-size: 10px;
+          padding: 2px 4px;
+          border: 1px solid var(--color-line, #e2e8f0);
+          border-radius: 4px;
+          background: var(--color-surface, #ffffff);
+          color: var(--color-ink, #1e293b);
+          cursor: pointer;
+        }
+        .inspector-metrics {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px;
+        }
+        .inspector-metric-card {
+          padding: 4px 8px;
+          background: var(--color-surface-2, #f8fafc);
+          border-radius: 4px;
+          border: 1px solid var(--color-line, #f1f5f9);
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .metric-label {
+          font-size: 9px;
+          color: var(--color-ink-3, #64748b);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .metric-value {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-ink, #0f172a);
+          font-variant-numeric: tabular-nums;
+        }
+        .metric-value.adjustment-positive {
+          color: var(--color-forecast, #2563eb);
+        }
+        .metric-value.adjustment-negative {
+          color: var(--color-physics, #7c3aed);
+        }
+        .metric-value.adjustment-neutral {
+          color: var(--color-ink-2, #475569);
+        }
+        .inspector-footnote {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 9.5px;
+          color: var(--color-ink-3, #64748b);
+          padding-top: 2px;
+          border-top: 1px dashed var(--color-line, #e2e8f0);
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .inspector-timestamp {
+          font-variant-numeric: tabular-nums;
+        }
+        @media (max-width: 520px) {
+          .inspector-metrics {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+          .inspector-metric-card {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+          }
+          .metric-label {
+            white-space: normal;
+          }
+          .inspector-footnote {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
