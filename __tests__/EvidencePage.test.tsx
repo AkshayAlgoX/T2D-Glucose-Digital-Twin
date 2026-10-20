@@ -383,4 +383,198 @@ describe('EvidencePage', () => {
     expect(screen.queryByText(/development validation ceiling/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/catastrophic individual outliers/i)).not.toBeInTheDocument();
   });
+
+  it('renders 10-second executive summary hero with all four pillars (scope, baselines, T2D, realism)', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    // 10-Second Executive Summary Section
+    expect(screen.getByText('Development Validation at a Glance')).toBeInTheDocument();
+
+    // Pillar 1: Scope & Cohort
+    expect(screen.getByText('1. Evaluation Basis')).toBeInTheDocument();
+    expect(screen.getByText('44 Subjects')).toBeInTheDocument();
+    expect(screen.getByText('15 Healthy · 19 Prediabetes · 10 T2D')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic Validation Split')).toBeInTheDocument();
+
+    // Pillar 2: Baseline Comparison & Error Reduction
+    expect(screen.getByText('2. Forecast Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('-45.8%')).toBeInTheDocument();
+    expect(screen.getByText('Physics + Neural Residual')).toBeInTheDocument();
+
+    // Pillar 3: Target T2D Subgroup
+    expect(screen.getByText('3. Target Subgroup (T2D)')).toBeInTheDocument();
+    expect(screen.getByText('Δ -5.52 mg/dL')).toBeInTheDocument();
+    expect(screen.getByText('Exploratory · n=10 Subjects')).toBeInTheDocument();
+
+    // Pillar 4: Realism & Limitations
+    expect(screen.getByText('4. Governance & Realism')).toBeInTheDocument();
+    expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
+    expect(screen.getByText('AUROC 0.9320 (Target ≤ 0.65)')).toBeInTheDocument();
+    expect(screen.getByText('No Clinical Generalization')).toBeInTheDocument();
+  });
+
+  it('renders technical reproducibility details inside collapsible disclosure with byte verification', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByText('Cryptographic Provenance & Verification Register')).toBeInTheDocument();
+    expect(screen.getByText('SHA-256 Verified')).toBeInTheDocument();
+    expect(screen.getByText(MANIFEST_SHA)).toBeInTheDocument();
+    expect(screen.getByText('b'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByText('runs/pr_tft_ablation_arm_d/run_manifest.json')).toBeInTheDocument();
+  });
+
+  it('renders subgroup stratification with explicit exploratory tagging and distinct eligible/evaluable denominators', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByText('Exploratory Analysis · n=44 Cohort')).toBeInTheDocument();
+    expect(screen.getByText(/Type 2 \(Target Clinical Focus\)/i)).toBeInTheDocument();
+
+    // Check denominators distinction: eligible vs evaluable rows
+    expect(screen.getByText('n=10 pts · 12,310 eligible')).toBeInTheDocument();
+    expect(screen.getByText('12,223 rows')).toBeInTheDocument();
+    expect(screen.getByText('12,221 rows')).toBeInTheDocument();
+    expect(screen.getByText('12,204 rows')).toBeInTheDocument();
+  });
+
+  it('renders probabilistic calibration as explicit resubstitution diagnostics without clinical threshold recommendations', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByText('Resubstitution Diagnostics · Not Clinical Recommendations')).toBeInTheDocument();
+    expect(screen.getByText(/Brier Score \(Raw → Calibrated\)/i)).toBeInTheDocument();
+    expect(screen.getByText('0.0703')).toBeInTheDocument();
+    expect(screen.getByText(/47,629 at-risk anchors/i)).toBeInTheDocument();
+    expect(screen.getByText('Evaluated Threshold 0.35')).toBeInTheDocument();
+    expect(screen.getByText('High Threshold Diagnostic (0.60)')).toBeInTheDocument();
+  });
+
+  it('renders all five evidence SVG visual assets with appropriate accessible alternative text', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByAltText('Matched Baselines with 95% Patient-Clustered Bootstrap CIs')).toBeInTheDocument();
+    expect(screen.getByAltText('Forecast Error Trajectory Across Horizons (5 to 120 min)')).toBeInTheDocument();
+    expect(screen.getByAltText('Subgroup Robustness Across Clinical Strata')).toBeInTheDocument();
+    expect(screen.getByAltText('Calibration Reliability Diagram with Equal-Width Probability Bins')).toBeInTheDocument();
+    expect(screen.getByAltText('Gate 3 Realism Audit Discriminator Summary')).toBeInTheDocument();
+  });
+
+  it('maintains prominent display of negative findings (Gate 3 FAILED, Sealed Test Split, External NO-GO, EW-01 Unexecuted)', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    // Negative governance findings must be explicit and unhidden
+    expect(screen.getByText('Validation Status & Provenance Register')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic-Data Indistinguishability')).toBeInTheDocument();
+    expect(screen.getByText('SEALED & UNEXECUTED')).toBeInTheDocument();
+    expect(screen.getByText('ShanghaiT2DM Diagnostic')).toBeInTheDocument();
+    expect(screen.getByText('NO-GO')).toBeInTheDocument();
+    expect(screen.getByText('EW-01 Protocol')).toBeInTheDocument();
+    expect(screen.getByText('UNEXECUTED')).toBeInTheDocument();
+  });
+
+  it('answers the four essential questions on the first screen hero', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    // Question 1: What data was evaluated?
+    expect(screen.getByText('What data was evaluated?')).toBeInTheDocument();
+    expect(screen.getByText('44 Subjects')).toBeInTheDocument();
+    expect(screen.getByText('15 Healthy · 19 Prediabetes · 10 T2D')).toBeInTheDocument();
+    expect(screen.getByText(/repeated 5-minute time points/i)).toBeInTheDocument();
+
+    // Question 2: How did the hybrid model compare?
+    expect(screen.getByText('How did the hybrid model compare?')).toBeInTheDocument();
+    expect(screen.getByText(/Lower RMSE/i)).toBeInTheDocument();
+
+    // Question 3: What was observed in target T2D?
+    expect(screen.getByText('What was observed in T2D?')).toBeInTheDocument();
+    expect(screen.getByText('Δ -5.52 mg/dL')).toBeInTheDocument();
+    expect(screen.getByText(/Exploratory evidence from only 10 simulated T2D subjects/i)).toBeInTheDocument();
+
+    // Question 4: What remains unproven?
+    expect(screen.getByText('What remains unproven?')).toBeInTheDocument();
+    expect(screen.getByText(/Gate 3 Realism FAILED/i)).toBeInTheDocument();
+    expect(screen.getByText(/zero human clinical claims/i)).toBeInTheDocument();
+  });
+
+  it('reconciles raw 78.16% coverage and 80.00% conformal-adjusted coverage with explicit mathematical context', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByText('80% Conformal Interval Coverage Reconciliation')).toBeInTheDocument();
+    expect(screen.getByText(/Raw Model Coverage \(Uncalibrated\):/i)).toBeInTheDocument();
+    expect(screen.getByText(/78\.16%/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/0\.781553/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Conformal-Adjusted Coverage \(Resubstitution\):/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/80\.00%/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/0\.800020/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Reconciliation Note:/i)).toBeInTheDocument();
+  });
+
+  it('renders clear user-facing provenance status without implying independent evidence authentication', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+
+    const Component = await EvidencePage();
+    render(Component);
+
+    expect(screen.getByText('Validated Development Artifact')).toBeInTheDocument();
+    expect(screen.queryByText('Audited Validation Benchmark')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recorded artifact — review required/i)).not.toBeInTheDocument();
+  });
 });

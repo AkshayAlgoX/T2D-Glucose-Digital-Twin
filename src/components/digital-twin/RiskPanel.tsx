@@ -18,7 +18,10 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   const alertLabel = alert?.state === 'warning' ? 'Spike Warning' : alert?.state === 'watch' ? 'Risk Watch' : alert?.state === 'none' ? 'No active alert' : 'Alert state unavailable';
   const drivers = forecast?.drivers ?? [];
   const current = forecast?.current?.value_mg_dl ?? null;
-  const peak = risk?.peak_mg_dl?.p50;
+  const trajectoryMax = forecast?.forecast?.points?.length
+    ? Math.max(...forecast.forecast.points.map(p => p.p50))
+    : null;
+  const peak = risk?.peak_mg_dl?.p50 ?? trajectoryMax;
   const residual = current != null && peak != null && drivers.length ? peak - drivers.reduce((sum, driver) => sum + driver.impact_mg_dl, current) : null;
 
   return (

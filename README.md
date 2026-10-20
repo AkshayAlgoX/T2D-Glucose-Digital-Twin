@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-37%20passed%20%7C%20346%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-38%20passed%20%7C%20361%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-111%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
@@ -16,8 +16,8 @@
 | :--- | :--- | :--- |
 | **Project Title** | `T2D Glucose Digital Twin` | Focus: Prediabetes & Type 2 Diabetes Adverse Event Early Warning |
 | **Team & Institution** | **T2D Digital Twin Team**<br>• Akshaya R — BGS College of Engineering and Technology<br>• Nikhil VS — East West Institute of Technology | Descriptive project-team label; independent engineering college affiliations |
-| **Public GitHub Repository** | [`https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.`](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.) | Authoritative GitHub repository (clone: `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git`) |
-| **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch based on commit `67431af9` |
+| **Public GitHub Repository** | [`https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin`](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) | Authoritative GitHub repository (clone: `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git`) |
+| **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch (tag: `v1.0.0-top1`) |
 | **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 3-page landscape document; source in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) |
 | **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
 | **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Verified 20:00 exact timeline (segment 16:00–18:30 is exactly 2:30) |
@@ -111,8 +111,8 @@ The setup instructions below have been verified on Linux x86_64:
 ### 2. Backend Setup & Service Startup
 ```bash
 # Clone the repository:
-git clone https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin..git
-cd T2D-Glucose-Digital-Twin.
+git clone https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git
+cd T2D-Glucose-Digital-Twin
 
 # Pull Git LFS assets and create virtual environment:
 git lfs pull
@@ -143,7 +143,7 @@ Open `http://localhost:3000/cohort` or `http://localhost:3000/patients/19dba1b5-
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 37 Jest test suites (346 tests: unit, integration, contracts, safety invariants):
+# Run all 38 Jest test suites (361 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
 # Run all 111 backend tests (provenance, contracts, causality, safety):

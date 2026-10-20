@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import { PatientWorkspace, isValidCalendarDate } from '../src/components/digital-twin/PatientWorkspace';
+import { PatientWorkspace, isValidCalendarDate, getCohortDetails } from '../src/components/digital-twin/PatientWorkspace';
 import { ForecastResponseSchema } from '../src/lib/zod-schemas';
 import type { EhrContext, ForecastResponse } from '../src/types/forecast-response';
 import source from './fixtures/risk-audit-forecast.json';
@@ -178,5 +178,88 @@ describe('Clinical context source fidelity', () => {
       if (original) Object.defineProperty(window, 'matchMedia', original);
       else Reflect.deleteProperty(window, 'matchMedia');
     }
+  });
+});
+
+describe('Dataset provenance presentation and jargon elimination', () => {
+  it('parses cohort strings into accurate role descriptions without inventing benchmark validity', () => {
+    expect(getCohortDetails(null)).toBeNull();
+    expect(getCohortDetails(undefined)).toBeNull();
+    expect(getCohortDetails('')).toBeNull();
+
+    const trainDetails = getCohortDetails('synthetic-v2/train')!;
+    expect(trainDetails.dataset).toBe('synthetic-v2');
+    expect(trainDetails.split).toBe('train');
+    expect(trainDetails.roleDescription).toContain('Development & model training partition');
+    expect(trainDetails.roleDescription).toContain('not held-out evaluation');
+    expect(trainDetails.raw).toBe('synthetic-v2/train');
+
+    const valDetails = getCohortDetails('synthetic-v2/val')!;
+    expect(valDetails.dataset).toBe('synthetic-v2');
+    expect(valDetails.split).toBe('val');
+    expect(valDetails.roleDescription).toContain('Validation partition');
+    expect(valDetails.roleDescription).toContain('44-patient');
+
+    const testDetails = getCohortDetails('synthetic-v2/test')!;
+    expect(testDetails.dataset).toBe('synthetic-v2');
+    expect(testDetails.split).toBe('test');
+    expect(testDetails.roleDescription).toContain('Sealed test partition');
+
+    const customDetails = getCohortDetails('synthetic-v2/custom_cohort')!;
+    expect(customDetails.roleDescription).toBe('Recorded dataset partition: custom_cohort');
+  });
+
+  it('replaces raw synthetic-v2/train label with "Synthetic demonstration subject" for ordinary viewing', () => {
+    const forecast = fixture();
+    forecast.subject.cohort = 'synthetic-v2/train';
+    render(workspace(forecast));
+
+    const identitySection = screen.getByLabelText('Patient Identity');
+    expect(within(identitySection).getByText('Synthetic demonstration subject')).toBeVisible();
+    expect(within(identitySection).getByText('Synthetic subject')).toBeVisible();
+
+    // Verify the raw internal path is not visible outside of the details disclosure
+    const visibleParagraph = within(identitySection).getByText('Synthetic demonstration subject');
+    expect(visibleParagraph).not.toHaveTextContent('synthetic-v2');
+    expect(visibleParagraph).not.toHaveTextContent('train');
+  });
+
+  it('preserves provenance in an accessible "Dataset details" disclosure and disclaims held-out evaluation for training subjects', async () => {
+    const forecast = fixture();
+    forecast.subject.cohort = 'synthetic-v2/train';
+    render(workspace(forecast));
+
+    const details = screen.getByTestId('dataset-details');
+    expect(details).not.toHaveAttribute('open');
+
+    const summary = within(details).getByText('Dataset details');
+    expect(summary).toBeInTheDocument();
+
+    // Open disclosure
+    fireEvent.click(summary);
+    expect(details).toHaveAttribute('open');
+    expect(details).toHaveTextContent('Development & model training partition (parameter estimation only; not held-out evaluation).');
+    expect(details).toHaveTextContent('Provenance: synthetic-v2/train');
+
+    // Accessibility check
+    expect(await axe(details)).toHaveNoViolations();
+  });
+
+  it('updates provenance correctly upon patient switch and clears when forecast is absent', () => {
+    const { rerender } = render(workspace(null));
+    const identitySection = screen.getByLabelText('Patient Identity');
+    expect(within(identitySection).getByText('Awaiting cohort metadata')).toBeVisible();
+    expect(screen.queryByTestId('dataset-details')).toBeNull();
+
+    const forecast = fixture();
+    forecast.subject.cohort = 'synthetic-v2/val';
+    rerender(workspace(forecast));
+
+    expect(within(identitySection).getByText('Synthetic demonstration subject')).toBeVisible();
+    const details = screen.getByTestId('dataset-details');
+    expect(details).toBeInTheDocument();
+    fireEvent.click(within(details).getByText('Dataset details'));
+    expect(details).toHaveTextContent('Validation partition (44-patient tuning and calibration partition).');
+    expect(details).toHaveTextContent('Provenance: synthetic-v2/val');
   });
 });

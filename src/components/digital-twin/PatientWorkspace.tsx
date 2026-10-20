@@ -76,9 +76,38 @@ export function isValidCalendarDate(dateString: unknown): dateString is string {
   return day <= daysInMonth[month - 1];
 }
 
+export interface CohortProvenanceDetails {
+  dataset: string;
+  split: string;
+  roleDescription: string;
+  raw: string;
+}
+
+export function getCohortDetails(cohort?: string | null): CohortProvenanceDetails | null {
+  if (!cohort || typeof cohort !== 'string') return null;
+  const parts = cohort.split('/');
+  const dataset = parts[0] || cohort;
+  const split = parts.length > 1 ? parts[1] : 'unsplit';
+  const splitLower = split.toLowerCase();
+
+  let roleDescription: string;
+  if (splitLower === 'train') {
+    roleDescription = 'Development & model training partition (parameter estimation only; not held-out evaluation)';
+  } else if (splitLower === 'val') {
+    roleDescription = 'Validation partition (44-patient tuning and calibration partition)';
+  } else if (splitLower === 'test') {
+    roleDescription = 'Sealed test partition (held-out evaluation)';
+  } else {
+    roleDescription = `Recorded dataset partition: ${split}`;
+  }
+
+  return { dataset, split, roleDescription, raw: cohort };
+}
+
 function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'patientId' | 'forecast'>) {
   const ehr = forecast?.ehr_context;
   const twin = forecast?.twin_state;
+  const cohortDetails = getCohortDetails(forecast?.subject?.cohort);
   const fields: Array<[string, string | number, string?]> = [
     ['Age', ehr?.age_years != null ? ehr.age_years + ' years' : '—'],
     ['Sex', ehr?.sex ?? '—'],
@@ -97,7 +126,20 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         <div className="identity-mark"><UserRound size={21} aria-hidden="true" /><strong>{forecast?.subject?.simulator?.param_set_id ?? 'Subject'}</strong></div>
         <span className="status-badge">{forecast?.subject?.synthetic ? 'Synthetic subject' : 'Metadata pending'}</span>
         <SubjectIdentifier key={patientId} subjectId={patientId} label={forecast?.subject?.simulator?.param_set_id} />
-        <p className="fine-print">{forecast?.subject?.cohort ?? 'Awaiting cohort metadata'}</p>
+        <p className="fine-print">
+          {forecast?.subject?.synthetic ? 'Synthetic demonstration subject' : 'Awaiting cohort metadata'}
+        </p>
+        {cohortDetails && (
+          <details className="context-details" data-testid="dataset-details">
+            <summary>Dataset details</summary>
+            <p className="fine-print" style={{ margin: '4px 0 0' }}>
+              {cohortDetails.roleDescription}.
+              <span style={{ display: 'block', marginTop: '3px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-ink-3)' }}>
+                Provenance: {cohortDetails.raw}
+              </span>
+            </p>
+          </details>
+        )}
       </div>
       <section className="clinical-context" aria-labelledby="clinical-heading">
         <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical Context</h2>

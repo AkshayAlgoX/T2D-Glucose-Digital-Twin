@@ -121,4 +121,20 @@ describe('Risk labels and independently served values',()=>{
     expect(disclosure?.textContent).toContain('180 mg/dL');
     expect(disclosure?.textContent).toContain('15 minutes');
   });
+
+  it('falls back to peak trajectory value when spike_risk.peak_mg_dl is null (low risk state)', () => {
+    const p = fixture();
+    p.spike_risk!.peak_mg_dl = null as any;
+    p.forecast = {
+      horizon_min: 120,
+      points: [
+        { offset_min: 15, p50: 120 },
+        { offset_min: 30, p50: 135 },
+        { offset_min: 45, p50: 125 },
+      ] as any,
+    };
+    render(<RiskPanel forecast={p} />);
+    const peakRow = screen.getByText('Median at peak').closest('tr');
+    expect(within(peakRow!).getByText('135')).toBeInTheDocument();
+  });
 });
