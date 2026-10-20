@@ -313,7 +313,7 @@ export default async function EvidencePage() {
   return (
     <div className="app-shell">
       <NavigationRail active="evidence" />
-      <main id="main-content" className="overview-page">
+      <main id="main-content" className="overview-page evidence-page">
         {/* Page Header */}
         <header className="workspace-heading">
           <div>

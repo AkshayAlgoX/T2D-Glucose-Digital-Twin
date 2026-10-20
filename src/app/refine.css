@@ -288,3 +288,13 @@
 .chart-window button { font-size: 12.5px; }
 .clinical-fields small, .forecast-metadata, .forecast-metadata time, .current-summary .eyebrow { font-size: 12px; }
 .stage .chart-axis, .chart-anchor-label { font-size: 12px; }
+
+/* --- Floor, part 2: elements whose existing rules are more specific ----------- */
+.twin-workstation .eyebrow, .twin-workstation .forecast-metadata span, .twin-workstation .forecast-metadata time,
+.twin-workstation .chart-window button, .stage .chart-window button, .twin-workstation .cumulative-as-of, .twin-workstation .cumulative-as-of time,
+.twin-workstation code, .twin-workstation small, .twin-workstation .history-time-labels, .twin-workstation .history-time-labels span,
+.twin-workstation .history-legend, .twin-workstation .history-scale, .twin-workstation .snapshot-table th, .twin-workstation .snapshot-table td,
+.evidence-page small, .evidence-page .appendix-scope, .evidence-page .context-details p, .evidence-page code,
+.cohort-page dt, .cohort-page .eyebrow, .landing .eyebrow { font-size: 12px !important; }
+.trajectory-panel .chart-anchor-label { font-size: 12px; }
+@media (max-width: 600px) { .hero-forecast .hero-forecast-chart .chart-axis { font-size: 23px; } }

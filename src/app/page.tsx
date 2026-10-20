@@ -15,7 +15,7 @@ function PipelineSchematic() {
       <g>
         <rect x={x} y={y} width={w} height={h} rx={10} fill="#161e26" stroke={stroke} strokeOpacity={tone === 'in' ? 0.6 : 0.9} />
         <text x={x + 14} y={y + 24} fill="#e9eef2" fontSize={13.5} fontWeight={600}>{title}</text>
-        {lines.map((l, i) => <text key={l} x={x + 14} y={y + 44 + i * 17} fill="#b5c0ca" fontSize={12}>{l}</text>)}
+        {lines.map((l, i) => <text key={l} x={x + 14} y={y + 44 + i * 17} fill="#b5c0ca" fontSize={12.75}>{l}</text>)}
       </g>
     );
   };
