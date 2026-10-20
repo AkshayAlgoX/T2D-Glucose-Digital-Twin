@@ -80,8 +80,9 @@ it('marks only received snapshots at their actual time/probability coordinates',
   const markers = screen.getAllByTestId('risk-snapshot-marker');
   expect(markers).toHaveLength(risk.length);
   markers.forEach((marker, index) => {
-    expect(Number(marker.getAttribute('cx'))).toBeCloseTo(12 + (Date.parse(risk[index].t) - Date.parse(risk[0].t)) / 300000 * 696);
-    expect(Number(marker.getAttribute('cy'))).toBeCloseTo(62 - risk[index].p * 54);
+    // Default 720 px width: plot x 40..710, y 128..10 on a fixed 0-100% scale.
+    expect(Number(marker.getAttribute('cx'))).toBeCloseTo(40 + (Date.parse(risk[index].t) - Date.parse(risk[0].t)) / 300000 * 670);
+    expect(Number(marker.getAttribute('cy'))).toBeCloseTo(128 - risk[index].p * 118);
     expect(marker.querySelector('title')?.textContent).toBe(`${risk[index].t} · onset probability ${risk[index].p}`);
   });
   expect(screen.getByText(/connecting steps are visual guides/)).toBeInTheDocument();
