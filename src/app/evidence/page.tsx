@@ -322,8 +322,8 @@ export default async function EvidencePage() {
             <span
               className="status-badge"
               style={{
-                borderColor: errorState ? '#dc2626' : '#0b716b',
-                color: errorState ? '#dc2626' : '#0b716b',
+                borderColor: errorState ? 'var(--color-danger)' : 'var(--color-ok)',
+                color: errorState ? 'var(--color-danger)' : 'var(--color-ok)',
                 backgroundColor: errorState ? 'rgba(220, 38, 38, 0.08)' : 'rgba(11, 113, 107, 0.08)',
               }}
             >
@@ -464,7 +464,7 @@ export default async function EvidencePage() {
                 <div>
                   <div className="pillar-label">
                     <span>4. Governance &amp; Realism</span>
-                    <XCircle size={14} color="#dc2626" aria-hidden="true" />
+                    <XCircle size={14} color="var(--color-danger)" aria-hidden="true" />
                   </div>
                   <h3 className="pillar-question">What remains unproven?</h3>
                   <div className="pillar-stat stat-danger">
@@ -480,7 +480,7 @@ export default async function EvidencePage() {
                     <li><strong>Zero human clinical claims:</strong> Evaluated on simulated data only; not validated for clinical diagnosis.</li>
                   </ul>
                 </div>
-                <span className="pillar-tag" style={{ borderColor: '#fca5a5', color: '#dc2626' }}>
+                <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
                   No Clinical Generalization
                 </span>
               </div>
@@ -508,7 +508,7 @@ export default async function EvidencePage() {
                     Matched Baseline Comparisons &amp; Patient-Clustered Uncertainty
                   </h2>
                 </div>
-                <span className="status-badge" style={{ background: 'rgba(40, 104, 187, 0.08)', borderColor: '#2868bb', color: '#2868bb' }}>
+                <span className="status-badge" style={{ background: 'transparent', borderColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
                   n=44 Subjects · B=10,000 Cluster Resamples (Primary)
                 </span>
               </div>
@@ -517,7 +517,7 @@ export default async function EvidencePage() {
                 Multi-horizon paired forecast error comparison evaluating the PR-TFT hybrid model against standalone UKF physiology ODEs and sensor persistence across 53,849–53,920 evaluable rows. In this synthetic partition, the neural residual layer corrects physics drift at longer horizons without replacing physiological priors.
               </p>
 
-              <div className="evidence-table-container">
+              <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Baseline comparison table (scrolls horizontally)">
                 <table className="evidence-table" aria-label="Matched baseline forecast comparisons across prediction horizons">
                   <thead>
                     <tr>
@@ -580,7 +580,7 @@ export default async function EvidencePage() {
                           <td rowSpan={3} style={{ fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid var(--color-line)', background: 'var(--color-surface)' }}>
                             {row.hz}
                           </td>
-                          <td style={{ fontWeight: 600, color: '#0b716b' }}>PR-TFT (Arm D)</td>
+                          <td style={{ fontWeight: 600, color: 'var(--color-ok)' }}>PR-TFT (Arm D)</td>
                           <td style={{ fontWeight: 700 }}>
                             {row.pr?.estimate.toFixed(2)}{' '}
                             <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-3)' }}>
@@ -589,10 +589,10 @@ export default async function EvidencePage() {
                           </td>
                           <td>{row.maePr?.estimate ? row.maePr.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardPr?.estimate ? `${row.mardPr.estimate.toFixed(2)}%` : '—'}</td>
-                          <td style={{ color: '#0b716b', fontWeight: 600 }}>
+                          <td style={{ color: 'var(--color-ok)', fontWeight: 600 }}>
                             {row.diffPe?.diff ? `${row.diffPe.diff.toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}%)` : '—'}
                           </td>
-                          <td style={{ color: '#2868bb', fontWeight: 600 }}>
+                          <td style={{ color: 'var(--color-accent-ink)', fontWeight: 600 }}>
                             {row.diffTw?.diff ? `${row.diffTw.diff.toFixed(2)} (${row.diffTw.relative_reduction_pct.toFixed(1)}%)` : '—'}
                           </td>
                         </tr>
@@ -610,7 +610,7 @@ export default async function EvidencePage() {
                           <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#b91c1c' }}>Persistence</td>
+                          <td style={{ color: 'var(--color-danger)' }}>Persistence</td>
                           <td>
                             {row.pe?.estimate ? row.pe.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-3)' }}>
@@ -652,7 +652,7 @@ export default async function EvidencePage() {
                       Patient-Level Pairwise Win Rates (Exact Clopper-Pearson Binomial Intervals)
                     </h2>
                   </div>
-                  <span className="status-badge" style={{ borderColor: '#2868bb', color: '#2868bb' }}>
+                  <span className="status-badge" style={{ borderColor: 'var(--color-accent-ink)', color: 'var(--color-accent-ink)' }}>
                     n=44 Subjects · Exact Binomial Test
                   </span>
                 </div>
@@ -670,7 +670,7 @@ export default async function EvidencePage() {
                         <div style={{ display: 'grid', gap: '6px', fontSize: '12px' }}>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)' }}>vs. Persistence:</span>{' '}
-                            <strong style={{ color: '#0b716b' }}>
+                            <strong style={{ color: 'var(--color-ok)' }}>
                               {wRow.pr_vs_persistence.wins_count}/{wRow.pr_vs_persistence.n_patients} ({(wRow.pr_vs_persistence.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -679,7 +679,7 @@ export default async function EvidencePage() {
                           </div>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)' }}>vs. UKF Twin:</span>{' '}
-                            <strong style={{ color: wRow.pr_vs_twin.wins_count === wRow.pr_vs_twin.n_patients ? '#0b716b' : '#2868bb' }}>
+                            <strong style={{ color: wRow.pr_vs_twin.wins_count === wRow.pr_vs_twin.n_patients ? 'var(--color-ok)' : 'var(--color-accent-ink)' }}>
                               {wRow.pr_vs_twin.wins_count}/{wRow.pr_vs_twin.n_patients} ({(wRow.pr_vs_twin.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -831,7 +831,7 @@ export default async function EvidencePage() {
                     <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-ink-3)' }}>
                       80% Conformal Interval Coverage Reconciliation
                     </span>
-                    <span className="status-badge" style={{ borderColor: '#0b716b', color: '#0b716b', background: 'rgba(11, 113, 107, 0.08)' }}>
+                    <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
                       Reconciled Metric Provenance
                     </span>
                   </div>
@@ -845,9 +845,9 @@ export default async function EvidencePage() {
                         Mean uncalibrated p10–p90 width: <strong>36.02 mg/dL</strong> across 53,849–53,920 evaluable rows. Measures raw PR-TFT quantile heads before post-processing.
                       </p>
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid #0b716b', borderRadius: '6px', background: 'rgba(11, 113, 107, 0.04)' }}>
-                      <div style={{ fontSize: '11px', color: '#0b716b', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
-                      <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: '#0b716b' }}>
+                    <div style={{ padding: '12px', border: '1px solid var(--color-ok)', borderRadius: '6px', background: 'rgba(11, 113, 107, 0.04)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-ok)', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
+                      <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
@@ -863,7 +863,7 @@ export default async function EvidencePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Brier Score (Raw &rarr; Calibrated)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: '#0b716b' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
                       {cal.brier_score_calibrated?.toFixed(4)}
                       <small style={{ fontSize: '11px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {cal.brier_score_raw?.toFixed(4)})</small>
                     </div>
@@ -873,7 +873,7 @@ export default async function EvidencePage() {
                   {cal.threshold_evaluations?.['0.35'] && (
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Evaluated Threshold 0.35</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: '#2868bb' }}>
+                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-accent-ink)' }}>
                         Sens {(cal.threshold_evaluations['0.35'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.35'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--color-ink-2)' }}>Anchor-level alert fraction: {cal.threshold_evaluations['0.35'].alert_rate_pct?.toFixed(1)}% of decision anchors (diagnostic only; does not represent event-level alerts per day).</div>
@@ -883,7 +883,7 @@ export default async function EvidencePage() {
                   {cal.threshold_evaluations?.['0.60'] && (
                     <div style={{ padding: '12px', border: '1px solid #78350f', borderRadius: '6px', background: 'rgba(120, 53, 15, 0.05)' }}>
                       <div style={{ fontSize: '11px', color: '#8c5b0c', textTransform: 'uppercase' }}>High Threshold Diagnostic (0.60)</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: '#b91c1c' }}>
+                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-danger)' }}>
                         Sens {(cal.threshold_evaluations['0.60'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.60'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '11px', color: '#8c5b0c' }}>High threshold empirical diagnostic (29.9% sensitivity, 74.5% precision, 5.3% anchor-level alert rate). Evaluated on the 44-patient validation partition; does not prove an underlying plateau or collapse mechanism.</div>
@@ -919,7 +919,7 @@ export default async function EvidencePage() {
                   <div style={{ border: '1px solid #78350f', borderRadius: '8px', padding: '16px', background: 'rgba(120, 53, 15, 0.06)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8c5b0c' }}>Gate 3 Realism</span>
-                      <span className="status-badge" style={{ color: '#dc2626', borderColor: '#b91c1c', background: 'rgba(185, 28, 28, 0.1)' }}>
+                      <span className="status-badge" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', background: 'rgba(185, 28, 28, 0.1)' }}>
                         <XCircle size={12} aria-hidden="true" /> {gate3.status}
                       </span>
                     </div>
@@ -1038,7 +1038,7 @@ export default async function EvidencePage() {
                 <p>Click to inspect SHA-256 byte manifests, training checkpoint provenance, data integrity digests, and pipeline parameters.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="status-badge" style={{ borderColor: '#0b716b', color: '#0b716b', background: 'rgba(11, 113, 107, 0.08)' }}>
+                <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
                   <CheckCircle2 size={12} aria-hidden="true" /> SHA-256 Verified
                 </span>
                 <ChevronDown size={16} aria-hidden="true" style={{ color: 'var(--color-ink-3)' }} />
