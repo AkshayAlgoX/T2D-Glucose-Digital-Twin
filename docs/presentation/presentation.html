@@ -141,6 +141,15 @@
     .badge-research { background: #e0f2fe; color: #0369a1; }
     .badge-limit { background: #fee2e2; color: #b91c1c; }
     .badge-verified { background: #dcfce7; color: #15803d; }
+
+    .shot-row { display: grid; grid-template-columns: 2.3fr 1fr; gap: 14px; align-items: start; }
+    .shot { width: 100%; max-height: 128mm; object-fit: contain; object-position: top left; border: 1px solid #dbe3e5; border-radius: 6px; }
+    .shot-notes { display: flex; flex-direction: column; gap: 8px; }
+    .shot-notes .card { padding: 10px 12px; }
+    .shot-notes .card h4 { margin: 0 0 4px; }
+    .shot-notes .card p, .shot-notes .card li { font-size: 11.5px; line-height: 1.45; margin: 0; }
+    .shot-notes .card ul { margin: 0; padding-left: 16px; }
+    .shot-caption { margin: 8px 0 0; font-size: 10.5px; color: #566b73; }
   </style>
 </head>
 <body>
@@ -348,40 +357,25 @@
   <div class="slide">
     <div class="header">
       <div>
-        <h2 class="slide-title">Clinician-Facing Workstation & Telemetry Stream</h2>
-        <p class="slide-subtitle">Interactive Next.js Dashboard and Bounded SSE Connection</p>
+        <h2 class="slide-title">The Clinician Workstation (Live Screen)</h2>
+        <p class="slide-subtitle">Validation subject P0017 · EHR record + CGM and wearable streams → 2-hour forecast</p>
       </div>
       <span class="slide-num">06 / 12</span>
     </div>
     <div class="content">
-      <div class="grid-3">
-        <div class="card">
-          <h4>Cohort Navigation</h4>
-          <p><code>/cohort</code> directory allows searching and filtering patients by clinical status (Healthy, Prediabetes, T2D) and split partition.</p>
-        </div>
-        <div class="card">
-          <h4>Patient Workspace</h4>
-          <p><code>/patients/[id]</code> displays real-time glucose ribbon, current trend arrow, physiological twin parameters, and risk waterfall.</p>
-        </div>
-        <div class="card">
-          <h4>Live Telemetry Stream</h4>
-          <p>Server-Sent Events (SSE) deliver real-time readings. Bounded backoff recovery handles transient network disruptions automatically.</p>
+      <div class="shot-row">
+        <img class="shot" src="screens/workstation.png" alt="Patient workspace for P0017: EHR summary, six hours of observed CGM, forecast bands, spike risk and model contributions">
+        <div class="shot-notes">
+          <div class="card"><h4>One record, one story</h4><p>EHR summary in the header; six hours of replayed CGM, heart rate, HRV, steps, sleep and meal log on one time axis.</p></div>
+          <div class="card"><h4>Forecast with uncertainty</h4><p>Median, P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the calibrated 2-hour spike risk.</p></div>
+          <div class="card"><h4>Built in plain sight</h4><p>① physiology-based estimate + ② learned adjustment = ③ final forecast, at any horizon.</p></div>
         </div>
       </div>
-      <div class="card">
-        <h4>Post-Merge Verified SSE Reliability Pipeline</h4>
-        <p>Following PR #3 merge (commit <code>68f8cce8</code>), the telemetry pipeline enforces:</p>
-        <ul>
-          <li><strong>Chunk-Invariant Boundary Parsing:</strong> Earliest-delimiter selection handles mixed CRLF/LF packet framing across all chunk partitionings.</li>
-          <li><strong>Envelope-Level Validation:</strong> Cross-subject packets are filtered on the SSE envelope without contaminating active patient state.</li>
-          <li><strong>Companion Event Isolation:</strong> Alerts and data quality changes update respective fields without wiping or resetting forecast ribbons.</li>
-          <li><strong>Fail-Closed Security:</strong> Malformed forecasts pass through to client validation to raise terminal <code>contract-invalid</code> rather than masking as clean EOF.</li>
-        </ul>
-      </div>
+      <p class="shot-caption">Captured from the running prototype (synthetic data, development-validation subject). Not a clinical device.</p>
     </div>
     <div class="footer">
       <span>T2D Digital Twin | Slide 6</span>
-      <span class="badge badge-verified">UI & Telemetry Stream</span>
+      <span class="badge badge-verified">Live UI capture</span>
     </div>
   </div>
 
@@ -455,7 +449,7 @@
         </div>
       </div>
       <div class="alert-box">
-        <strong>UI Notice:</strong> The dashboard includes an explicit disclaimer: <em>"Contributions explain internal model arithmetic, not biological causality."</em>
+        <strong>UI Notice:</strong> The dashboard includes an explicit disclaimer: <em>&ldquo;Arithmetic of the model&rsquo;s own forecast &mdash; not a causal attribution.&rdquo;</em> The contributions add up to the highest point of the forecast median.
       </div>
     </div>
     <div class="footer">
@@ -469,40 +463,23 @@
     <div class="header">
       <div>
         <h2 class="slide-title">What-If Simulation: Capability & Boundary</h2>
-        <p class="slide-subtitle">Interactive, backend-driven scenarios in the patient workspace</p>
+        <p class="slide-subtitle">Interactive, backend-driven scenarios in the patient workspace (live screen)</p>
       </div>
       <span class="slide-num">09 / 12</span>
     </div>
     <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Implemented: Clinician What-If Panel</h4>
-          <ul>
-            <li><code>serve_pr_tft.py::scenarios</code> endpoint supports counterfactual simulation:
-              <ul>
-                <li>Simulated meal intake (grams of carbs).</li>
-                <li>Simulated physical activity (immediate uptake approximation).</li>
-                <li>Skipping habitual meals.</li>
-              </ul>
-            </li>
-            <li>Re-runs the linearized twin and PR-TFT on the modified plan, from the same anchor as the baseline.</li>
-            <li>Panel shows baseline vs. scenario bands, highest median (with time), largest same-time difference and calibrated 2-h spike risk.</li>
-            <li>Example, P0017 (validation), 07:30 UTC, 60 g meal in 30 min: physiology twin up to +55.3 mg/dL; network 185.0 &rarr; 199.3 mg/dL; risk 10.6% &rarr; 17.3%. Flagged as outside the network&rsquo;s training range.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Current Implementation Boundaries</h4>
-          <ul>
-            <li><strong>Label on every result:</strong> &ldquo;Simulated model response &mdash; not a validated causal treatment effect.&rdquo;</li>
-            <li><strong>Medication Unsupported:</strong> Requests are sent and the backend refuses them (<code>SCENARIO_UNSUPPORTED</code>); nothing is simulated locally.</li>
-            <li><strong>Approximation Only:</strong> Activity modeling omits delayed insulin sensitivity effects.</li>
-            <li><strong>Not Causal Treatment Effects:</strong> Neither direction nor size has been validated against a reference counterfactual or human data.</li>
-          </ul>
+      <div class="shot-row">
+        <img class="shot" src="screens/whatif-result.png" alt="What-If result for P0017: baseline and 60 g meal scenario curves, physiology twin line, out-of-range caution and risk change">
+        <div class="shot-notes">
+          <div class="card"><h4>Real backend response</h4><p>The twin re-rolls the plan and the network re-scores it from the same anchor. The panel shows both curves, the twin-alone change and the calibrated risk.</p></div>
+          <div class="card"><h4>Boundaries shown on screen</h4><ul>
+            <li>&ldquo;Simulated model response &mdash; not a validated causal treatment effect.&rdquo;</li>
+            <li>Meal inputs outside the network&rsquo;s training range are flagged by the service.</li>
+            <li>Medication changes are refused (<code>SCENARIO_UNSUPPORTED</code>).</li>
+          </ul></div>
         </div>
       </div>
-      <div class="alert-box">
-        <strong>Truth in Advertising:</strong> The What-If is a working research interface on synthetic data, not a clinical decision tool.
-      </div>
+      <p class="shot-caption">P0017, 05:55 UTC, 60 g meal in 30 min. The network&rsquo;s highest point is a single 5-min step; the physiology twin rises smoothly by up to +70.9 mg/dL. Values: <code>docs/evidence/whatif_probe_P0017.json</code>.</p>
     </div>
     <div class="footer">
       <span>T2D Digital Twin | Slide 9</span>
