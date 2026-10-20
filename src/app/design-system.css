@@ -572,3 +572,7 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
   .risk-history-stats > div:nth-child(2) { grid-column: 1 / -1; order: -1; }
   .risk-history-stats dd small { display: block; }
 }
+.landing-audience { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--color-ink); }
+.methodology-appendix .appendix-scope { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--color-ink-3); }
+.methodology-appendix .evidence-source { margin-top: 8px; padding: 14px 0 0; border-top: 1px solid var(--color-line); }
+.methodology-appendix .reproducibility-details { border-top: 1px solid var(--color-line); padding-top: 12px; }

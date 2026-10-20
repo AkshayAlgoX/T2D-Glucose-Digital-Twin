@@ -515,6 +515,23 @@ describe('EvidencePage', () => {
     expect(screen.getByText('UNEXECUTED')).toBeInTheDocument();
   });
 
+  it('keeps audit detail in one collapsed methodology appendix, out of the reading path', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+    const Component = await EvidencePage();
+    render(Component);
+    const appendix = screen.getByTestId('methodology-appendix');
+    expect(appendix.tagName).toBe('DETAILS');
+    expect(appendix).not.toHaveAttribute('open');
+    expect(appendix).toContainElement(screen.getByText('Historical Development Reference (18-Subject Partition)'));
+    expect(appendix.querySelector('details.reproducibility-details')).not.toBeNull();
+    // The negative register stays outside the appendix.
+    expect(appendix).not.toContainElement(screen.getByText('Synthetic-Data Indistinguishability'));
+  });
+
   it('answers the four essential questions on the first screen hero', async () => {
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);

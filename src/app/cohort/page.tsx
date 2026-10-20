@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
-import { SubjectIdentifier } from '@/components/digital-twin/SubjectIdentifier';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 
 const DEMO_PATIENT_ID = 'P0017';
@@ -101,7 +100,6 @@ export default function CohortPage() {
             {(query || group || split) && <button className="text-button" onClick={resetFilters}>Clear filters</button>}</div>
             <span className="result-count" role="status">{state === 'ready' ? `${filtered.length} matching ${filtered.length === 1 ? 'subject' : 'subjects'}` : 'Directory pending'}</span>
           </div>
-          <p className="directory-guidance">Select a subject below to open Workspace. When available, Workspace navigation returns to your last-viewed subject.</p>
           {state === 'loading' && <div className="directory-loading" role="status"><span className="sr-only">Loading subject directory. Waiting for the existing backend service.</span><div aria-hidden="true"><div className="directory-loading-header" /><div>{Array.from({ length: pageSize }, (_, index) => <div className="directory-loading-row" key={index}><div><span className="skeleton skeleton-label" /><span className="skeleton skeleton-id" /></div><span className="skeleton skeleton-label" /><span className="skeleton skeleton-label" /><span className="skeleton skeleton-label" /></div>)}</div></div></div>}
           {state === 'error' && <div className="empty-state" role="status"><h3>Subject service unavailable</h3><p>The directory could not be loaded. No demonstration patients have been substituted.</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={14} aria-hidden="true" />Retry connection</button></div>}
           {state === 'ready' && !filtered.length && <div className="empty-state"><h3>{query || group || split ? 'No matching subjects' : 'No subjects returned'}</h3><p>{query || group || split ? 'Try another identifier, group, or partition.' : 'Connect the existing backend to view its subject directory.'}</p></div>}
@@ -110,7 +108,7 @@ export default function CohortPage() {
               <caption className="sr-only">Synthetic subjects with their recorded group, observable EHR summary and partition</caption>
               <thead><tr><th scope="col">Subject</th><th scope="col">Group</th><th scope="col">Age · sex</th><th scope="col">BMI</th><th scope="col">HbA1c</th><th scope="col">Partition</th><th scope="col"><span className="sr-only">Workspace</span></th></tr></thead>
               <tbody>{visible.map(subject => <tr key={subject.subject_id} className={subject.patient_id === DEMO_PATIENT_ID ? 'is-demo' : undefined}>
-                <th scope="row"><div className="directory-identity"><strong>{subject.patient_id ?? 'Synthetic subject'}</strong>{subject.patient_id === DEMO_PATIENT_ID && <span className="demo-tag">Demo</span>}<SubjectIdentifier subjectId={subject.subject_id} label={subject.patient_id} /></div></th>
+                <th scope="row"><div className="directory-identity"><strong>{subject.patient_id ?? 'Synthetic subject'}</strong>{subject.patient_id === DEMO_PATIENT_ID && <span className="demo-tag">Demo</span>}</div></th>
                 <td><span className="group-label" data-group={subject.group}>{subject.group ?? 'Group unspecified'}</span></td>
                 <td className="numeric" data-label="Age">{subject.ehr?.age_years ?? '—'}{subject.ehr?.sex ? ` · ${subject.ehr.sex === 'male' ? 'M' : subject.ehr.sex === 'female' ? 'F' : subject.ehr.sex}` : ''}</td>
                 <td className="numeric" data-label="BMI">{num(subject.ehr?.bmi)}</td>

@@ -24,7 +24,8 @@ describe('Cohort directory and Workspace entry', () => {
     expect(screen.getByRole('link', { name: 'Open subject UNIT-2' })).toHaveAttribute('href', '/patients/' + subjects[1].subject_id);
     expect(screen.getByRole('main')).toHaveClass('cohort-page');
     expect(screen.getByRole('region', { name: 'Subject directory' })).toHaveAttribute('id', 'subject-directory');
-    expect(screen.getByText(/Select a subject below to open Workspace/)).toBeInTheDocument();
+    // Rows carry the readable ID only; the full hash and copy controls live in the Workspace header.
+    expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Workspace' })).toHaveAttribute('href', '/cohort#subject-directory');
   });
 

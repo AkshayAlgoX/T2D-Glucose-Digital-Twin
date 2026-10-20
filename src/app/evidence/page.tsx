@@ -405,7 +405,7 @@ export default async function EvidencePage() {
                   <div className="pillar-substat">15 Healthy · 19 Prediabetes · 10 T2D</div>
                   <p className="pillar-desc">
                     Evaluated on 54,281 eligible prediction anchors (53,849–53,920 evaluable rows across 30, 60, and 120-minute horizons).
-                    <br /><strong style={{ color: 'var(--color-ink-2)' }}>Clinical context:</strong> Decision anchor rows are repeated 5-minute time points across these 44 simulated trajectories, not independent people.
+                    <br /><strong style={{ color: 'var(--color-ink-2)' }}>Why this matters:</strong> Decision anchor rows are repeated 5-minute time points across these 44 simulated trajectories, not independent people.
                   </p>
                 </div>
                 <span className="pillar-tag">Synthetic Validation Split</span>
@@ -431,7 +431,7 @@ export default async function EvidencePage() {
                     <div className="summary-row"><span>120m:</span> <strong>{metrics.rmse_120.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_120.ci_95 ? `${metrics.rmse_120.ci_95[0].toFixed(2)}–${metrics.rmse_120.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_120.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_120.diff.toFixed(2)} vs PE)</span></div>
                   </div>
                   <p className="pillar-desc">
-                    <strong style={{ color: 'var(--color-ink-2)' }}>Clinical interpretation:</strong> Lower RMSE (Root Mean Square Error in mg/dL) means predicted glucose tracks closer to actual readings, reducing large trajectory errors. Paired differences are strictly negative in 10,000/10,000 bootstrap draws.
+                    <strong style={{ color: 'var(--color-ink-2)' }}>What this means:</strong> Lower RMSE (Root Mean Square Error in mg/dL) means predicted glucose tracks closer to actual readings, reducing large trajectory errors. Paired differences are strictly negative in 10,000/10,000 bootstrap draws.
                   </p>
                 </div>
                 <span className="pillar-tag">Physics + Neural Residual</span>
@@ -945,9 +945,6 @@ export default async function EvidencePage() {
                   <span className="eyebrow">Scientific Governance</span>
                   <h2 id="governance-heading" style={{ margin: '4px 0 0' }}>Validation status and provenance register</h2>
                 </div>
-                <span className="status-badge">
-                  <AlertTriangle size={13} aria-hidden="true" /> Transparency disclosures
-                </span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
@@ -1052,8 +1049,10 @@ export default async function EvidencePage() {
           </>
         )}
 
-        {/* Historical Development Reference - Preserved separately */}
-        <EvidenceDisclosure labelledBy="historical-record-heading" label="Historical development reference (excluded from claims)">
+        {/* Methodology appendix: everything a reviewer may audit, out of the reading path. */}
+        <details className="panel evidence-section evidence-disclosure methodology-appendix" data-testid="methodology-appendix">
+          <summary><span>Methodology appendix<small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
+        <section className="evidence-disclosure-body" aria-labelledby="historical-record-heading">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate Fixed Evidence Record</span>
             <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
@@ -1066,11 +1065,11 @@ export default async function EvidencePage() {
           <p style={{ fontSize: '12px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: 0 }}>
             Earlier development reference recorded in <code>backend/runs/pr_tft_demo/evaluation_baseline.json</code> evaluated 18 subjects under demo checkpoint <code>stage2_observed-epoch=01-val_loss=0.3096.ckpt</code> (Persistence RMSE120: 50.66, Twin-only RMSE120: 40.20). This historical record is preserved separately for reference only; direct numerical superiority claims over it are cohort-unverified.
           </p>
-        </EvidenceDisclosure>
+        </section>
 
         {/* Advanced Reproducibility & Cryptographic Provenance Disclosure */}
         {!errorState && manifest && report && (
-          <details className="panel reproducibility-details" style={{ marginBottom: '24px' }}>
+          <details className="reproducibility-details" style={{ marginBottom: '16px' }}>
             <summary className="reproducibility-summary">
               <div className="reproducibility-summary-title">
                 <span className="eyebrow" style={{ color: 'var(--color-accent)' }}>Technical Methodology &amp; Reproducibility</span>
@@ -1122,7 +1121,7 @@ export default async function EvidencePage() {
         )}
 
         {/* Source & Footer */}
-        <div className="panel evidence-source">
+        <div className="evidence-source">
           <FolderOpen size={19} aria-hidden="true" />
           <div>
             <strong>Source · Empirical validation evaluated on Arm D validation split</strong>
@@ -1131,6 +1130,7 @@ export default async function EvidencePage() {
             </p>
           </div>
         </div>
+        </details>
 
         <footer className="research-footer">
           Research Only (Not for clinical decisions)
