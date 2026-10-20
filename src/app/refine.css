@@ -204,3 +204,6 @@
 .evidence-pillar-card .pillar-desc, .evidence-pillar-card .pillar-limits-list { font-size: 13px; line-height: 1.55; color: var(--color-ink-2); }
 .pillar-compact-summary { font-size: 13px; }
 .subject-search input { font-size: 14px; }
+/* Let the What-If charts measure their real container width (a fixed-width SVG must not prop the layout open). */
+.whatif-panel, .whatif-panel > *, .whatif-output, .whatif-result, .whatif-figure, .whatif-chart, .whatif-change-chart { min-width: 0; max-width: 100%; }
+.whatif-chart svg, .whatif-change-chart svg { max-width: 100%; height: auto; }
