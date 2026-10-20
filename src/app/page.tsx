@@ -70,7 +70,7 @@ export default async function Home() {
 
         <h2 className="landing-section-title">What a judge can do in five minutes</h2>
         <section className="landing-steps" aria-label="Journey">
-          <div className="landing-step panel"><span className="step-num">STEP 01</span><h2>Read the record and the streams</h2><p>P0017&apos;s EHR summary, six hours of CGM, and the heart rate, HRV, steps, sleep and meal log the model actually read, all on one time axis.</p></div>
+          <div className="landing-step panel"><span className="step-num">STEP 01</span><h2>Read the record and the streams</h2><p>P0017&apos;s EHR summary and the night and morning before 08:00: CGM and the heart rate, HRV, steps, sleep and meal log the model actually read, all on one time axis.</p></div>
           <div className="landing-step panel"><span className="step-num">STEP 02</span><h2>See how the forecast is built</h2><p>The physiology estimate, plus the learned adjustment, equals the final forecast with its uncertainty bands, at any horizon up to two hours.</p></div>
           <div className="landing-step panel"><span className="step-num">STEP 03</span><h2>Ask &ldquo;what if?&rdquo;</h2><p>Add a meal or a walk, or skip a usual meal, and the backend re-forecasts from the same moment. Medication changes are refused rather than guessed.</p></div>
         </section>

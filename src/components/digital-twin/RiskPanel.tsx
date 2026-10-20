@@ -54,7 +54,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </div>}
           </>
         )}
-        <div className="policy-labels"><span>35% watch threshold</span><span>60% warning threshold</span></div>
+        <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>
         <p className="fine-print">Alert status is supplied by the served policy; thresholds alone do not define an alert.</p>
         <details className="spike-definition context-details">
           <summary>How is a spike defined?</summary>

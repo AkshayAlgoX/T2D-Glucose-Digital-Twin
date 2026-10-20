@@ -364,9 +364,9 @@
     </div>
     <div class="content">
       <div class="shot-row">
-        <img class="shot" src="screens/workstation.png" alt="Patient workspace for P0017: EHR summary, six hours of observed CGM, forecast bands, spike risk and model contributions">
+        <img class="shot" src="screens/workstation.png" alt="Patient workspace for P0017 at 08:00: EHR summary, observed CGM, forecast bands, spike risk and model contributions">
         <div class="shot-notes">
-          <div class="card"><h4>One record, one story</h4><p>EHR summary in the header; six hours of replayed CGM, heart rate, HRV, steps, sleep and meal log on one time axis.</p></div>
+          <div class="card"><h4>One record, one story</h4><p>EHR summary in the header; the replay opens at 08:00 on the first morning with CGM, heart rate, HRV, steps, sleep and the meal log on one time axis.</p></div>
           <div class="card"><h4>Forecast with uncertainty</h4><p>Median, P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the calibrated 2-hour spike risk.</p></div>
           <div class="card"><h4>Built in plain sight</h4><p>① physiology-based estimate + ② learned adjustment = ③ final forecast, at any horizon.</p></div>
         </div>
@@ -479,7 +479,7 @@
           </ul></div>
         </div>
       </div>
-      <p class="shot-caption">P0017, 05:55 UTC, 60 g meal in 30 min. The network&rsquo;s highest point is a single 5-min step; the physiology twin rises smoothly by up to +70.9 mg/dL. Values: <code>docs/evidence/whatif_probe_P0017.json</code>.</p>
+      <p class="shot-caption">P0017, 08:00 UTC, a further 60 g meal in 30 min: the physiology twin alone adds up to +47.8 mg/dL; the network&rsquo;s highest median moves from 222.5 to 228.5 mg/dL. In 19.8% of sampled forecasts the learned adjustment adds an isolated 5-min step, which the chart flags (<code>docs/evidence/model_audit</code>). Values: <code>docs/evidence/whatif_probe_P0017.json</code>.</p>
     </div>
     <div class="footer">
       <span>T2D Digital Twin | Slide 9</span>

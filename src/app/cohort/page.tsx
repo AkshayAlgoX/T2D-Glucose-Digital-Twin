@@ -70,7 +70,7 @@ export default function CohortPage() {
           <div className="demo-entry-copy">
             <span className="eyebrow">Start here · demonstration subject</span>
             <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · {demo.split} split</h2>
-            <p>Six hours of synthetic CGM, heart-rate, HRV, sleep and meal-log history; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
+            <p>Opens at 08:00 on the first morning: the night, waking and a logged breakfast in CGM, heart rate, HRV, steps, sleep and the meal log; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
           </div>
           {demo.ehr && <dl className="demo-entry-facts">
             <div><dt>Age</dt><dd>{demo.ehr.age_years ?? '—'}</dd></div>
