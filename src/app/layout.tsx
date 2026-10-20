@@ -1,5 +1,6 @@
 import './globals.css';
 import './design-system.css';
+import './refine.css';
 import React from 'react';
 import { IBM_Plex_Sans, IBM_Plex_Mono, Newsreader } from 'next/font/google';
 

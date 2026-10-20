@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowRight, BookOpenCheck, Users } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 import { DEMO_SUBJECT_ID, readLandingEvidence } from '@/lib/landing';
+import { readHeroForecast } from '@/lib/hero';
+import { HeroForecast } from '@/components/landing/HeroForecast';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +42,7 @@ function PipelineSchematic() {
 }
 
 export default async function Home() {
-  const evidence = await readLandingEvidence();
+  const [evidence, hero] = await Promise.all([readLandingEvidence(), readHeroForecast()]);
   return (
     <div className="app-shell">
       <NavigationRail />
@@ -63,17 +65,27 @@ export default async function Home() {
               Synthetic data only, and not a medical device. Results are development-validation diagnostics, not clinical validation. The realism gate failed, and we publish that result.
             </p>
           </div>
-          <figure className="landing-diagram panel stage">
-            <PipelineSchematic />
-            <figcaption>A schematic of the pipeline, not data.</figcaption>
-          </figure>
+          {hero ? <HeroForecast data={hero} /> : (
+            <figure className="landing-diagram panel stage" data-testid="hero-unavailable">
+              <PipelineSchematic />
+              <figcaption>The live forecast could not be read from the backend, so none is shown. This is a schematic of the pipeline, not data.</figcaption>
+            </figure>
+          )}
         </section>
 
-        <h2 className="landing-section-title">What you can do in five minutes</h2>
-        <section className="landing-steps" aria-label="Journey">
-          <div className="landing-step panel"><span className="step-num">STEP 01</span><h2>Read the record and the streams</h2><p>P0017&apos;s EHR summary and the night and morning before 08:00: CGM and the heart rate, HRV, steps, sleep and meal log the model actually read, all on one time axis.</p></div>
-          <div className="landing-step panel"><span className="step-num">STEP 02</span><h2>See how the forecast is built</h2><p>The physiology estimate, plus the learned adjustment, equals the final forecast with its uncertainty bands, at any horizon up to two hours.</p></div>
-          <div className="landing-step panel"><span className="step-num">STEP 03</span><h2>Ask &ldquo;what if?&rdquo;</h2><p>Add a meal or a walk, or skip a usual meal, and the backend re-forecasts from the same moment. Medication changes are refused rather than guessed.</p></div>
+        <section className="landing-how" aria-labelledby="how-heading">
+          <div className="landing-how-copy">
+            <h2 id="how-heading" className="landing-section-title">How the twin works · what you can do in five minutes</h2>
+            <ol className="landing-steps">
+              <li><span className="step-num">01</span><div><h3>Read the record and the streams</h3><p>P0017&apos;s EHR summary and the night and morning before 08:00: CGM and the heart rate, HRV, steps, sleep and meal log the model actually read, on one time axis.</p></div></li>
+              <li><span className="step-num">02</span><div><h3>See how the forecast is built</h3><p>The physiology twin&apos;s estimate, plus the learned adjustment, equals the final forecast with its uncertainty bands, at any horizon up to two hours.</p></div></li>
+              <li><span className="step-num">03</span><div><h3>Ask &ldquo;what if?&rdquo;</h3><p>Add a meal or a walk, or skip a usual meal, and the backend re-forecasts from the same moment. Medication changes are refused rather than guessed.</p></div></li>
+            </ol>
+          </div>
+          {hero && <figure className="landing-diagram panel stage">
+            <PipelineSchematic />
+            <figcaption>A schematic of the pipeline, not data.</figcaption>
+          </figure>}
         </section>
 
         <h2 className="landing-section-title">Evidence at a glance</h2>
@@ -81,7 +93,7 @@ export default async function Home() {
           <dl className="landing-evidence panel" data-testid="landing-evidence">
             <div><dt>60-min forecast error (RMSE)</dt><dd>{evidence.rmse60.hybrid.toFixed(2)} mg/dL<small>vs {evidence.rmse60.twin.toFixed(2)} physiology twin alone · {evidence.rmse60.persistence.toFixed(2)} persistence</small></dd></div>
             <div><dt>Evaluated on</dt><dd>{evidence.patients} synthetic patients<small>Development-validation split; also used for calibration</small></dd></div>
-            <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}. A classifier can still tell the synthetic data from the reference data, so realism is not established.</small></dd></div>
+            <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}. A classifier can still tell our synthetic data from an independent mock-real generator&apos;s, itself synthetic, so realism is not established.</small></dd></div>
           </dl>
         ) : (
           <p className="landing-boundary" data-testid="landing-evidence-missing">The evaluation artifact could not be read, so no metrics are shown. See the Evidence page.</p>

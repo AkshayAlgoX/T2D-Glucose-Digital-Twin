@@ -1,5 +1,5 @@
-import React, { useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { ArrowUpRight, ArrowRight, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
@@ -214,6 +214,13 @@ export function recordSummary(forecast: ForecastResponse | null): string | null 
   return `${ehr.age_years}-year-old ${ehr.sex} · BMI ${ehr.bmi} · HbA1c ${ehr.hba1c_pct}%${duration} · ${meds}`;
 }
 
+type WorkspaceSection = 'forecast' | 'whatif' | 'record';
+const SECTIONS: ReadonlyArray<[WorkspaceSection, string]> = [['forecast', 'Forecast'], ['whatif', 'What-if'], ['record', 'Record']];
+const SECTION_TARGET: Record<WorkspaceSection, string> = { forecast: 'forecast', whatif: 'what-if', record: 'record' };
+function sectionFromHash(hash: string): WorkspaceSection | null {
+  return hash === '#what-if' ? 'whatif' : hash === '#record' || hash === '#history' ? 'record' : hash === '#forecast' ? 'forecast' : null;
+}
+
 export function PatientWorkspace({
   patientId,
   forecast,
@@ -227,6 +234,23 @@ export function PatientWorkspace({
 }: PatientWorkspaceProps) {
   const compact = useSyncExternalStore(subscribeToContextLayout, compactContext, serverContext);
   const [contextExpanded, setContextExpanded] = useState(false);
+  // Phone and tablet show one workspace view at a time (CSS applies it up to 1024 px); desktop shows all three.
+  const [section, setSection] = useState<WorkspaceSection>('forecast');
+  const tabsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const fromHash = sectionFromHash(window.location.hash);
+    if (fromHash) setSection(fromHash);
+  }, []);
+  function selectSection(next: WorkspaceSection) {
+    setSection(next);
+    if (next === 'record') setContextExpanded(true);
+    const bar = tabsRef.current;
+    // Bring the start of the newly shown view into sight when the bar has scrolled up and stuck.
+    if (bar && typeof bar.scrollIntoView === 'function' && bar.getBoundingClientRect().top <= 1) {
+      const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      bar.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
   const fallback = forecast?.model?.fallback_used;
   const mode = !forecast ? 'Awaiting model' : fallback === 'twin_only' ? 'Physics baseline' : fallback === 'persistence' ? 'Persistence fallback' : fallback === 'xgboost' ? 'XGBoost fallback' : 'PR-TFT + physiological twin';
   const effectiveStatus = connectionStatus ?? (isConnected ? 'connected' : 'disconnected');
@@ -243,7 +267,7 @@ export function PatientWorkspace({
           <div className="eyebrow">Digital twin · synthetic subject</div>
           <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
           <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
-          <p className="tw-story">EHR record + live CGM and wearable readings → 2-hour glucose forecast with uncertainty → test a change to the plan.</p>
+          <p className="tw-story">EHR record + replayed synthetic CGM and wearable readings → 2-hour glucose forecast with uncertainty → test a change to the plan.</p>
         </div>
         <div className="workspace-status tw-status" role="status">
           <span
@@ -300,9 +324,9 @@ export function PatientWorkspace({
           )}
         </div>
       )}
-      <nav className="tw-section-tabs" aria-label="Workspace sections">
-        <a href="#forecast">Forecast</a><a href="#what-if">What-if</a><a href="#record">Record</a>
-      </nav>
+      {!(error && !forecast) && <div ref={tabsRef} className="tw-section-tabs" role="group" aria-label="Workspace view">
+        {SECTIONS.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={SECTION_TARGET[id]} onClick={() => selectSection(id)}>{label}</button>)}
+      </div>}
       {error && !forecast ? (
         <section className="workspace-unavailable-panel panel" aria-label="Workspace unavailable">
           <div className="empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -324,8 +348,8 @@ export function PatientWorkspace({
         </section>
       ) : (
         <>
-          <div className="tw-grid">
-            <section id="forecast" className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
+          <div className="tw-grid" data-section={section}>
+            <section id="forecast" data-view="forecast" className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
                 <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
                 <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
@@ -346,10 +370,13 @@ export function PatientWorkspace({
             </section>
 
             <div className="tw-side">
-              <aside className="insights-panel panel" aria-label="Risk and model contributions">
+              <aside data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
                 <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
               </aside>
-              <details id="record" className="patient-context" open={!compact || contextExpanded}>
+              <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif')}>
+                <span><strong>Test a change to the plan</strong><small>Add a meal or a walk, or skip a usual meal, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
+              </button>
+              <details id="record" data-view="record" className="patient-context" open={!compact || contextExpanded}>
                 <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
                   <span>Patient record</span><span className="record-hint">EHR context & twin state</span>
                 </summary>
@@ -357,11 +384,11 @@ export function PatientWorkspace({
               </details>
             </div>
 
-            <div className="tw-whatif panel" id="what-if">
+            <div className="tw-whatif panel" id="what-if" data-view="whatif">
               <ScenarioEditor patientId={patientId} currentForecast={forecast} />
             </div>
 
-          <section className="tw-details" aria-labelledby="details-heading">
+          <section id="history" className="tw-details" data-view="record" aria-labelledby="details-heading">
             <h2 id="details-heading" className="tw-details-heading">History, data quality and provenance</h2>
             <div className="tw-details-grid">
               <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>

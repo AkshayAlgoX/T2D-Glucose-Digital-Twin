@@ -23,7 +23,8 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
     : null;
   // The drivers decompose the forecast median at its highest point, so that is the total they sum to.
   // The separate peak-model output (spike_risk.peak_mg_dl) is a different quantity and is shown apart.
-  const peak = trajectoryMax ?? risk?.peak_mg_dl?.p50 ?? null;
+  // Never fall back to the conditional peak head: it is a different quantity from the trajectory.
+  const peak = trajectoryMax;
   const peakModel = risk?.peak_mg_dl ?? null;
   const cumulative: ReadonlyArray<{ offset_min: number; p: number }> = risk?.cumulative ?? [];
   const checkpoints = cumulative.filter(point => point.offset_min === 30 || point.offset_min === 60 || point.offset_min === 120);
@@ -69,7 +70,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
         <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>
         <details className="spike-definition context-details">
           <summary>How to read this probability</summary>
-          <p className="fine-print" data-testid="risk-vs-curve">The curve shows the middle outcome at each time. A median above 180 mg/dL means about half of the predicted outcomes are above 180 at that time, not that a spike is certain. The probability is a separate, calibrated estimate that a new spike starts within 120 min.</p>
+          <p className="fine-print" data-testid="risk-vs-curve">The curve shows the middle outcome at each time. A median above 180 mg/dL means the model puts at least half of its predicted range above 180 at that time. It does not mean a spike is certain: a spike also needs a rise of at least 50 mg/dL within 60 min that lasts 15 min. The probability is a separate estimate, calibrated on the validation data, that a new spike starts within 120 min.</p>
           <p className="fine-print">
             Operational criteria: a glucose rise of &ge; 50 mg/dL within a 60-minute window, reaching or exceeding 180 mg/dL, and persisting for at least 15 minutes.
           </p>

@@ -117,7 +117,7 @@ describe('Risk labels and independently served values',()=>{
     const disclosure = container.querySelector('.spike-definition');
     expect(disclosure).toBeInTheDocument();
     expect(disclosure?.textContent).toContain('How to read this probability');
-    expect(disclosure?.textContent).toContain('not that a spike is certain');
+    expect(disclosure?.textContent).toContain('It does not mean a spike is certain');
     expect(disclosure?.textContent).toContain('50 mg/dL');
     expect(disclosure?.textContent).toContain('180 mg/dL');
     expect(disclosure?.textContent).toContain('15 minutes');

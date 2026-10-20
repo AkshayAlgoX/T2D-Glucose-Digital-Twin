@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, Footprints, Pill, Utensils, UtensilsCrossed } from 'lucide-react';
 import { formatTime } from '@/lib/formatters/date';
 import { useScenario, type ScenarioComparison, type ScenarioCurvePoint, type ScenarioState } from '@/hooks/useScenario';
 import type { ForecastResponse, MedClass, ScenarioInput } from '@/types/forecast-response';
@@ -15,6 +15,8 @@ type Slot = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 interface FormState { kind: Kind; carbs: string; offset: string; duration: string; intensity: Intensity; slot: Slot }
 
 const DEFAULT_FORM: FormState = { kind: 'meal', carbs: '60', offset: '30', duration: '30', intensity: 'moderate', slot: 'dinner' };
+
+const PRESET_ICONS: Record<string, React.ComponentType<{ size?: number; 'aria-hidden'?: boolean }>> = { meal: Utensils, walk: Footprints, skip: UtensilsCrossed, medication: Pill };
 
 const PRESETS: Array<{ id: string; label: string; form: Partial<FormState> }> = [
   { id: 'meal', label: '60 g carb meal in 30 min', form: { kind: 'meal', carbs: '60', offset: '30' } },
@@ -133,9 +135,26 @@ function useWidth<T extends HTMLElement>(fallback: number) {
   return [ref, width] as const;
 }
 
-export function ScenarioComparisonChart({ result, step = null }: { result: ScenarioComparison; step?: { size: number; offset: number } | null }) {
+/** When the scenario's change happens, in minutes after the anchor; null when it has no fixed time (a skipped usual meal). */
+export function changeWindow(input: ScenarioInput | undefined): { start: number; end: number | null; label: string } | null {
+  if (!input) return null;
+  if (input.kind === 'meal') return { start: input.offset_min, end: null, label: `${input.carbs_g} g meal` };
+  if (input.kind === 'activity') return { start: input.offset_min, end: Math.min(120, input.offset_min + input.duration_min), label: `${input.intensity} activity` };
+  return null;
+}
+
+/** Keeps end-of-line labels at least `gap` px apart, in their original vertical order. */
+function spreadLabels<T extends { y: number }>(labels: T[], gap: number, top: number, bottom: number): T[] {
+  const sorted = [...labels].sort((a, b) => a.y - b.y);
+  for (let i = 1; i < sorted.length; i++) if (sorted[i].y - sorted[i - 1].y < gap) sorted[i] = { ...sorted[i], y: sorted[i - 1].y + gap };
+  const overflow = sorted.length ? sorted[sorted.length - 1].y - bottom : 0;
+  return overflow > 0 ? sorted.map(l => ({ ...l, y: Math.max(top, l.y - overflow) })) : sorted;
+}
+
+export function ScenarioComparisonChart({ result, step = null, change = null }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
-  const height = width < 420 ? 190 : 220;
+  const height = width < 420 ? 200 : 250;
+  const labelled = width >= 520;
   const anchor = Date.parse(result.pinned_as_of);
   const toPoint = (p: ScenarioCurvePoint) => ({ ...p, min: (Date.parse(p.timestamp) - anchor) / 60000 });
   const base = result.baseline_forecast.map(toPoint);
@@ -144,7 +163,7 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat(scen.flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: 12, top: 12, bottom: 22 };
+  const m = { left: 40, right: labelled ? 112 : 12, top: 14, bottom: 24 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
@@ -170,6 +189,21 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
         <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
         {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="2 3" />}
+        {change && <g data-testid="whatif-change-marker" aria-hidden="true">
+          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
+          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
+          <text x={x(change.start) + 5} y={m.top + 11} className="chart-axis change-label">{change.label} · +{change.start} min</text>
+        </g>}
+        {labelled && (() => {
+          const last = <T,>(a: T[]) => a[a.length - 1];
+          const lb = last(base), ls = last(scen), lt = last(scenTwin);
+          const raw = [
+            lb && { key: 'base', y: y(lb.p50), text: 'Unchanged plan', cls: 'lbl-base' },
+            ls && { key: 'scen', y: y(ls.p50), text: 'With the change', cls: 'lbl-scen' },
+            lt && { key: 'twin', y: y(lt.v), text: 'Twin, with change', cls: 'lbl-twin' },
+          ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
+          return <g aria-hidden="true">{spreadLabels(raw, 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
+        })()}
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
           if (!p) return null;
@@ -192,6 +226,94 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
   );
 }
 
+/** Scenario minus unchanged plan at each returned time, for the final forecast and for the physiology twin alone. */
+export function changeSeries(result: ScenarioComparison) {
+  const anchor = Date.parse(result.pinned_as_of);
+  const base = new Map(result.baseline_forecast.map(p => [Date.parse(p.timestamp), p]));
+  const rows: Array<{ min: number; unchanged: number; withChange: number; final: number; twin: number | null }> = [];
+  for (const p of result.scenario_forecast) {
+    const b = base.get(Date.parse(p.timestamp));
+    if (!b) continue;
+    rows.push({
+      min: Math.round((Date.parse(p.timestamp) - anchor) / 60000),
+      unchanged: b.p50, withChange: p.p50, final: round1(p.p50 - b.p50),
+      twin: p.twin_p50 != null && b.twin_p50 != null ? round1(p.twin_p50 - b.twin_p50) : null,
+    });
+  }
+  return rows.sort((a, c) => a.min - c.min);
+}
+
+export function ScenarioChangeChart({ result, change = null, step = null }: { result: ScenarioComparison; change?: { start: number; end: number | null; label: string } | null; step?: { size: number; offset: number } | null }) {
+  const [ref, width] = useWidth<HTMLDivElement>(560);
+  const rows = changeSeries(result);
+  const labelled = width >= 520;
+  const height = width < 420 ? 150 : 170;
+  const m = { left: 40, right: labelled ? 112 : 12, top: 12, bottom: 24 };
+  // Both plans start from the same reading, so the change is zero at the anchor.
+  const series = [{ min: 0, final: 0, twin: rows.some(r => r.twin != null) ? 0 : null }, ...rows];
+  const vals = series.flatMap(r => [r.final, r.twin ?? 0]);
+  const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+  const pad = Math.max(5, (hi - lo) * 0.12);
+  const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
+  const y = d3Scale.scaleLinear().domain([lo - pad, hi + pad]).nice(4).range([height - m.bottom, m.top]);
+  const twinRows = series.filter(r => r.twin != null) as Array<{ min: number; final: number; twin: number }>;
+  const finalLine = d3Shape.line<{ min: number; final: number }>().x(r => x(r.min)).y(r => y(r.final));
+  const twinLine = d3Shape.line<{ min: number; twin: number }>().x(r => x(r.min)).y(r => y(r.twin));
+  const gap = d3Shape.area<{ min: number; final: number; twin: number }>().x(r => x(r.min)).y0(r => y(r.twin)).y1(r => y(r.final));
+  const lastFinal = series[series.length - 1];
+  const lastTwin = twinRows[twinRows.length - 1];
+  const finalMax = rows.reduce<typeof rows[number] | null>((b, r) => (!b || Math.abs(r.final) > Math.abs(b.final) ? r : b), null);
+  const twinMax = rows.filter(r => r.twin != null).reduce<typeof rows[number] | null>((b, r) => (!b || Math.abs(r.twin as number) > Math.abs(b.twin as number) ? r : b), null);
+  const label = `Change from the plan at each time. Final forecast: largest ${finalMax ? signed(finalMax.final, 1, ' mg/dL') + ' at +' + finalMax.min + ' min' : 'unavailable'}.` +
+    (twinMax ? ` Physiology twin alone: largest ${signed(twinMax.twin as number, 1, ' mg/dL')} at +${twinMax.min} min.` : '');
+  return (
+    <div ref={ref} className="whatif-change-chart" data-testid="whatif-change-chart">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
+        {y.ticks(4).map(t => <g key={t}>
+          <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--color-line-control)' : 'var(--color-line)'} />
+          <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className="chart-axis">{t > 0 ? '+' + t : t === 0 ? '0' : '−' + Math.abs(t)}</text>
+        </g>)}
+        {change && <g aria-hidden="true">
+          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
+          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
+        </g>}
+        {twinRows.length > 1 && <path data-testid="change-gap" d={gap(twinRows) ?? ''} fill="var(--color-ink)" fillOpacity={0.08} />}
+        {twinRows.length > 1 && <path data-testid="change-twin-line" d={twinLine(twinRows) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="2 3" />}
+        <path data-testid="change-final-line" d={finalLine(series) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeLinejoin="round" />
+        {step && (() => {
+          const r = series.find(q => q.min === step.offset);
+          return r ? <circle cx={x(r.min)} cy={y(r.final)} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} aria-hidden="true" /> : null;
+        })()}
+        {labelled && <g aria-hidden="true">{spreadLabels([
+          { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
+          ...(lastTwin ? [{ key: 't', y: y(lastTwin.twin), text: 'Twin alone', cls: 'lbl-twin' }] : []),
+        ], 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+      </svg>
+      <div className="whatif-legend" aria-hidden="true">
+        <span><i className="whatif-swatch scenario solid" />Final forecast: with change minus unchanged</span>
+        {twinRows.length > 1 && <span><i className="whatif-swatch twin" />Physiology twin alone: same difference</span>}
+        {twinRows.length > 1 && <span><i className="whatif-swatch gap" />Gap: what the learned adjustment adds or removes</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Every returned value at 15-minute steps, for reading without the charts. */
+function ChangeTable({ result }: { result: ScenarioComparison }) {
+  const rows = changeSeries(result).filter(r => r.min % 15 === 0);
+  return (
+    <details className="whatif-table" data-testid="whatif-table">
+      <summary>Values every 15 minutes</summary>
+      <table>
+        <caption className="sr-only">Forecast median under each plan and the difference, in mg/dL</caption>
+        <thead><tr><th scope="col">Time</th><th scope="col">Unchanged</th><th scope="col">With change</th><th scope="col">Change</th><th scope="col">Twin-alone change</th></tr></thead>
+        <tbody>{rows.map(r => <tr key={r.min}><th scope="row">+{r.min} min</th><td>{r.unchanged.toFixed(1)}</td><td>{r.withChange.toFixed(1)}</td><td>{signed(r.final, 1)}</td><td>{r.twin == null ? '—' : signed(r.twin, 1)}</td></tr>)}</tbody>
+      </table>
+    </details>
+  );
+}
+
 function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 'result' }>; liveAsOf?: string | null }) {
   const resultRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -207,6 +329,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const sum = summarizeComparison(state.result);
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
+  const change = changeWindow(state.input);
   return (
     <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
@@ -214,7 +337,14 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
         <details open><summary>Why</summary><p>{outOfRange.detail}{sum.learnedLargest != null && <> On this scenario the learned adjustment reaches {signed(sum.learnedLargest, 1, ' mg/dL')} at +{sum.learnedLargestMin} min.</>}</p></details>
       </div>}
-      <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} />
+      <figure className="whatif-figure">
+        <figcaption><strong>Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC</span></figcaption>
+        <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} />
+      </figure>
+      <figure className="whatif-figure">
+        <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time</span></figcaption>
+        <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} />
+      </figure>
       <dl className="whatif-metrics">
         <div>
           <dt>Spike risk within 2 h (calibrated)</dt>
@@ -224,24 +354,25 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
               : <>Unavailable{fallback_used === 'twin_only' ? ' (physics-only fallback; no calibrated risk)' : ''}</>}
           </dd>
         </div>
+        <div>
+          <dt>Largest change at the same time · final forecast</dt>
+          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small>
+            {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
+        </div>
         {sum.twinLargestDiff != null && <div>
-          <dt>Physiology twin alone, largest same-time change</dt>
+          <dt>Same, physiology twin alone</dt>
           <dd data-testid="scenario-twin-diff">{signed(sum.twinLargestDiff, 1, ' mg/dL')} <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
         </div>}
-        <div>
+        <div className="secondary">
           <dt>Highest median glucose in the next 2 h</dt>
           <dd data-testid="scenario-peak">{sum.baselinePeak.toFixed(1)} → {sum.scenarioPeak.toFixed(1)} mg/dL <strong>({signed(sum.deltaPeak, 1)})</strong>
             <small data-testid="scenario-peak-timing">at +{sum.baselinePeakMin} min → at +{sum.scenarioPeakMin} min</small>
             {sum.isolatedStep && sum.isolatedStep.offset === sum.scenarioPeakMin && <small className="step-flag" data-testid="scenario-peak-on-step">This highest value is a single 5-min step, not a sustained level.</small>}</dd>
         </div>
-        <div>
-          <dt>Largest difference at the same time</dt>
-          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small>
-            {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
-        </div>
       </dl>
-      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.8 * Math.abs(sum.twinLargestDiff) && <p className="whatif-gap" data-testid="scenario-twin-gap"><strong>Why the numbers differ.</strong> The final forecast moves by {signed(sum.largestDiff, 1, ' mg/dL')} at most, smaller than the physiology twin alone ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): the learned adjustment offsets part of the twin&apos;s response to this change.{outOfRange ? ' Because this input is outside the training range, the size of that offset is not reliable.' : ''} The highest-value change ({signed(sum.deltaPeak, 1)}) is smaller again because the two curves peak at different times. Neither size is validated.</p>}
+      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.8 * Math.abs(sum.twinLargestDiff) && <p className="whatif-gap" data-testid="scenario-twin-gap"><strong>Why the numbers differ.</strong> The final forecast moves by {signed(sum.largestDiff, 1, ' mg/dL')} at most, smaller than the physiology twin alone ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): the learned adjustment offsets part of the twin&apos;s response to this change.{outOfRange ? ' Because this input is outside the training range, the size of that offset is not reliable.' : ''} The change in the highest value ({signed(sum.deltaPeak, 1)}) is smaller again because the highest values are compared whenever they occur, while the largest same-time difference falls at +{sum.largestDiffMin} min. Neither size is validated.</p>}
       <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
+      <ChangeTable result={state.result} />
       {sum.noChange && <p className="fine-print" data-testid="scenario-no-change">No change within the 2-hour horizon from this time point; for example, the skipped meal may fall outside this window.</p>}
       {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
       {moved && <p className="fine-print" data-testid="scenario-pinned-note">Pinned to the {formatTime(state.asOf)} UTC forecast; the live view has since advanced. Run again to simulate from the latest reading.</p>}
@@ -310,18 +441,25 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         <h2 id="simulation-heading"><FlaskConical size={16} aria-hidden="true" /> What-if simulation</h2>
         <span className="status-badge">Live backend model</span>
       </div>
-      <p className="whatif-intro">Change this patient&apos;s plan and the twin re-forecasts the next 2 hours from the same moment.</p>
+      <p className="whatif-intro">Change this patient&apos;s plan and the twin re-forecasts the next 2 hours from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of the current forecast</> : 'the moment of the current forecast'}.</p>
       <p className="whatif-disclaimer" data-testid="scenario-disclaimer"><strong>{SCENARIO_DISCLAIMER}</strong> The size of the change has not been validated against human data.</p>
 
-      <div className="whatif-presets" role="group" aria-label="Quick scenarios">
-        {PRESETS.map(p => (
-          <button key={p.id} type="button" className={p.id === 'medication' ? 'secondary-button preset-refused' : 'secondary-button'} disabled={!asOf || loading}
-            title={p.id === 'medication' ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
-            onClick={() => { const next = { ...form, ...p.form }; setForm(next); submit(next); }}>
-            {p.label}
-          </button>
-        ))}
+      <p className="whatif-step-label" id="whatif-presets-label">Try a common change</p>
+      <div className="whatif-presets" role="group" aria-labelledby="whatif-presets-label">
+        {PRESETS.map(p => {
+          const Icon = PRESET_ICONS[p.id];
+          const refused = p.id === 'medication';
+          return (
+            <button key={p.id} type="button" className={refused ? 'secondary-button preset preset-refused' : 'secondary-button preset'} disabled={!asOf || loading}
+              aria-label={refused ? p.label : undefined}
+              title={refused ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
+              onClick={() => { const next = { ...form, ...p.form }; setForm(next); submit(next); }}>
+              {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>{refused && <small aria-hidden="true">not modelled</small>}
+            </button>
+          );
+        })}
       </div>
+      <p className="whatif-step-label">Or set your own</p>
 
       <form className="whatif-form" onSubmit={e => { e.preventDefault(); submit(form); }}>
         <label>Change

@@ -18,9 +18,11 @@ describe('Opus Audit - RiskPanel & Waterfall', () => {
         { label_key: 'Meal', impact_mg_dl: 40 },
         { label_key: 'Insulin', impact_mg_dl: -10 }
       ],
-      spike_risk: { peak_mg_dl: { p50: 150 } }
+      forecast: { points: [{ offset_min: 30, p50: 140 }, { offset_min: 60, p50: 150 }, { offset_min: 90, p50: 120 }] },
+      // The conditional peak head is a different quantity; it must never become the waterfall total.
+      spike_risk: { peak_mg_dl: { p50: 999 } }
     };
-    // 100 + 40 - 10 = 130. Peak is 150. Residual must be +20.
+    // 100 + 40 - 10 = 130. The trajectory median peaks at 150. Residual must be +20.
     render(<RiskPanel forecast={forecast} />);
     expect(screen.getByText('+20')).toBeInTheDocument();
     expect(screen.getByText('Residual')).toBeInTheDocument();

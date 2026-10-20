@@ -8,7 +8,7 @@ People with type 2 diabetes and prediabetes learn about a post-meal glucose spik
 
 This prototype is a **patient-specific digital twin**. It joins static EHR context (age, BMI, HbA1c, eGFR, diabetes duration, medication classes) with streaming wearable data (CGM, heart rate, steps, sleep, meals). From that it does three things:
 
-1. **Forecasts the next 2 hours** of glucose as a full uncertainty band (P05–P95), plus a calibrated probability of a spike.
+1. **Forecasts the next 2 hours** of glucose with uncertainty bands (P10–P90, conformal-adjusted; P05–P95, not separately evaluated), plus a calibrated probability of a spike.
 2. **Shows how each forecast is built**: a mechanistic physiology model sets the shape, and a neural network adds a learned residual on top.
 3. **Lets a clinician ask "what if?"**: add a meal, add a walk, or skip a usual meal. The twin re-forecasts from the same moment through the real backend.
 
@@ -38,13 +38,13 @@ echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local && npm run build && npx ne
 ```
 
 1. Open `/`. The home page states what the twin does, shows a schematic of the pipeline and the headline evidence (including the failed realism gate, read live from `docs/evidence/validation_ceiling_results.json`). Click **Open the demonstration twin · P0017** (validation split, Type 2). `/cohort` lists the other served subjects; training subjects are in-sample, and sealed test subjects are not served at all.
-2. **Header**: the EHR record in one line (age, sex, BMI, HbA1c, diagnosis duration, medication), the replay clock and data quality. The replay opens at **08:00 UTC on the cohort's first morning**; the same rule applies to every subject. For P0017 the window holds the night, waking and a 123 g breakfast logged at 07:35. Let the replay run: the 08:00 forecast rises to a median of 222.5 mg/dL at +55 min, and the observed CGM then reaches 207 at 08:30 and 216 at 09:00. Say plainly that this is one favourable example, and that aggregate accuracy is on the Evidence page.
+2. **Header**: the EHR record in one line (age, sex, BMI, HbA1c, diagnosis duration, medication), the replay clock and data quality. The replay opens at **08:00 UTC on the cohort's first morning**; the same rule applies to every subject. For P0017 the window holds the night, waking and a 123 g breakfast logged at 07:35. Let the replay run: the 08:00 forecast rises to a median of 222.5 mg/dL at +45 min, and the observed CGM then reaches 207 at 08:30 and 216 at 09:00. Say plainly that this is one favourable example, and that aggregate accuracy is on the Evidence page.
 3. **Glucose trajectory** (the dark instrument panel): observed CGM, the forecast anchor, the P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the forecast-median peak. Two hours of history are shown by default so the forecast gets half the chart; *Past 6h* shows the full replayed history.
 4. **Wearable and log inputs the model read**: meal log, steps, heart rate, HRV and sleep, on the same time axis as the chart. These are the values the network consumed at each reading.
 5. **How this forecast is built**: pick +15 / +30 / +60 / +120 min and read ① physiology-based estimate + ② learned model adjustment = ③ final forecast, with its 80% interval.
 6. **Spike risk and model contributions**: the calibrated 2-hour probability, then the contributions, which add up to the forecast median's highest point.
 7. **What-if simulation** (directly under the forecast):
-   - Click *60 g carb meal in 30 min*. Point at the twin line first: the physiology twin alone adds up to +47.8 mg/dL. The network's highest median moves from 222.5 to 228.5 mg/dL, and the spike risk from 53.3% to 56.9%. Say that the service flags meal scenarios as outside the network's training range. This opening does not show the one-step artefact. If asked, cite the documented 05:55 example (a single 5-min step of +53.7 mg/dL) and say the chart flags such steps whenever they appear. **Do not quote any scenario headline as the effect of the meal.**
+   - Click *60 g carb meal in 30 min*. Point at the twin line first: the physiology twin alone adds up to +47.8 mg/dL. The network's highest median moves from 222.5 to 228.5 mg/dL, and the spike risk from 53.3% to 56.9%. Say that the service flags meal scenarios as outside the network's training range. This opening does not show the one-step artefact. If asked, cite the documented 05:55 example (a single 5-min spike at +75 min, 53.7 mg/dL above the physiology twin and about 54 mg/dL above its neighbouring steps) and say the chart flags such steps whenever they appear. **Do not quote any scenario headline as the effect of the meal.**
    - Click *30 min brisk walk now*. The highest median goes from 222.5 to 219.2 mg/dL, and the service attaches its own approximation warning.
    - Click *Medication change*. The service refuses with `SCENARIO_UNSUPPORTED`. Say that this is deliberate.
 8. **Evidence page**: matched baselines, calibration, and the failed Gate 3.
@@ -96,4 +96,4 @@ The forecast has 7 quantiles with conformal adjustment, and the 80% interval rea
 - Contract violations are rejected at the server boundary and in the browser.
 
 **"Why not just use the CGM's own alarm?"**
-CGM alarms fire when the threshold is crossed. Here, persistence ("glucose stays where it is") has a 60-min RMSE of 36.05 mg/dL, against 19.53 for the twin. The value of a forecast is the lead time before a spike.
+CGM alarms fire when the threshold is crossed. Here, persistence ("glucose stays where it is") has a 60-min RMSE of 36.05 mg/dL, against 19.53 for the hybrid forecast (23.23 for the physiology twin alone). A forecast could give lead time before a spike, but lead time has not been measured: the pre-registered early-warning study (EW-01) has not been run.

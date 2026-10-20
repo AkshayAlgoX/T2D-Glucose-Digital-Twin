@@ -452,7 +452,7 @@ export default async function EvidencePage() {
                     T2D 120m RMSE: {subgroups?.['Type 2']?.rmse_120.toFixed(2) ?? '26.55'} vs 32.07 (Twin) vs 50.83 (PE)
                   </div>
                   <p className="pillar-desc">
-                    At 120 minutes, the hybrid model achieves 26.55 mg/dL RMSE vs 32.07 for UKF-only and 50.83 for persistence. The hybrid-vs-UKF difference is -5.52 mg/dL—the largest margin among subgroups (vs -2.47 mg/dL in Healthy), where glycemic variability and resistance are highest.
+                    At 120 minutes, the hybrid model achieves 26.55 mg/dL RMSE vs 32.07 for UKF-only and 50.83 for persistence. The hybrid-vs-UKF difference is -5.52 mg/dL—the largest margin among subgroups (vs -2.47 mg/dL in Healthy). Subgroup values from docs/evidence/validation_ceiling_results.json; 10 subjects, no interval on the subgroup difference, so exploratory.
                     <br /><strong style={{ color: 'var(--color-ink-2)' }}>Exploratory boundary:</strong> Exploratory evidence from only 10 simulated T2D subjects in the development partition; clinical validation in real patients is required.
                   </p>
                 </div>
@@ -474,8 +474,8 @@ export default async function EvidencePage() {
                     AUROC {gate3?.historical_auroc.toFixed(4) ?? '0.9320'} (Target &le; 0.65)
                   </div>
                   <ul className="pillar-limits-list">
-                    <li><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells the synthetic glucose traces apart from the reference data (AUROC 0.932031 historical, 0.928974 duration-corrected; target ≤ 0.65).</li>
-                    <li><strong>Held-out test not run:</strong> the 44 test patients have never been scored, so no test result is claimed.</li>
+                    <li><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells our synthetic glucose traces apart from an independent mock-real generator&apos;s data, itself synthetic (AUROC 0.932031 historical, 0.928974 duration-corrected; target ≤ 0.65).</li>
+                    <li><strong>Held-out test not run:</strong> the 44 sealed test patients of this split have not been scored by this model, so no test result is claimed. An earlier demo run&apos;s 18-subject &lsquo;test&rsquo; record is kept separately and excluded from claims.</li>
                     <li><strong>Early-warning alerts not validated:</strong> the pre-registered alert study (EW-01) has not been run.</li>
                     <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
                   </ul>
@@ -551,7 +551,7 @@ export default async function EvidencePage() {
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.55, margin: '0 0 14px' }}>
-                Multi-horizon paired forecast error comparison evaluating the PR-TFT hybrid model against standalone UKF physiology ODEs and sensor persistence across 53,849–53,920 evaluable rows. In this synthetic partition, the neural residual layer corrects physics drift at longer horizons without replacing physiological priors.
+                Multi-horizon paired forecast error comparison evaluating the PR-TFT hybrid model against standalone UKF physiology ODEs and sensor persistence across 53,849–53,920 evaluable rows. In this synthetic partition, the hybrid&apos;s RMSE is below the twin alone&apos;s at every horizon (−2.88, −3.71 and −3.61 mg/dL at 30, 60 and 120 min).
               </p>
 
               <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Baseline comparison table (scrolls horizontally)">
@@ -747,7 +747,7 @@ export default async function EvidencePage() {
                 </div>
 
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
-                  Stratified evaluation across healthy (n=15), prediabetes (n=19), and Type 2 diabetes (n=10) simulated subjects. The 10-patient T2D subgroup represents the core target use case: PR-TFT delivers its largest absolute gain over pure physics (&Delta; = -5.52 mg/dL at 120m) where metabolic impairment creates non-linear glucose dynamics that exceed standard ODE parameters. Sample sizes reflect the synthetic development partition and must be treated as exploratory.
+                  Stratified evaluation across healthy (n=15), prediabetes (n=19), and Type 2 diabetes (n=10) simulated subjects. The 10-patient T2D subgroup represents the core target use case: PR-TFT shows its largest absolute gain over the twin alone (&Delta; = -5.52 mg/dL at 120 min). With 10 subjects and no interval on the subgroup difference, this is exploratory.
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '16px' }}>
@@ -817,29 +817,29 @@ export default async function EvidencePage() {
                   Per-patient RMSE quantiles across the 44 simulated validation subjects, summarizing patient-to-patient error dispersion (median 18.86 mg/dL, IQR 3.42 mg/dL at 60m). <em>Clinical disclosure:</em> These cohort-level summary distributions describe median performance and spread, but do not rule out individual acute forecast errors or outlier trajectory deviations in specific subjects.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-                  {dist['60min'] && (
+                  {dist['rmse_60'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-Minute Horizon Dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['60min'].min?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['60min'].median?.toFixed(2)}</strong></div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['60min'].max?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>25th %:</span> {dist['60min'].p25?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>75th %:</span> {dist['60min'].p75?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>IQR:</span> {dist['60min'].iqr?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_60'].min?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_60'].median?.toFixed(2)}</strong></div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['rmse_60'].max?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>25th %:</span> {dist['rmse_60'].p25?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>75th %:</span> {dist['rmse_60'].p75?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>IQR:</span> {dist['rmse_60'].iqr?.toFixed(2)}</div>
                       </div>
                     </div>
                   )}
-                  {dist['120min'] && (
+                  {dist['rmse_120'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-Minute Horizon Dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['120min'].min?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['120min'].median?.toFixed(2)}</strong></div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['120min'].max?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>25th %:</span> {dist['120min'].p25?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>75th %:</span> {dist['120min'].p75?.toFixed(2)}</div>
-                        <div><span style={{ color: 'var(--color-ink-3)' }}>IQR:</span> {dist['120min'].iqr?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_120'].min?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_120'].median?.toFixed(2)}</strong></div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>Max:</span> {dist['rmse_120'].max?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>25th %:</span> {dist['rmse_120'].p25?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>75th %:</span> {dist['rmse_120'].p75?.toFixed(2)}</div>
+                        <div><span style={{ color: 'var(--color-ink-3)' }}>IQR:</span> {dist['rmse_120'].iqr?.toFixed(2)}</div>
                       </div>
                     </div>
                   )}
@@ -888,7 +888,7 @@ export default async function EvidencePage() {
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
-                        Mean adjusted width: <strong>37.30 mg/dL</strong> (+1.27 mg/dL conformal widening; 36.02 → 37.30 mg/dL in the recorded run). Evaluated on the 44-subject validation split where the calibrator was fitted (resubstitution diagnostic).
+                        Mean adjusted width: <strong>37.30 mg/dL</strong> (+1.28 mg/dL conformal widening; 36.02 → 37.30 mg/dL in the recorded run). Evaluated on the 44-subject validation split where the calibrator was fitted (resubstitution diagnostic).
                       </p>
                     </div>
                   </div>
@@ -959,7 +959,7 @@ export default async function EvidencePage() {
                     </div>
                     <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Synthetic-Data Indistinguishability</h3>
                     <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                      A classifier can tell the synthetic glucose traces from the reference records (33,162 windows), so the synthetic data are not yet realistic enough.
+                      A classifier can tell our synthetic glucose windows from those of an independent mock-real generator (16,719 synthetic vs 16,443 mock-real windows). The comparison data are also synthetic, so this says nothing about realism against people.
                     </p>
                     <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
                       <div><strong>Historical AUROC:</strong> {gate3.historical_auroc?.toFixed(4)}</div>
@@ -974,7 +974,7 @@ export default async function EvidencePage() {
                       </div>
                     </details>
                     <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
-                      Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507).
+                      Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507). The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository.
                     </p>
                   </div>
                 )}
