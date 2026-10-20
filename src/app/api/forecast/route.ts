@@ -121,9 +121,30 @@ export async function POST(request: NextRequest) {
       delta_probability = Object.is(diff, -0) ? 0 : diff;
     }
 
+    // Same-anchor baseline so the client compares against the forecast this scenario was scored with,
+    // not whatever the live stream shows by the time the response arrives.
+    const baseline_forecast = (resData as any).forecast.points.map((p: any) => ({
+      timestamp: new Date(asOfTime + p.offset_min * 60000).toISOString(),
+      p10: p.p10,
+      p50: p.p50,
+      p90: p.p90,
+      twin_p50: typeof p.twin_p50 === 'number' && Number.isFinite(p.twin_p50) ? p.twin_p50 : null
+    }));
+
+    const warnings = Array.isArray((resData as any).warnings)
+      ? (resData as any).warnings
+          .filter((w: any) => w && typeof w.code === 'string' && typeof w.title === 'string')
+          .map((w: any) => ({ code: w.code, title: w.title, ...(typeof w.detail === 'string' ? { detail: w.detail } : {}) }))
+      : [];
+
     return NextResponse.json({
       pinned_as_of: (resData as any).as_of,
+      subject_id: (resData as any).subject?.subject_id ?? null,
+      fallback_used: (resData as any).model?.fallback_used ?? null,
+      current_mg_dl: (resData as any).current?.value_mg_dl ?? null,
+      baseline_forecast,
       scenario_forecast,
+      warnings,
       metrics: {
         delta_peak_mg_dl: scenario.delta_peak_mg_dl,
         new_peak_mg_dl,

@@ -121,13 +121,11 @@ describe('Risk history plot density', () => {
   });
 });
 
-it('keeps the compact simulation state honest with no interactive controls or output', () => {
+it('keeps the simulation honest before a forecast exists: no run, no fabricated output', () => {
   render(<ScenarioEditor patientId="unit-subject" />);
-  expect(screen.getByText('Unavailable')).toBeInTheDocument();
-  expect(screen.getByText('Scenario service not connected')).toBeInTheDocument();
-  expect(screen.getByText(/No validated simulation results are available in this build; human causal effects have not been validated/)).toBeInTheDocument();
-  expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-  expect(screen.queryByText('Simulation Result')).not.toBeInTheDocument();
+  expect(screen.getByText(/Simulated model response — not a validated causal treatment effect\./)).toBeInTheDocument();
+  expect(screen.getByTestId('scenario-waiting')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Run simulation' })).toBeDisabled();
+  screen.getAllByRole('button').forEach(button => expect(button).toBeDisabled());
+  expect(screen.queryByTestId('scenario-result')).not.toBeInTheDocument();
 });

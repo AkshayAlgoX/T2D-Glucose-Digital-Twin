@@ -771,3 +771,50 @@ describe('/api/forecast proxy', () => {
     });
   });
 });
+
+describe('/api/forecast same-anchor comparison payload', () => {
+  const originalEnv = process.env;
+  beforeEach(() => {
+    process.env = { ...originalEnv, BACKEND_URL: 'http://127.0.0.1:8001' };
+    const { validateForecastResponse, validateForecastRequest } = require('../src/lib/schema-validator');
+    validateForecastResponse.mockReturnValue(true);
+    validateForecastRequest.mockReturnValue(true);
+    global.fetch = jest.fn();
+  });
+  afterEach(() => { process.env = originalEnv; jest.clearAllMocks(); });
+
+  it('returns the baseline from the same response, scenario warnings and fallback state', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        as_of: '2026-09-28T11:55:00Z',
+        subject: { subject_id: 'abc' },
+        model: { fallback_used: null },
+        current: { value_mg_dl: 118 },
+        forecast: { points: [{ offset_min: 5, p10: 110, p50: 120, p90: 130, twin_p50: 117 }] },
+        spike_risk: { probability_120m: 0.1 },
+        scenarios: [{ points: [{ offset_min: 5, p10: 115, p50: 125, p90: 135 }], delta_peak_mg_dl: 5, probability_120m: 0.2 }],
+        warnings: [{ type: 'about:blank', code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'd' }, { bogus: true }]
+      })
+    });
+    const req = new NextRequest('http://localhost/api/forecast', { method: 'POST',
+      body: JSON.stringify({ patientId: 'abc', pinned_as_of: '2026-09-28T11:55:00Z', scenarios: [{ scenario_id: 'what-if', inputs: [{ kind: 'meal', offset_min: 0, carbs_g: 40 }] }] }) });
+    const data = await (await POST(req)).json();
+    expect(data.baseline_forecast).toEqual([{ timestamp: '2026-09-28T12:00:00.000Z', p10: 110, p50: 120, p90: 130, twin_p50: 117 }]);
+    expect(data.scenario_forecast[0].timestamp).toBe('2026-09-28T12:00:00.000Z');
+    expect(data.warnings).toEqual([{ code: 'SCENARIO_APPROXIMATION', title: 'Activity modelled as immediate uptake', detail: 'd' }]);
+    expect(data.fallback_used).toBeNull();
+    expect(data.current_mg_dl).toBe(118);
+    expect(data.subject_id).toBe('abc');
+  });
+
+  it('passes SCENARIO_UNSUPPORTED problem details through unchanged', async () => {
+    const problem = { type: 'https://schemas.glucose-twin.dev/problems/scenario_unsupported', title: 'Scenario input not supported', status: 422, code: 'SCENARIO_UNSUPPORTED', detail: 'no drug terms' };
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 422, json: jest.fn().mockResolvedValue(problem) });
+    const req = new NextRequest('http://localhost/api/forecast', { method: 'POST',
+      body: JSON.stringify({ patientId: 'abc', scenarios: [{ scenario_id: 'what-if', inputs: [{ kind: 'medication', offset_min: 0, med_class: 'metformin', taken: true }] }] }) });
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual(problem);
+  });
+});

@@ -160,7 +160,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><i className="legend-band" />P10–P90</span>
         <span><i className="legend-outer" />P05–P95</span>
         <span><i className="legend-peak" />Peak estimate</span>
-        {hasPhysics && <span><i className="legend-physics" />Physics prior</span>}
+        {hasPhysics && <span><i className="legend-physics" />Physiology twin (prior)</span>}
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>
       <div ref={plotRef} className="forecast-plot" onPointerLeave={() => {
@@ -247,10 +247,10 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         </span>
       </div>
 
-      <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="Physics prior vs. hybrid forecast">
+      <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built">
         <div className="inspector-header">
           <div className="inspector-title-row">
-            <span className="inspector-title">Physics prior vs. hybrid forecast</span>
+            <span className="inspector-title">How this forecast is built: physiology twin + learned residual</span>
             {isFallback && <span className="inspector-badge fallback" data-testid="twin-only-fallback-badge">Twin-only fallback</span>}
             {isStale && <span className="inspector-badge stale" data-testid="stale-stream-badge">Stale stream</span>}
           </div>
@@ -291,29 +291,29 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
 
         <div className="inspector-metrics">
           <div className="inspector-metric-card" data-testid="physics-prior-card">
-            <span className="metric-label">Physics prior (twin_p50)</span>
+            <span className="metric-label">① Physiology twin (mechanistic prior)</span>
             <span className="metric-value" data-testid="physics-prior-value">
               {physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
           </div>
 
-          <div className="inspector-metric-card" data-testid="hybrid-forecast-card">
-            <span className="metric-label">Hybrid forecast (p50)</span>
-            <span className="metric-value" data-testid="hybrid-forecast-value">
-              {hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
+          <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
+            <span className="metric-label">② Learned residual (final − twin)</span>
+            <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
+              {diffDisplay}
             </span>
           </div>
 
-          <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
-            <span className="metric-label">Forecast adjustment (p50 − twin_p50)</span>
-            <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
-              {diffDisplay}
+          <div className="inspector-metric-card" data-testid="hybrid-forecast-card">
+            <span className="metric-label">③ Final forecast (median)</span>
+            <span className="metric-value" data-testid="hybrid-forecast-value">
+              {hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
           </div>
         </div>
 
         <div className="inspector-footnote" data-testid="inspector-note">
-          <span>Empirical model adjustment · Not a causal effect or accuracy improvement.</span>
+          <span>The network learns what the physiology model misses. Residual = final median − twin median at the same horizon; an empirical model adjustment, not a causal effect or accuracy improvement.</span>
           {forecast?.as_of && (
             <span className="inspector-timestamp">
               Anchor: <time dateTime={forecast.as_of}>{formatTime(Date.parse(forecast.as_of))} UTC</time>

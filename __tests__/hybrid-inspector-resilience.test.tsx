@@ -112,16 +112,16 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       const inspector = screen.getByTestId('hybrid-inspector');
       expect(inspector).toBeInTheDocument();
       expect(inspector).toHaveAttribute('role', 'region');
-      expect(inspector).toHaveAttribute('aria-label', 'Physics prior vs. hybrid forecast');
+      expect(inspector).toHaveAttribute('aria-label', 'How this forecast is built');
 
-      const title = screen.getByText('Physics prior vs. hybrid forecast');
+      const title = screen.getByText('How this forecast is built: physiology twin + learned residual');
       expect(title).toBeInTheDocument();
 
       const note = screen.getByTestId('inspector-note');
-      expect(note.textContent).toContain('Empirical model adjustment · Not a causal effect or accuracy improvement.');
+      expect(note.textContent).toContain('an empirical model adjustment, not a causal effect or accuracy improvement.');
 
       const adjustmentLabel = screen.getByTestId('forecast-adjustment-card').querySelector('.metric-label');
-      expect(adjustmentLabel?.textContent).toBe('Forecast adjustment (p50 − twin_p50)');
+      expect(adjustmentLabel?.textContent).toBe('② Learned residual (final − twin)');
       // Strictly avoid claiming causal effect or accuracy improvement
       expect(adjustmentLabel?.textContent).not.toContain('causal effect');
       expect(adjustmentLabel?.textContent).not.toContain('accuracy improvement');

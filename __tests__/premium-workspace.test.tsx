@@ -142,12 +142,10 @@ describe('Honest data and risk presentation', () => {
     expect(screen.getByText('Pinned-time replay unavailable')).toBeInTheDocument();
   });
 
-  it('shows simulation as unavailable without inactive forms or fabricated results', () => {
+  it('shows the what-if controls with the causal disclaimer and no result until the backend answers', () => {
     render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
-    expect(screen.getByText('Scenario service not connected')).toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText('Simulation Result')).not.toBeInTheDocument();
+    expect(screen.getByTestId('scenario-disclaimer')).toHaveTextContent('Simulated model response — not a validated causal treatment effect.');
+    expect(screen.getByRole('button', { name: 'Run simulation' })).toBeEnabled();
+    expect(screen.queryByTestId('scenario-result')).not.toBeInTheDocument();
   });
 });
