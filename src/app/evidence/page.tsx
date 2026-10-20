@@ -888,7 +888,7 @@ export default async function EvidencePage() {
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
-                        Mean adjusted width: <strong>37.30 mg/dL</strong> (+1.28 mg/dL conformal widening). Evaluated on the 44-subject validation split where the calibrator was fitted (resubstitution diagnostic).
+                        Mean adjusted width: <strong>37.30 mg/dL</strong> (+1.27 mg/dL conformal widening; 36.02 → 37.30 mg/dL in the recorded run). Evaluated on the 44-subject validation split where the calibrator was fitted (resubstitution diagnostic).
                       </p>
                     </div>
                   </div>
