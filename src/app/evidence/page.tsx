@@ -316,7 +316,7 @@ export default async function EvidencePage() {
           <div>
             <span className="eyebrow">Scientific Evidence &amp; Governance Registry</span>
             <h1>Evidence &amp; validation</h1>
-            <p>Empirical validation benchmarks, matched baseline comparisons, clinical subgroup stratification, and negative realism disclosures.</p>
+            <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
             <span
@@ -388,7 +388,7 @@ export default async function EvidencePage() {
               <span className="eyebrow">Executive Summary</span>
               <h2 id="exec-summary-heading">Development validation at a glance</h2>
               <p>
-                Core scientific findings and negative boundaries evaluated on the 44 simulated demonstration subjects in the validation cohort. Four critical questions for clinical evaluation:
+                Core scientific findings and negative boundaries evaluated on the 44 simulated demonstration subjects in the validation cohort. Four questions, answered from the recorded evaluation:
               </p>
             </div>
 
@@ -403,10 +403,12 @@ export default async function EvidencePage() {
                   <h3 className="pillar-question">What data was evaluated?</h3>
                   <div className="pillar-stat">44 Subjects</div>
                   <div className="pillar-substat">15 Healthy · 19 Prediabetes · 10 T2D</div>
+                  <details className="pillar-more"><summary>What the rows are</summary>
                   <p className="pillar-desc">
                     Evaluated on 54,281 eligible prediction anchors (53,849–53,920 evaluable rows across 30, 60, and 120-minute horizons).
                     <br /><strong style={{ color: 'var(--color-ink-2)' }}>Why this matters:</strong> Decision anchor rows are repeated 5-minute time points across these 44 simulated trajectories, not independent people.
                   </p>
+                  </details>
                 </div>
                 <span className="pillar-tag">Synthetic Validation Split</span>
               </div>
@@ -425,6 +427,7 @@ export default async function EvidencePage() {
                   <div className="pillar-substat" data-testid="headline-definition">
                     60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
                   </div>
+                  <details className="pillar-more"><summary>Per-horizon values and how to read them</summary>
                   <div className="pillar-compact-summary">
                     <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_30.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_30.diff.toFixed(2)} vs PE)</span></div>
                     <div className="summary-row"><span>60m:</span> <strong>{metrics.rmse_60.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_60.ci_95 ? `${metrics.rmse_60.ci_95[0].toFixed(2)}–${metrics.rmse_60.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {paired?.pr_minus_twin_rmse_60.diff.toFixed(2)} vs Twin; {paired?.pr_minus_persistence_rmse_60.diff.toFixed(2)} vs PE)</span></div>
@@ -433,6 +436,7 @@ export default async function EvidencePage() {
                   <p className="pillar-desc">
                     <strong style={{ color: 'var(--color-ink-2)' }}>What this means:</strong> Lower RMSE (Root Mean Square Error in mg/dL) means predicted glucose tracks closer to actual readings, reducing large trajectory errors. Paired differences are strictly negative in 10,000/10,000 bootstrap draws.
                   </p>
+                  </details>
                 </div>
                 <span className="pillar-tag">Physics + Neural Residual</span>
               </div>
@@ -451,10 +455,13 @@ export default async function EvidencePage() {
                   <div className="pillar-substat">
                     T2D 120m RMSE: {subgroups?.['Type 2']?.rmse_120.toFixed(2) ?? '26.55'} vs 32.07 (Twin) vs 50.83 (PE)
                   </div>
+                  <p className="pillar-note">Exploratory: 10 simulated subjects, no interval on the subgroup difference.</p>
+                  <details className="pillar-more"><summary>Details</summary>
                   <p className="pillar-desc">
                     At 120 minutes, the hybrid model achieves 26.55 mg/dL RMSE vs 32.07 for UKF-only and 50.83 for persistence. The hybrid-vs-UKF difference is -5.52 mg/dL—the largest margin among subgroups (vs -2.47 mg/dL in Healthy). Subgroup values from docs/evidence/validation_ceiling_results.json; 10 subjects, no interval on the subgroup difference, so exploratory.
                     <br /><strong style={{ color: 'var(--color-ink-2)' }}>Exploratory boundary:</strong> Exploratory evidence from only 10 simulated T2D subjects in the development partition; clinical validation in real patients is required.
                   </p>
+                  </details>
                 </div>
                 <span className="pillar-tag">Exploratory · n=10 Subjects</span>
               </div>

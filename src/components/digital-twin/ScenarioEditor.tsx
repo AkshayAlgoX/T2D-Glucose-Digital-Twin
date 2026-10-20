@@ -163,7 +163,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null }: 
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat(scen.flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: labelled ? 112 : 12, top: 14, bottom: 24 };
+  const m = { left: 40, right: labelled ? 100 : 12, top: 14, bottom: 24 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
@@ -198,9 +198,9 @@ export function ScenarioComparisonChart({ result, step = null, change = null }: 
           const last = <T,>(a: T[]) => a[a.length - 1];
           const lb = last(base), ls = last(scen), lt = last(scenTwin);
           const raw = [
-            lb && { key: 'base', y: y(lb.p50), text: 'Unchanged plan', cls: 'lbl-base' },
-            ls && { key: 'scen', y: y(ls.p50), text: 'With the change', cls: 'lbl-scen' },
-            lt && { key: 'twin', y: y(lt.v), text: 'Twin, with change', cls: 'lbl-twin' },
+            lb && { key: 'base', y: y(lb.p50), text: 'Unchanged', cls: 'lbl-base' },
+            ls && { key: 'scen', y: y(ls.p50), text: 'With change', cls: 'lbl-scen' },
+            lt && { key: 'twin', y: y(lt.v), text: 'Twin + change', cls: 'lbl-twin' },
           ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
           return <g aria-hidden="true">{spreadLabels(raw, 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
         })()}
@@ -248,7 +248,7 @@ export function ScenarioChangeChart({ result, change = null, step = null }: { re
   const rows = changeSeries(result);
   const labelled = width >= 520;
   const height = width < 420 ? 150 : 170;
-  const m = { left: 40, right: labelled ? 112 : 12, top: 12, bottom: 24 };
+  const m = { left: 40, right: labelled ? 100 : 12, top: 12, bottom: 24 };
   // Both plans start from the same reading, so the change is zero at the anchor.
   const series = [{ min: 0, final: 0, twin: rows.some(r => r.twin != null) ? 0 : null }, ...rows];
   const vals = series.flatMap(r => [r.final, r.twin ?? 0]);

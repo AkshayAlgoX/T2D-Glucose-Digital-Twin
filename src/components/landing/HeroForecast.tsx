@@ -5,7 +5,7 @@ import type { HeroForecast as HeroData, HeroPoint } from '@/lib/hero';
 
 const W = 640;
 const H = 300;
-const M = { left: 40, right: 16, top: 16, bottom: 30 };
+const M = { left: 48, right: 16, top: 16, bottom: 30 };
 const SPIKE = 180;
 
 const fmt = (v: number) => Number(v.toFixed(1)).toString();

@@ -101,3 +101,27 @@ it.each([
   if (risk.length) expect(screen.getByText('12.3%')).toBeInTheDocument();
   else expect(screen.getByText(/Historical risk is not backfilled/)).toBeInTheDocument();
 });
+
+it('switches between one workspace view at a time on narrow screens, without remounting any view', () => {
+  const { container } = render(<PatientWorkspace patientId="unit-subject" forecast={null} cache={empty} isConnected={false} isStale={false} />);
+  const grid = container.querySelector('.tw-grid')!;
+  const views = screen.getByRole('group', { name: 'Workspace view' });
+  const tab = (name: string) => screen.getByRole('button', { name });
+  expect(grid).toHaveAttribute('data-section', 'forecast');
+  expect(tab('Forecast')).toHaveAttribute('aria-pressed', 'true');
+  expect(views).toContainElement(tab('What-if'));
+  const whatIf = container.querySelector('[data-view="whatif"]');
+  // The forecast view hands over to the scenario editor.
+  fireEvent.click(screen.getByRole('button', { name: /Test a change to the plan/ }));
+  expect(grid).toHaveAttribute('data-section', 'whatif');
+  expect(tab('What-if')).toHaveAttribute('aria-pressed', 'true');
+  expect(tab('Forecast')).toHaveAttribute('aria-pressed', 'false');
+  expect(container.querySelector('[data-view="whatif"]')).toBe(whatIf);
+  // Choosing Record opens the record rather than leaving it collapsed.
+  fireEvent.click(tab('Record'));
+  expect(grid).toHaveAttribute('data-section', 'record');
+  expect(container.querySelector('.patient-context')).toHaveAttribute('open');
+  // Every view carries exactly one of the three view keys.
+  const keys = Array.from(container.querySelectorAll('[data-view]')).map(el => el.getAttribute('data-view'));
+  expect(new Set(keys)).toEqual(new Set(['forecast', 'whatif', 'record']));
+});

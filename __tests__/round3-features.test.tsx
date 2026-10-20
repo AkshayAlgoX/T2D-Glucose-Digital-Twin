@@ -1,0 +1,87 @@
+import React from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { changeSeries, changeWindow, ScenarioEditor } from '../src/components/digital-twin/ScenarioEditor';
+import { heroFromForecasts, parseForecastEvents, HERO_AS_OF } from '../src/lib/hero';
+import { HeroForecast } from '../src/components/landing/HeroForecast';
+
+// Test fixtures only: shaped like backend responses, never shown as live output.
+const anchor = '2026-09-28T11:55:00Z';
+const curve = (base: number, slope: number, twin?: (i: number) => number) => Array.from({ length: 24 }, (_, i) => ({
+  timestamp: new Date(Date.parse(anchor) + (i + 1) * 300000).toISOString(),
+  p10: base + slope * i - 15, p50: base + slope * i, p90: base + slope * i + 15,
+  twin_p50: twin ? twin(i) : null,
+}));
+
+describe('What-If change over time', () => {
+  const result = {
+    pinned_as_of: anchor, subject_id: 's', fallback_used: null, current_mg_dl: 150,
+    baseline_forecast: curve(150, 0, () => 150), scenario_forecast: curve(150, 0.5, i => 150 + 2 * i),
+    warnings: [], metrics: { delta_peak_mg_dl: 11.5, new_peak_mg_dl: 161.5, baseline_peak_mg_dl: 150, delta_probability: 0, new_probability: 0.1, baseline_probability: 0.1 },
+  };
+
+  it('is the scenario minus the unchanged plan at each returned time, for the forecast and the twin alone', () => {
+    const rows = changeSeries(result);
+    expect(rows).toHaveLength(24);
+    expect(rows[0]).toEqual({ min: 5, unchanged: 150, withChange: 150, final: 0, twin: 0 });
+    expect(rows[23]).toEqual({ min: 120, unchanged: 150, withChange: 161.5, final: 11.5, twin: 46 });
+  });
+
+  it('marks when the change happens, and only for changes with a time', () => {
+    expect(changeWindow({ kind: 'meal', offset_min: 30, carbs_g: 60 })).toEqual({ start: 30, end: null, label: '60 g meal' });
+    expect(changeWindow({ kind: 'activity', offset_min: 100, duration_min: 45, intensity: 'moderate' })).toEqual({ start: 100, end: 120, label: 'moderate activity' });
+    expect(changeWindow({ kind: 'skip_habitual_meal', meal_slot: 'dinner' })).toBeNull();
+  });
+
+  it('renders the change chart and a value table from the backend curves', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, status: 200, json: async () => result });
+    render(<ScenarioEditor patientId="s" currentForecast={{ as_of: anchor, data_quality: { status: 'ok' }, forecast: { points: [] }, ehr_context: { med_classes: ['metformin'] } } as never} />);
+    fireEvent.click(screen.getByRole('button', { name: '60 g carb meal in 30 min' }));
+    await screen.findByTestId('scenario-result');
+    expect(screen.getByTestId('whatif-change-chart').querySelector('svg')).toHaveAttribute('aria-label', expect.stringContaining('Final forecast: largest +11.5 mg/dL at +120 min'));
+    expect(screen.getByTestId('change-final-line').getAttribute('d')).toBeTruthy();
+    expect(screen.getByTestId('change-twin-line').getAttribute('d')).toBeTruthy();
+    expect(screen.getByTestId('whatif-change-marker')).toBeInTheDocument();
+    const table = within(screen.getByTestId('whatif-table')).getByRole('table');
+    const last = within(table).getByRole('row', { name: /\+120 min/ });
+    expect(last).toHaveTextContent('+120 min150.0161.5+11.5+46.0');
+  });
+
+  it('keeps the medication preset as a one-click refusal with a plain accessible name', () => {
+    render(<ScenarioEditor patientId="s" currentForecast={null} />);
+    const med = screen.getByRole('button', { name: 'Medication change' });
+    expect(med).toHaveTextContent('not modelled');
+  });
+});
+
+describe('Home hero: genuine replayed forecasts only', () => {
+  const t = (min: number) => new Date(Date.parse(HERO_AS_OF) + min * 60000).toISOString().replace('.000Z', 'Z');
+  const forecastAt = (min: number, value: number, points = true) => ({
+    as_of: t(min), subject: { simulator: { param_set_id: 'P0017' } }, model: { name: 'pr_tft' },
+    current: { value_mg_dl: value },
+    forecast: { points: points ? [{ offset_min: 60, p10: 200, p50: 217.1, p90: 240, twin_p50: 232.5 }, { offset_min: 120, p10: 150, p50: 170, p90: 200, twin_p50: 180 }] : [] },
+    spike_risk: { probability_120m: 0.533, calibrated: true },
+  });
+  const sse = (events: object[]) => events.map((p, i) => `id: ${i}\nevent: forecast.updated\ndata: ${JSON.stringify({ event: 'forecast.updated', payload: p })}\n\n`).join('')
+    + 'event: alert.raised\ndata: {"event":"alert.raised"}\n\ndata: {not json}\n\n';
+
+  it('parses forecast events, skipping alerts and malformed lines', () => {
+    expect(parseForecastEvents(sse([forecastAt(-10, 120), forecastAt(-5, 130)]))).toHaveLength(2);
+  });
+
+  it('is null unless the anchor forecast and history are present', () => {
+    expect(heroFromForecasts([forecastAt(-5, 130)])).toBeNull();
+    expect(heroFromForecasts([forecastAt(0, 148)])).toBeNull();
+    expect(heroFromForecasts([forecastAt(-5, 130), forecastAt(0, 148, false)])).toBeNull();
+  });
+
+  it('draws only the two hours before the anchor and the returned forecast, with the equation from the same point', () => {
+    const hero = heroFromForecasts([forecastAt(-200, 90), forecastAt(-5, 130), forecastAt(0, 148), forecastAt(5, 160)])!;
+    expect(hero.observed.map(o => o.v)).toEqual([130, 148]);
+    expect(hero.current).toBe(148);
+    render(<HeroForecast data={hero} />);
+    const eq = screen.getByText(/twin \+ learned adjustment = forecast/).closest('div')!;
+    expect(eq).toHaveTextContent('232.5 − 15.4 = 217.1 mg/dL');
+    expect(screen.getByText('53.3')).toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAttribute('aria-label', expect.stringContaining('median peaking at 217.1 mg/dL at +60 min'));
+  });
+});
