@@ -21,7 +21,10 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
   const trajectoryMax = forecast?.forecast?.points?.length
     ? Math.max(...forecast.forecast.points.map(p => p.p50))
     : null;
-  const peak = risk?.peak_mg_dl?.p50 ?? trajectoryMax;
+  // The drivers decompose the forecast median at its highest point, so that is the total they sum to.
+  // The separate peak-model output (spike_risk.peak_mg_dl) is a different quantity and is shown apart.
+  const peak = trajectoryMax ?? risk?.peak_mg_dl?.p50 ?? null;
+  const peakModel = risk?.peak_mg_dl ?? null;
   const residual = current != null && peak != null && drivers.length ? peak - drivers.reduce((sum, driver) => sum + driver.impact_mg_dl, current) : null;
 
   return (
@@ -85,6 +88,11 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </table>
             {!drivers.length && <p className="fine-print">Contribution details have not been received.</p>}
             {risk?.time_to_peak_min != null && <p className="fine-print">Reported time to peak: {risk.time_to_peak_min} min from the forecast anchor.</p>}
+            <p className="fine-print">&ldquo;Median at peak&rdquo; is the highest point of the forecast median curve in the next 2 h.</p>
+            {peakModel && <details className="context-details" data-testid="peak-model-output">
+              <summary>Separate peak-model output</summary>
+              <p className="fine-print">The service also returns a dedicated estimate of the highest value within 2 h: median {Math.round(peakModel.p50)} mg/dL{peakModel.p90 != null ? `, 90th percentile ${Math.round(peakModel.p90)} mg/dL` : ''}. It is a different quantity from the median curve&apos;s highest point and is not part of the contributions above.</p>
+            </details>}
           </>
         )}
       </section>

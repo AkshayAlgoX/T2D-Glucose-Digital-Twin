@@ -200,6 +200,14 @@ export const ScenarioResultSchema = z.object({
   delta_peak_mg_dl: z.number()
 }).strict();
 
+export const ObservedInputsSchema = z.object({
+  heart_rate_bpm: z.number().min(0).max(300).nullable().optional(),
+  hrv_rmssd_ms: z.number().min(0).max(500).nullable().optional(),
+  steps_5min: z.number().min(0),
+  asleep: z.boolean(),
+  carbs_logged_g: z.number().min(0)
+}).strict();
+
 export const ForecastResponseSchema = z.object({
   schema_version: z.literal('1.0.0'),
   request_id: z.string().uuid(),
@@ -216,6 +224,7 @@ export const ForecastResponseSchema = z.object({
   scenarios: z.array(ScenarioResultSchema).max(4).optional(),
   twin_state: TwinStateSchema.optional(),
   ehr_context: EhrContextSchema.optional(),
+  observed_inputs: ObservedInputsSchema.optional(),
   intended_use: z.literal('research_only_not_for_clinical_decisions'),
   warnings: z.array(ProblemSchema).optional()
 }).strict();

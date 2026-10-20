@@ -90,6 +90,7 @@ export interface ForecastResponse {
     | [ScenarioResult, ScenarioResult, ScenarioResult, ScenarioResult];
   twin_state?: TwinState;
   ehr_context?: EhrContext;
+  observed_inputs?: ObservedInputs;
   intended_use: "research_only_not_for_clinical_decisions";
   warnings?: Problem[];
 }
@@ -514,6 +515,16 @@ export interface EhrContext {
   t2d_duration_years?: number;
   egfr?: number | null;
   med_classes?: MedClass[];
+}
+/**
+ * Wearable and log readings at as_of, exactly as the network consumed them.
+ */
+export interface ObservedInputs {
+  heart_rate_bpm?: number | null;
+  hrv_rmssd_ms?: number | null;
+  steps_5min: number;
+  asleep: boolean;
+  carbs_logged_g: number;
 }
 export interface Problem {
   type: string;

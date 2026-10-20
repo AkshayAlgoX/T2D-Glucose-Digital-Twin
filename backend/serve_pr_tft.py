@@ -310,6 +310,15 @@ class Problem(BaseModel):
     detail: Optional[str] = None
 
 
+class ObservedInputs(Strict):
+    """The wearable and log readings at as_of, exactly as the network consumed them (gaps filled as in training)."""
+    heart_rate_bpm: Optional[float] = Field(default=None, ge=0, le=300)
+    hrv_rmssd_ms: Optional[float] = Field(default=None, ge=0, le=500)
+    steps_5min: float = Field(ge=0)
+    asleep: bool
+    carbs_logged_g: float = Field(ge=0)
+
+
 class ForecastResponse(Strict):
     schema_version: Literal["1.0.0"]
     request_id: uuid.UUID
@@ -326,6 +335,7 @@ class ForecastResponse(Strict):
     scenarios: Optional[list[ScenarioResult]] = Field(default=None, max_length=4)
     twin_state: Optional[TwinState] = None
     ehr_context: Optional[EhrContext] = None
+    observed_inputs: Optional[ObservedInputs] = None
     intended_use: Literal["research_only_not_for_clinical_decisions"]
     warnings: Optional[list[Problem]] = None
 
@@ -421,6 +431,7 @@ class PatientCache:
     static: np.ndarray  # (S,) normalised
     ukf_mean: np.ndarray | None = None
     fit_quality: dict[str, Any] | None = None
+    carbs_logged: np.ndarray | None = None  # per-step logged carbs, as the network sees them
 
 
 class ServiceContext:
@@ -757,6 +768,7 @@ def build_forecast(ctx: ServiceContext, req: ForecastRequest, t_override: int | 
     }
     if "ehr_context" in include:
         resp["ehr_context"] = ehr_context(ps)
+    resp["observed_inputs"] = observed_inputs(pc, t)
 
     if dq["status"] == "insufficient":
         resp.update(forecast=None, spike_risk=None,
@@ -854,6 +866,16 @@ def twin_state(ctx: ServiceContext, pc: PatientCache, t: int) -> dict[str, Any]:
         state["unannounced_meal"] = {"probability": round(prob, 3), "estimated_carbs_g": None,
                                      "estimated_at": utc(ps.stamps[t - lookback]).isoformat() if prob >= 0.5 else None}
     return state
+
+
+def observed_inputs(pc: PatientCache, t: int) -> dict[str, Any]:
+    ps = pc.ps
+    if pc.carbs_logged is None:
+        pc.carbs_logged = T._logged_carbs_series(ps)
+    finite = lambda v: round(float(v), 1) if np.isfinite(v) else None  # noqa: E731
+    return {"heart_rate_bpm": finite(ps.hr[t]), "hrv_rmssd_ms": finite(ps.hrv[t]),
+            "steps_5min": round(float(ps.steps[t]), 1), "asleep": bool(ps.asleep[t] > 0),
+            "carbs_logged_g": round(float(pc.carbs_logged[t]), 1)}
 
 
 def ehr_context(ps: T.PatientSeries) -> dict[str, Any]:

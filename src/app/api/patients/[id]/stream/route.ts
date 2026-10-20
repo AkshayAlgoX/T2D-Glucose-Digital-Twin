@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { createSafeSSETransformStream } from '@/lib/sse-parser';
 
 export const dynamic = 'force-dynamic';
-export const DEFAULT_CATCH_UP_READINGS = 72;
+const DEFAULT_CATCH_UP_READINGS = 72;
 
 export async function GET(
   request: NextRequest,

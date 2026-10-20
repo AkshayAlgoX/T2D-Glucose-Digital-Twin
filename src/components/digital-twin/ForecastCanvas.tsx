@@ -3,7 +3,7 @@ import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
 import { formatTime } from '@/lib/formatters/date';
 import type { ForecastResponse, QuantilePoint } from '@/types/forecast-response';
-import type { SubjectStore } from '@/lib/types';
+import type { SubjectStore, WearableView } from '@/lib/types';
 
 export function ForecastCanvas({ forecast, cache, isStale }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean }) {
   const plotRef = useRef<HTMLDivElement>(null);
@@ -53,8 +53,10 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
     return segments;
   }, []);
   const current = forecast?.current?.value_mg_dl;
-  const peak = forecast?.spike_risk?.peak_mg_dl?.p50;
-  const peakOffset = forecast?.spike_risk?.time_to_peak_min;
+  // Mark the forecast median's own highest point so the dot always sits on the curve it describes.
+  const peakPoint = points.length ? points.reduce((best, p) => (p.p50 > best.p50 ? p : best), points[0]) : null;
+  const peak = peakPoint?.p50;
+  const peakOffset = peakPoint?.offset_min;
   const start = Math.min(anchor - 30 * 60000, ...history.map(point => point.time));
   const end = anchor + 120 * 60000;
   const narrow = size.width < 520;
@@ -159,7 +161,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><i className="legend-median" />Forecast median</span>
         <span><i className="legend-band" />P10–P90</span>
         <span><i className="legend-outer" />P05–P95</span>
-        <span><i className="legend-peak" />Peak estimate</span>
+        <span><i className="legend-peak" />Forecast peak (median)</span>
         {hasPhysics && <span><i className="legend-physics" />Physiology twin (prior)</span>}
       </div>
       <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div></div>
@@ -216,7 +218,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
                 {segment.length === 1 && <circle cx={x(segment[0].time)} cy={y(segment[0].value)} r={3} fill="var(--color-ink)" />}
               </g>)}
               {current != null && <circle data-testid="current-observation" cx={x(anchor)} cy={y(current)} r={4} fill="var(--color-ink)" stroke="white" strokeWidth={2} />}
-              {peak != null && peakOffset != null && <circle cx={x(anchor + peakOffset * 60000)} cy={y(peak)} r={4} fill={isWarning ? 'var(--color-danger)' : 'var(--color-forecast)'}><title>{`Reported peak estimate: ${peak} mg/dL`}</title></circle>}
+              {peak != null && peakOffset != null && <circle cx={x(anchor + peakOffset * 60000)} cy={y(peak)} r={4} fill={isWarning ? 'var(--color-danger)' : 'var(--color-forecast)'}><title>{`Highest forecast median: ${peak} mg/dL at +${peakOffset} min`}</title></circle>}
               {selected && <g pointerEvents="none"><line x1={x(selected.time)} x2={x(selected.time)} y1={margin.top} y2={bottom} stroke="var(--color-forecast)" strokeDasharray="3 3" /><circle cx={x(selected.time)} cy={y(selected.value)} r={4} fill="var(--color-forecast)" /></g>}
             </g>
             <line x1={x(anchor)} x2={x(anchor)} y1={margin.top} y2={bottom} stroke="var(--color-ink-3)" strokeDasharray="3 3" />
@@ -247,15 +249,17 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         </span>
       </div>
 
+      <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
+
       <div className="hybrid-inspector" data-testid="hybrid-inspector" role="region" aria-label="How this forecast is built">
         <div className="inspector-header">
           <div className="inspector-title-row">
-            <span className="inspector-title">How this forecast is built: physiology twin + learned residual</span>
+            <span className="inspector-title">How this forecast is built</span>
             {isFallback && <span className="inspector-badge fallback" data-testid="twin-only-fallback-badge">Twin-only fallback</span>}
             {isStale && <span className="inspector-badge stale" data-testid="stale-stream-badge">Stale stream</span>}
           </div>
           <div className="inspector-horizon-controls" role="group" aria-label="Horizon selection">
-            <span className="horizon-label">Horizon:</span>
+            <span className="horizon-label">At</span>
             <div className="horizon-pills">
               {[15, 30, 60, 120].map(h => (
                 <button
@@ -267,7 +271,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
                   disabled={!availableOffsets.includes(h)}
                   onClick={() => handleSelectHorizon(h)}
                 >
-                  +{h}m
+                  +{h} min
                 </button>
               ))}
             </div>
@@ -289,206 +293,110 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
           </div>
         </div>
 
-        <div className="inspector-metrics">
+        <div className="inspector-metrics hybrid-equation">
           <div className="inspector-metric-card" data-testid="physics-prior-card">
-            <span className="metric-label">① Physiology twin (mechanistic prior)</span>
+            <span className="metric-label">① Physiology-based estimate</span>
             <span className="metric-value" data-testid="physics-prior-value">
               {physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
+            <span className="metric-source">Mechanistic twin median · returned by the service</span>
           </div>
-
+          <span className="equation-op" aria-hidden="true">+</span>
           <div className="inspector-metric-card" data-testid="forecast-adjustment-card">
-            <span className="metric-label">② Learned residual (final − twin)</span>
+            <span className="metric-label">② Learned model adjustment</span>
             <span className={`metric-value ${diffClass}`} data-testid="forecast-adjustment-value">
               {diffDisplay}
             </span>
+            <span className="metric-source">Calculated here as ③ − ①</span>
           </div>
-
-          <div className="inspector-metric-card" data-testid="hybrid-forecast-card">
+          <span className="equation-op" aria-hidden="true">=</span>
+          <div className="inspector-metric-card final" data-testid="hybrid-forecast-card">
             <span className="metric-label">③ Final forecast (median)</span>
             <span className="metric-value" data-testid="hybrid-forecast-value">
               {hybridP50 != null ? `${Number(hybridP50.toFixed(1))} mg/dL` : 'Unavailable'}
+            </span>
+            <span className="metric-source" data-testid="hybrid-interval">
+              {targetPoint && Number.isFinite(targetPoint.p10) && Number.isFinite(targetPoint.p90)
+                ? `80% interval ${targetPoint.p10}–${targetPoint.p90} mg/dL · returned`
+                : 'Interval unavailable'}
             </span>
           </div>
         </div>
 
         <div className="inspector-footnote" data-testid="inspector-note">
-          <span>The network learns what the physiology model misses. Residual = final median − twin median at the same horizon; an empirical model adjustment, not a causal effect or accuracy improvement.</span>
-          {forecast?.as_of && (
+          <span>The network learns what the physiology model misses. The adjustment is an empirical model adjustment, not a causal effect or accuracy improvement, and not a separately validated mechanism.</span>
+          {forecast?.as_of && targetPoint && (
             <span className="inspector-timestamp">
-              Anchor: <time dateTime={forecast.as_of}>{formatTime(Date.parse(forecast.as_of))} UTC</time>
-              {forecast.subject?.subject_id ? ` · ${forecast.subject.subject_id}` : ''}
+              +{targetPoint.offset_min} min after the <time dateTime={forecast.as_of}>{formatTime(Date.parse(forecast.as_of))} UTC</time> reading
             </span>
           )}
         </div>
       </div>
 
       {!!mappedScenario.length && <p className="fine-print">Existing scenario overlay · projection under model assumptions, not validated human causal effects.</p>}
-      <style>{`
-        .hybrid-inspector {
-          margin: 4px 12px 8px;
-          padding: 8px 12px;
-          border: 1px solid var(--color-line, #e2e8f0);
-          border-radius: 6px;
-          background: var(--color-surface, #ffffff);
-          font-size: 11px;
-          color: var(--color-ink, #0f172a);
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .inspector-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-        .inspector-title-row {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .inspector-title {
-          font-weight: 600;
-          font-size: 11px;
-          color: var(--color-ink, #1e293b);
-        }
-        .inspector-badge {
-          font-size: 9px;
-          font-weight: 600;
-          padding: 1px 6px;
-          border-radius: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-        }
-        .inspector-badge.fallback {
-          background: #fef3c7;
-          color: #92400e;
-          border: 1px solid #fcd34d;
-        }
-        .inspector-badge.stale {
-          background: #fee2e2;
-          color: #991b1b;
-          border: 1px solid #fca5a5;
-        }
-        .inspector-horizon-controls {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .horizon-label {
-          color: var(--color-ink-3, #64748b);
-          font-size: 10px;
-        }
-        .horizon-pills {
-          display: flex;
-          gap: 2px;
-          background: var(--color-surface-2, #f1f5f9);
-          padding: 2px;
-          border-radius: 4px;
-          border: 1px solid var(--color-line, #e2e8f0);
-        }
-        .horizon-pill {
-          padding: 2px 6px;
-          font-size: 10px;
-          font-weight: 500;
-          border: none;
-          background: transparent;
-          color: var(--color-ink-2, #475569);
-          border-radius: 3px;
-          cursor: pointer;
-        }
-        .horizon-pill:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-        .horizon-pill.active {
-          background: #ffffff;
-          color: var(--color-accent, #0f766e);
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-          font-weight: 600;
-        }
-        .horizon-select {
-          font-size: 10px;
-          padding: 2px 4px;
-          border: 1px solid var(--color-line, #e2e8f0);
-          border-radius: 4px;
-          background: var(--color-surface, #ffffff);
-          color: var(--color-ink, #1e293b);
-          cursor: pointer;
-        }
-        .inspector-metrics {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 6px;
-        }
-        .inspector-metric-card {
-          padding: 4px 8px;
-          background: var(--color-surface-2, #f8fafc);
-          border-radius: 4px;
-          border: 1px solid var(--color-line, #f1f5f9);
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-        }
-        .metric-label {
-          font-size: 9px;
-          color: var(--color-ink-3, #64748b);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .metric-value {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--color-ink, #0f172a);
-          font-variant-numeric: tabular-nums;
-        }
-        .metric-value.adjustment-positive {
-          color: var(--color-forecast, #2563eb);
-        }
-        .metric-value.adjustment-negative {
-          color: var(--color-physics, #7c3aed);
-        }
-        .metric-value.adjustment-neutral {
-          color: var(--color-ink-2, #475569);
-        }
-        .inspector-footnote {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 9.5px;
-          color: var(--color-ink-3, #64748b);
-          padding-top: 2px;
-          border-top: 1px dashed var(--color-line, #e2e8f0);
-          flex-wrap: wrap;
-          gap: 4px;
-        }
-        .inspector-timestamp {
-          font-variant-numeric: tabular-nums;
-        }
-        @media (max-width: 520px) {
-          .inspector-metrics {
-            grid-template-columns: 1fr;
-            gap: 4px;
-          }
-          .inspector-metric-card {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 8px;
-          }
-          .metric-label {
-            white-space: normal;
-          }
-          .inspector-footnote {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 2px;
-          }
-        }
-      `}</style>
     </div>
   );
 }
+
+type Lane = { key: string; label: string; unit: string; latest: string; render: () => React.ReactNode };
+
+/** Wearable and log readings the network consumed, on the chart's own time axis (history only). */
+function InputLanes({ wearables, x, start, anchor, width, left, right }: {
+  wearables: WearableView[]; x: d3Scale.ScaleTime<number, number>; start: number; anchor: number; width: number; left: number; right: number;
+}) {
+  const rows = wearables.map(w => ({ ...w, time: Date.parse(w.t) }))
+    .filter(w => Number.isFinite(w.time) && w.time >= start && w.time <= anchor)
+    .sort((a, b) => a.time - b.time);
+  if (!Number.isFinite(anchor) || rows.length < 2) return null;
+  const h = 26;
+  const step = Math.max(1.5, (x(rows[1].time) - x(rows[0].time)) * 0.8);
+  const last = rows[rows.length - 1];
+  const series = (pick: (w: (typeof rows)[number]) => number | null) => {
+    const values = rows.map(pick).filter((v): v is number => v != null && Number.isFinite(v));
+    if (!values.length) return null;
+    const lo = Math.min(...values), hi = Math.max(...values);
+    const y = d3Scale.scaleLinear().domain(lo === hi ? [lo - 1, hi + 1] : [lo, hi]).range([h - 3, 3]);
+    const path = d3Shape.line<(typeof rows)[number]>().defined(w => pick(w) != null).x(w => x(w.time)).y(w => y(pick(w)!))(rows);
+    return { path, lo, hi };
+  };
+  const hr = series(w => w.heartRate);
+  const hrv = series(w => w.hrv);
+  const maxSteps = Math.max(50, ...rows.map(w => w.steps));
+  const fmt = (v: number | null, d = 0) => (v == null ? '—' : v.toFixed(d));
+  const lanes: Lane[] = [
+    { key: 'meals', label: 'Logged meals', unit: 'g carbohydrate', latest: `${rows.filter(w => w.carbs > 0).length} in view`,
+      render: () => rows.filter(w => w.carbs > 0).map(w => <g key={w.t}>
+        <line x1={x(w.time)} x2={x(w.time)} y1={4} y2={h} stroke="var(--color-amber)" strokeWidth={2} />
+        <text x={x(w.time) + 4} y={12} className="lane-text">{Math.round(w.carbs)} g</text>
+      </g>) },
+    { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
+      render: () => rows.filter(w => w.steps > 0).map(w => <rect key={w.t} x={x(w.time) - step / 2} width={step}
+        y={h - Math.max(1, (w.steps / maxSteps) * (h - 4))} height={Math.max(1, (w.steps / maxSteps) * (h - 4))} fill="var(--color-ink-3)" opacity={0.7} />) },
+    { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
+      render: () => hr && <path d={hr.path ?? ''} fill="none" stroke="var(--color-danger)" strokeWidth={1.5} /> },
+    { key: 'hrv', label: 'HRV (RMSSD)', unit: 'ms', latest: fmt(last.hrv),
+      render: () => hrv && <path d={hrv.path ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} /> },
+    { key: 'sleep', label: 'Sleep', unit: 'asleep / awake', latest: last.asleep ? 'Asleep' : 'Awake',
+      render: () => rows.filter(w => w.asleep).map(w => <rect key={w.t} x={x(w.time) - step / 2} width={step * 1.25} y={6} height={h - 12} fill="var(--color-forecast)" opacity={0.35} />) },
+  ];
+  return (
+    <section className="input-lanes" aria-label="Wearable and log inputs the model used" data-testid="input-lanes">
+      <div className="input-lanes-heading">
+        <span>Wearable and log inputs the model read</span>
+        <span className="fine-print">Observed only · same time axis as the chart</span>
+      </div>
+      {lanes.map(lane => (
+        <div key={lane.key} className="input-lane" data-testid={`lane-${lane.key}`}>
+          <div className="input-lane-label"><strong>{lane.label}</strong><span>{lane.latest} {lane.key === 'meals' || lane.key === 'sleep' ? '' : lane.unit}</span></div>
+          <svg width={width} height={h} viewBox={`0 0 ${width} ${h}`} aria-hidden="true">
+            <line x1={left} x2={right} y1={h - 0.5} y2={h - 0.5} stroke="var(--color-line)" />
+            <rect x={x(anchor)} y={0} width={Math.max(0, right - x(anchor))} height={h} fill="var(--color-surface-2)" opacity={0.6} />
+            {lane.render()}
+          </svg>
+        </div>
+      ))}
+      <p className="sr-only">{`Latest readings: heart rate ${fmt(last.heartRate)} bpm, HRV ${fmt(last.hrv)} ms, ${fmt(last.steps)} steps in the last 5 minutes, ${last.asleep ? 'asleep' : 'awake'}.`}</p>
+    </section>
+  );
+}
+

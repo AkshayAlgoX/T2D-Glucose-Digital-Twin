@@ -30,9 +30,20 @@ export interface CgmView {
   trend: string;
 }
 
+/** Wearable and log readings at one anchor, exactly as the network consumed them. */
+export interface WearableView {
+  t: string;
+  heartRate: number | null;
+  hrv: number | null;
+  steps: number;
+  asleep: boolean;
+  carbs: number;
+}
+
 export interface SubjectStore {
   patientId: string;
   cgm: CgmView[];
+  wearables?: WearableView[];
   risk: RiskView[];
   alerts: AlertView[];
   dataQuality: DataQualityView[];

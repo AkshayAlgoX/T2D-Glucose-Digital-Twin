@@ -21,6 +21,7 @@
     "scenarios": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/ScenarioResult" } },
     "twin_state": { "$ref": "#/$defs/TwinState" },
     "ehr_context": { "$ref": "#/$defs/EhrContext" },
+    "observed_inputs": { "$ref": "#/$defs/ObservedInputs" },
     "intended_use": { "const": "research_only_not_for_clinical_decisions" },
     "warnings": { "type": "array", "items": { "$ref": "#/$defs/Problem" } }
   },
@@ -211,6 +212,18 @@
         "t2d_duration_years": { "type": "number", "minimum": 0 },
         "egfr": { "type": ["number", "null"], "minimum": 0 },
         "med_classes": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/MedClass" } }
+      }
+    },
+    "ObservedInputs": {
+      "description": "Wearable and log readings at as_of, exactly as the network consumed them.",
+      "type": "object", "additionalProperties": false,
+      "required": ["steps_5min", "asleep", "carbs_logged_g"],
+      "properties": {
+        "heart_rate_bpm": { "type": ["number", "null"], "minimum": 0, "maximum": 300 },
+        "hrv_rmssd_ms": { "type": ["number", "null"], "minimum": 0, "maximum": 500 },
+        "steps_5min": { "type": "number", "minimum": 0 },
+        "asleep": { "type": "boolean" },
+        "carbs_logged_g": { "type": "number", "minimum": 0 }
       }
     },
     "Problem": {

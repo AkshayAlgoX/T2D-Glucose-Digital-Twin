@@ -338,6 +338,17 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                         }
                       }
 
+                      const observed = forecastPayload.observed_inputs;
+                      if (observed && forecastPayload.as_of) {
+                        const wearables = prev.wearables ?? [];
+                        if (!wearables.some(w => w.t === forecastPayload.as_of)) {
+                          newCache.wearables = [...wearables, {
+                            t: forecastPayload.as_of, heartRate: observed.heart_rate_bpm ?? null, hrv: observed.hrv_rmssd_ms ?? null,
+                            steps: observed.steps_5min, asleep: observed.asleep, carbs: observed.carbs_logged_g,
+                          }];
+                        }
+                      }
+
                       if (forecastPayload.spike_risk?.probability_120m !== undefined && forecastPayload.as_of) {
                         if (!newCache.risk.some(r => r.t === forecastPayload.as_of)) {
                           newCache.risk = [...prev.risk, { t: forecastPayload.as_of, p: forecastPayload.spike_risk.probability_120m }];

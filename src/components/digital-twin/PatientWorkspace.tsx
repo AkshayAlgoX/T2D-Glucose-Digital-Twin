@@ -199,11 +199,20 @@ function DataAvailability({ forecast, cache }: Pick<PatientWorkspaceProps, 'fore
         </dl>
       )}
       <div className="availability-row"><span className="availability-label">CGM / EHR</span><span>{!forecast ? <span className="skeleton skeleton-badge-line" aria-hidden="true" /> : `${forecast?.current?.value_mg_dl != null ? 'CGM received' : 'CGM pending'} · ${forecast?.ehr_context ? 'EHR received' : 'EHR pending'}`}</span></div>
-      <div className="availability-row"><span className="availability-label">Meals · Activity · Heart rate · Sleep</span><span>Not exposed by this stream</span></div>
-      <p className="fine-print">Unavailable streams are not zero measurements. The chart contains observations received during this connection.</p>
+      <div className="availability-row"><span className="availability-label">Heart rate · HRV · Steps · Sleep · Meal log</span><span>{!forecast ? <span className="skeleton skeleton-badge-line" aria-hidden="true" /> : forecast.observed_inputs ? `Received with each forecast · ${cache?.wearables?.length ?? 0} readings` : 'Not received in this forecast'}</span></div>
+      <p className="fine-print">Missing readings are not zero measurements. The chart and input lanes contain only observations received during this connection.</p>
       {!!quality?.reasons?.length && <p className="quality-reasons">Reported quality flags: {quality.reasons.map(reason => reason.replace(/_/g, ' ')).join(' · ')}</p>}
     </section>
   );
+}
+
+/** One plain-language line of the EHR record, for the header. */
+export function recordSummary(forecast: ForecastResponse | null): string | null {
+  const ehr = forecast?.ehr_context;
+  if (!ehr) return null;
+  const meds = ehr.med_classes?.length ? `on ${ehr.med_classes.map(m => medicationClassLabels[m]).join(', ')}` : 'no diabetes medication listed';
+  const duration = typeof ehr.t2d_duration_years === 'number' && ehr.t2d_duration_years > 0 ? ` · diagnosed ${ehr.t2d_duration_years} y ago` : '';
+  return `${ehr.age_years}-year-old ${ehr.sex} · BMI ${ehr.bmi} · HbA1c ${ehr.hba1c_pct}%${duration} · ${meds}`;
 }
 
 export function PatientWorkspace({
@@ -225,12 +234,19 @@ export function PatientWorkspace({
   const isConnectedState = effectiveStatus === 'connected';
   const isReconnecting = effectiveStatus === 'reconnecting';
   const isConnecting = effectiveStatus === 'connecting';
+  const summary = recordSummary(forecast);
+  const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : null;
   return (
-    <main id="main-content" className="workspace-page">
+    <main id="main-content" className="workspace-page twin-workstation">
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
-      <header className="workspace-heading">
-        <div><div className="eyebrow">Patient workspace</div><h1>{forecast?.subject?.simulator?.param_set_id ?? 'Glucose trajectory'}</h1><p>Personalized forecasting from observable clinical and sensor context.</p></div>
-        <div className="workspace-status" role="status">
+      <header className="workspace-heading tw-header">
+        <div className="tw-identity">
+          <div className="eyebrow">Digital twin · synthetic subject</div>
+          <h1>{forecast?.subject?.simulator?.param_set_id ?? 'Glucose trajectory'}</h1>
+          <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
+          <p className="tw-story">EHR record + live CGM and wearable readings → 2-hour glucose forecast with uncertainty → test a change to the plan.</p>
+        </div>
+        <div className="workspace-status tw-status" role="status">
           <span
             className={
               'status-badge ' +
@@ -251,6 +267,8 @@ export function PatientWorkspace({
               : 'Disconnected'}
           </span>
           {isStale && <span className="status-badge status-watch">Stale</span>}
+          {forecast?.as_of && <span className="tw-clock">Replay time <time dateTime={forecast.as_of}>{formatTime(forecast.as_of)} UTC · {formatDate(forecast.as_of)}</time></span>}
+          {qualityLabel && <span className={'tw-quality ' + (forecast?.data_quality?.status ?? '')}>{qualityLabel}</span>}
         </div>
       </header>
       {error && (
@@ -304,13 +322,7 @@ export function PatientWorkspace({
         </section>
       ) : (
         <>
-          <details className="patient-context" open={!compact || contextExpanded}>
-            <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
-              <span>Patient context</span><span>Clinical & physiological data</span>
-            </summary>
-            <ClinicalContext patientId={patientId} forecast={forecast} />
-          </details>
-          <div className="workspace-grid">
+          <div className="tw-grid">
             <section className="trajectory-panel panel" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
                 <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
@@ -331,18 +343,33 @@ export function PatientWorkspace({
               <div className="model-caption"><span>{mode}</span><span>Data quality: {forecast?.data_quality?.status === 'ok' ? 'OK' : forecast?.data_quality?.status === 'degraded' ? 'Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Insufficient data' : 'Unavailable'}</span></div>
             </section>
 
-            <aside className="insights-panel panel" aria-label="Risk and model contributions">
-            <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
-            </aside>
-            <div className="workspace-support">
+            <div className="tw-side">
+              <aside className="insights-panel panel" aria-label="Risk and model contributions">
+                <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
+              </aside>
+              <details className="patient-context" open={!compact || contextExpanded}>
+                <summary onClick={event => { if (compact) { event.preventDefault(); setContextExpanded(value => !value); } }}>
+                  <span>Patient record</span><span>EHR context & twin state</span>
+                </summary>
+                <ClinicalContext patientId={patientId} forecast={forecast} />
+              </details>
+            </div>
+          </div>
+
+          <div className="tw-whatif panel" id="what-if">
+            <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+          </div>
+
+          <section className="tw-details" aria-labelledby="details-heading">
+            <h2 id="details-heading" className="tw-details-heading">History, data quality and provenance</h2>
+            <div className="tw-details-grid">
               <ErrorBoundary fallbackText="Risk history unavailable"><RiskStrip forecast={forecast} cache={cache} isLoading={!forecast && !error} /></ErrorBoundary>
               <DataAvailability forecast={forecast} cache={cache} />
             </div>
-          </div>
-          <div className="workspace-limitations" aria-label="Prototype limitations">
-            <ScenarioEditor patientId={patientId} currentForecast={forecast} />
-            <TimeScrubber cache={cache} asOf={forecast?.as_of} />
-          </div>
+            <div className="workspace-limitations" aria-label="Prototype limitations">
+              <TimeScrubber cache={cache} asOf={forecast?.as_of} />
+            </div>
+          </section>
         </>
       )}
       <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>

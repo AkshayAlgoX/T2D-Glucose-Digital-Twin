@@ -1057,3 +1057,109 @@ p.fine-print { margin: 10px 0 0; }
 .whatif-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .whatif-metrics dd small { display: block; margin-top: 2px; font-size: 11px; color: var(--color-ink-3); }
 @media (max-width: 900px) { .whatif-metrics { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+
+/* ---- Hybrid explanation: ① twin + ② learned adjustment = ③ final ---- */
+.hybrid-inspector { margin: 0 20px 16px; padding: 14px 16px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-surface); display: flex; flex-direction: column; gap: 10px; }
+.inspector-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.inspector-title-row { display: flex; align-items: center; gap: 8px; }
+.inspector-title { font-size: 14px; font-weight: 600; color: var(--color-ink); }
+.inspector-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.inspector-badge.fallback { background: var(--color-alert-bg); color: var(--color-alert-ink); border: 1px solid var(--color-alert-edge); }
+.inspector-badge.stale { background: var(--color-alert-bg); color: var(--color-danger); border: 1px solid var(--color-danger); }
+.inspector-horizon-controls { display: flex; align-items: center; gap: 6px; }
+.horizon-label { color: var(--color-ink-3); font-size: 12px; }
+.horizon-pills { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface-2); }
+.horizon-pill { min-height: 32px; padding: 4px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--color-ink-2); font-size: 12px; font-weight: 500; cursor: pointer; }
+.horizon-pill:disabled { opacity: .4; cursor: not-allowed; }
+.horizon-pill.active { background: var(--color-surface); color: var(--color-accent); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.horizon-pill:focus-visible, .horizon-select:focus-visible { outline: 2px solid var(--color-forecast); outline-offset: 2px; }
+.horizon-select { display: none; min-height: 32px; padding: 4px 6px; border: 1px solid var(--color-line-control); border-radius: 5px; background: var(--color-surface); color: var(--color-ink); font-size: 12px; }
+.hybrid-equation { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.15fr); align-items: stretch; gap: 8px; }
+.inspector-metric-card { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface-2); min-width: 0; }
+.inspector-metric-card.final { background: var(--color-surface); border-color: var(--color-forecast); }
+.metric-label { font-size: 12px; font-weight: 500; color: var(--color-ink-2); }
+.metric-value { font-size: 20px; font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.metric-value.adjustment-positive { color: var(--color-forecast); }
+.metric-value.adjustment-negative { color: var(--color-physics); }
+.metric-value.adjustment-neutral { color: var(--color-ink-2); }
+.metric-source { font-size: 11px; color: var(--color-ink-3); }
+.equation-op { align-self: center; font-size: 20px; font-weight: 500; color: var(--color-ink-3); }
+.inspector-footnote { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; padding-top: 8px; border-top: 1px dashed var(--color-line); font-size: 12px; line-height: 1.5; color: var(--color-ink-3); }
+.inspector-timestamp { font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 720px) {
+  .hybrid-inspector { margin: 0 12px 12px; padding: 12px; }
+  .horizon-pills { display: none; }
+  .horizon-select { display: inline-block; }
+  .hybrid-equation { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .equation-op { justify-self: center; line-height: 1; font-size: 16px; }
+  .inspector-metric-card { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 8px; }
+  .metric-value { font-size: 17px; }
+  .metric-source { flex-basis: 100%; }
+}
+
+/* ---- Wearable and log input lanes (aligned to the forecast time axis) ---- */
+.input-lanes { margin: 0 0 14px; padding: 10px 0 4px; border-top: 1px solid var(--color-line); }
+.input-lanes-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 0 20px 6px; font-size: 13px; font-weight: 600; color: var(--color-ink); }
+.input-lanes-heading .fine-print { font-weight: 400; }
+.input-lane { display: grid; grid-template-rows: auto auto; }
+.input-lane-label { display: flex; gap: 8px; align-items: baseline; padding: 2px 20px 0; font-size: 11px; color: var(--color-ink-3); }
+.input-lane-label strong { color: var(--color-ink-2); font-weight: 600; }
+.input-lane svg { display: block; overflow: visible; }
+.lane-text { font-size: 10px; fill: var(--color-amber); font-weight: 600; }
+@media (max-width: 720px) { .input-lanes-heading, .input-lane-label { padding-left: 12px; padding-right: 12px; } }
+
+/* ======================================================================
+   Twin workstation layout (patient workspace)
+   Story order: record → forecast (+ inputs, + how it is built) → risk → what-if → detail
+   ====================================================================== */
+.twin-workstation { max-width: 1480px; }
+.twin-workstation .tw-header { align-items: flex-end; gap: 24px; margin-bottom: 18px; }
+.twin-workstation .tw-identity { min-width: 0; }
+.twin-workstation .tw-header h1 { font-size: 30px; margin: 2px 0 6px; letter-spacing: -.5px; }
+.twin-workstation .tw-summary { margin: 0; font-size: 15px; color: var(--color-ink); }
+.twin-workstation .tw-story { margin: 6px 0 0; font-size: 13px; color: var(--color-ink-3); }
+.twin-workstation .tw-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.tw-clock { font-size: 12px; color: var(--color-ink-2); font-variant-numeric: tabular-nums; }
+.tw-quality { font-size: 12px; font-weight: 500; color: var(--color-physics); }
+.tw-quality.degraded { color: var(--color-amber); }
+.tw-quality.insufficient { color: var(--color-danger); }
+
+.tw-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.tw-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.twin-workstation .trajectory-panel { min-width: 0; }
+
+/* Patient record in the side column: stacked, not the old three-column strip */
+.twin-workstation .tw-side .patient-context { border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-surface); overflow: hidden; }
+.twin-workstation .tw-side .patient-context > summary { display: flex; justify-content: space-between; gap: 8px; padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--color-ink); border-bottom: 1px solid var(--color-line); }
+.twin-workstation .tw-side .patient-context > summary span + span { font-size: 12px; font-weight: 400; color: var(--color-ink-3); }
+.twin-workstation .tw-side .patient-context > .clinical-panel { display: block; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.twin-workstation .tw-side .identity-section, .twin-workstation .tw-side .clinical-context, .twin-workstation .tw-side .twin-context { padding: 14px 16px; border-left: 0; }
+.twin-workstation .tw-side .clinical-context, .twin-workstation .tw-side .twin-context { border-top: 1px solid var(--color-line); }
+.twin-workstation .tw-side .clinical-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.twin-workstation .tw-side .clinical-fields .context-medications, .twin-workstation .tw-side .clinical-fields .context-egfr { grid-column: 1 / -1; }
+
+.tw-whatif { margin-top: 20px; overflow: hidden; }
+.tw-whatif .whatif-panel { border-radius: 8px; }
+.tw-details { margin-top: 24px; }
+.tw-details-heading { margin: 0 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: var(--color-ink-3); }
+.tw-details-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tw-details-grid > * { min-width: 0; }
+.twin-workstation .workspace-limitations { display: block; margin-top: 16px; background: transparent; border: 0; }
+.twin-workstation .workspace-limitations .replay-unavailable { border: 1px dashed var(--color-line); border-radius: 8px; padding: 12px 16px; }
+
+@media (max-width: 1100px) {
+  .tw-grid { grid-template-columns: minmax(0, 1fr); }
+  .tw-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .tw-details-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .twin-workstation .tw-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .twin-workstation .tw-status { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .twin-workstation .tw-header h1 { font-size: 24px; }
+  .twin-workstation .tw-summary { font-size: 14px; }
+  .tw-side { display: flex; }
+  .tw-grid { gap: 16px; }
+  .tw-whatif { margin-top: 16px; }
+}
+/* Legacy panels carry named grid-areas from the old layout; place them by order inside the workstation grid. */
+.tw-grid > *, .tw-side > *, .tw-details-grid > * { grid-area: auto; }
