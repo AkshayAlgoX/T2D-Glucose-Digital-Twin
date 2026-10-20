@@ -61,3 +61,45 @@ def test_catch_up_bounds_are_enforced(client, bad):
     res = client.get(f"/v1/subjects/{SID}/stream", params={"catch_up": bad, "max_events": 1})
     assert res.status_code == 422
     assert res.json()["code"] == "REQUEST_INVALID"
+
+
+# ---- observed_inputs: the wearable/log readings the network consumed, exposed for the dashboard ---- #
+from jsonschema import Draft202012Validator  # noqa: E402
+from referencing import Registry, Resource  # noqa: E402
+import numpy as np  # noqa: E402
+import train_pr_tft as T  # noqa: E402
+
+CONTRACTS = ROOT / "backend" / "contracts" / "v1"
+
+
+def _validator() -> Draft202012Validator:
+    schemas = {p.name: json.loads(p.read_text()) for p in CONTRACTS.glob("*.json")}
+    registry = Registry().with_resources((s["$id"], Resource.from_contents(s)) for s in schemas.values())
+    return Draft202012Validator(schemas["forecast-response.json"], registry=registry,
+                                format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+
+def test_observed_inputs_match_the_series_the_network_reads(client):
+    svc: S.ServiceContext = client.app.state.ctx
+    pc = svc.patients[uuid.UUID(SID)]
+    carbs = T._logged_carbs_series(pc.ps)
+    # Check a spread of anchors, including one with a logged meal when the subject has any.
+    meal_steps = [int(i) for i in np.flatnonzero(carbs > 0) if T.FIRST_ANCHOR <= i < pc.ps.n - T.HORIZON]
+    anchors = [T.FIRST_ANCHOR, T.FIRST_ANCHOR + 37] + meal_steps[:1]
+    validator = _validator()
+    for t in anchors:
+        as_of = pc.ps.stamps[t].tz_localize("UTC").isoformat() if pc.ps.stamps[t].tzinfo is None else pc.ps.stamps[t].isoformat()
+        res = client.post("/v1/forecasts", json={"schema_version": "1.0.0", "request_id": str(uuid.uuid4()),
+                                                 "subject_id": SID, "as_of": as_of})
+        assert res.status_code == 200, res.text
+        body = res.json()
+        errors = list(validator.iter_errors(body))
+        assert not errors, errors[0].message
+        got = body["observed_inputs"]
+        assert got["heart_rate_bpm"] == round(float(pc.ps.hr[t]), 1)
+        assert got["hrv_rmssd_ms"] == round(float(pc.ps.hrv[t]), 1)
+        assert got["steps_5min"] == round(float(pc.ps.steps[t]), 1)
+        assert got["asleep"] is bool(pc.ps.asleep[t] > 0)
+        assert got["carbs_logged_g"] == round(float(carbs[t]), 1)
+    if meal_steps:
+        assert got["carbs_logged_g"] > 0
