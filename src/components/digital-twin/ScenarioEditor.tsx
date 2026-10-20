@@ -175,7 +175,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   return (
-    <div className="whatif-result" data-testid="scenario-result">
+    <div className="whatif-result stage" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
         <strong>{outOfRange.title}.</strong> {outOfRange.detail}

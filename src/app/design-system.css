@@ -1,0 +1,254 @@
+/* ==========================================================================
+   Glucose Twin design system — "Paper & Instrument"
+
+   Paper: a calm, warm research workspace with editorial headings, for reading
+   the record and the evidence. Instrument: a dark precision stage that holds the
+   forecast and the what-if, like a bedside monitor, so the prediction is the
+   unmistakable focus.
+
+   Chart series (validated with the dataviz palette checker, all checks pass):
+     light paper #FCFBF8: forecast #3D52D5 · physiology twin #3E8E37 · scenario #B8379A
+     dark stage  #10161C: forecast #6F82F0 · physiology twin #56A64B · scenario #C95CB1
+   Observed CGM is neutral ink. Thresholds use the status amber, always with a label.
+   Loaded after globals.css; unlayered rules here win over the legacy layer.
+   ========================================================================== */
+
+:root {
+  --color-bg: #f3f1eb;
+  --color-surface: #fcfbf8;
+  --color-surface-2: #f1eee6;
+  --color-line: #e2ddd1;
+  --color-line-control: #8a8577;
+  --color-ink: #16191c;
+  --color-ink-2: #444a50;
+  --color-ink-3: #5f656b;
+  --color-accent: #3d52d5;
+  --color-accent-ink: #2b3aa8;
+  --color-forecast: #3d52d5;
+  --color-physics: #3e8e37;
+  --color-projection: #b8379a;
+  --color-amber: #8f5e0b;
+  --color-danger: #b42318;
+  --color-alert-bg: #fbf1dc;
+  --color-alert-edge: #d8a548;
+  --color-alert-ink: #6b4508;
+  --color-ok: #2f7a3a;
+  --font-display: var(--font-newsreader), Georgia, 'Times New Roman', serif;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --shadow-panel: 0 1px 0 rgb(22 25 28 / 0.04), 0 10px 30px -18px rgb(22 25 28 / 0.18);
+  --page-max: 1640px;
+}
+
+/* The instrument stage: the same tokens, re-pointed for a dark surface, so every
+   chart and control inside adapts without separate code paths. */
+.stage {
+  --color-bg: #0c1116;
+  --color-surface: #10161c;
+  --color-surface-2: #161e26;
+  --color-line: #253039;
+  --color-line-control: #5b6875;
+  --color-ink: #e9eef2;
+  --color-ink-2: #b5c0ca;
+  --color-ink-3: #8f9ca8;
+  --color-accent: #8f9cff;
+  --color-forecast: #6f82f0;
+  --color-physics: #56a64b;
+  --color-projection: #c95cb1;
+  --color-amber: #e3a33a;
+  --color-danger: #f07a6a;
+  --color-alert-bg: #2a2214;
+  --color-alert-edge: #8a6420;
+  --color-alert-ink: #f2cf86;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border-color: var(--color-line);
+  color-scheme: dark;
+}
+
+body { background: var(--color-bg); color: var(--color-ink); }
+::selection { background: #3d52d533; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ---- Typography ---- */
+.workspace-heading h1, .overview-page h1, .landing h1, .landing h2, .tw-header h1,
+.evidence-hero h2, .demo-entry h2, .directory-toolbar h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.eyebrow { font-size: 11px; letter-spacing: 0.12em; color: var(--color-ink-3); }
+
+/* ---- Navigation: a quiet paper bar with a clear product mark ---- */
+.app-navigation {
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: saturate(1.2) blur(10px);
+  border-bottom: 1px solid var(--color-line);
+  box-shadow: none;
+  min-height: 60px;
+}
+.app-brand { color: var(--color-ink); gap: 10px; font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.brand-mark { width: 30px; height: 30px; border-radius: 9px; color: #e9eef2; background: #10161c; }
+.brand-secondary { color: var(--color-accent); font-weight: 500; margin-left: 3px; }
+.navigation-link { color: var(--color-ink-2); border-bottom: 2px solid transparent; font-weight: 500; }
+.navigation-link:hover { color: var(--color-ink); background: transparent; }
+.navigation-link[aria-current="page"] { color: var(--color-ink); background: transparent; border-color: var(--color-ink); font-weight: 600; }
+.navigation-environment { color: var(--color-ink-2); border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 999px; padding: 5px 12px; }
+.environment-mark { background: var(--color-amber); border-radius: 50%; transform: none; }
+.app-navigation :focus-visible { outline-color: var(--color-accent); }
+
+/* ---- Surfaces ---- */
+.panel { background: var(--color-surface); border-color: var(--color-line); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); }
+.status-badge { border-radius: 999px; padding: 4px 10px; background: var(--color-surface); }
+.status-connected { color: var(--color-ok); background: #eef6ee; border-color: #c9e0c9; }
+.secondary-button, .icon-button { background: var(--color-surface); border-color: var(--color-line); border-radius: 8px; }
+.secondary-button:hover { background: var(--color-surface-2); }
+
+/* ---- Page frames use the width deliberately on large screens ---- */
+.workspace-page, .overview-page, .twin-workstation { max-width: var(--page-max); margin-inline: auto; }
+
+/* ==========================================================================
+   Workspace
+   ========================================================================== */
+.twin-workstation .tw-header { margin-bottom: 20px; }
+.twin-workstation .tw-header h1 { font-size: 40px; line-height: 1.05; margin: 4px 0 8px; }
+.twin-workstation .tw-summary { font-size: 16px; color: var(--color-ink); }
+.twin-workstation .tw-story { font-size: 13px; color: var(--color-ink-3); }
+.tw-grid { grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; }
+
+/* The forecast stage */
+.trajectory-panel.stage { border-radius: var(--radius-lg); border: 1px solid #1d262f; box-shadow: 0 24px 60px -30px rgb(12 17 22 / 0.65); overflow: hidden; }
+.stage .trajectory-header { border-bottom: 1px solid var(--color-line); padding: 18px 24px 14px; }
+.stage .trajectory-header h2 { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; color: var(--color-ink); }
+.stage .trajectory-header .eyebrow { color: var(--color-accent); }
+.stage .status-badge { background: transparent; border-color: var(--color-line); color: var(--color-ink-2); }
+.stage .current-summary { padding: 18px 24px 8px; }
+.stage .current-glucose { font-size: 46px; font-weight: 500; letter-spacing: -0.03em; color: var(--color-ink); }
+.stage .current-glucose span { color: var(--color-ink-3); }
+.stage .forecast-metadata { color: var(--color-ink-3); }
+.stage .forecast-metadata span:first-child { color: var(--color-ink-2); }
+.stage .chart-frame { padding: 0 12px; }
+.stage .chart-legend { color: var(--color-ink-2); }
+.stage .chart-legend i { background: var(--color-ink); }
+.stage .chart-legend .legend-median { height: 2px; border: 0; background: var(--color-forecast); }
+.stage .chart-legend .legend-band { background: color-mix(in srgb, var(--color-forecast) 38%, transparent); border-color: var(--color-forecast); }
+.stage .chart-legend .legend-outer { background: color-mix(in srgb, var(--color-forecast) 16%, transparent); border-color: color-mix(in srgb, var(--color-forecast) 60%, transparent); }
+.stage .chart-window { background: var(--color-surface-2); border-color: var(--color-line); }
+.stage .chart-window button { color: var(--color-ink-3); font-size: 11px; }
+.stage .chart-window button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-ink); box-shadow: inset 0 -2px var(--color-accent); }
+.stage .chart-axis { fill: var(--color-ink-3); font-family: var(--font-mono); font-size: 11px; }
+.stage .chart-anchor-label { fill: var(--color-ink-2); font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.stage .chart-readout { color: var(--color-ink-3); }
+.stage .chart-tooltip { background: #0b1015; border-color: var(--color-line-control); color: var(--color-ink); box-shadow: 0 12px 30px rgb(0 0 0 / 0.45); }
+.stage .chart-tooltip time, .stage .chart-tooltip dt { color: var(--color-ink-3); }
+.stage .model-caption { background: var(--color-bg); border-top-color: var(--color-line); color: var(--color-ink-3); padding: 12px 24px; }
+.stage .skeleton { background: linear-gradient(90deg, #18212a, #1f2a35, #18212a); background-size: 200% 100%; }
+.stage .chart-empty, .stage .chart-empty strong { color: var(--color-ink-2); }
+
+/* Hybrid equation on the stage */
+.stage .hybrid-inspector { margin: 0 24px 18px; background: var(--color-bg); border-color: var(--color-line); }
+.stage .inspector-title { color: var(--color-ink); font-family: var(--font-display); font-size: 17px; font-weight: 500; }
+.stage .horizon-pills { background: var(--color-surface-2); border-color: var(--color-line); }
+.stage .horizon-pill { color: var(--color-ink-3); }
+.stage .horizon-pill.active { background: var(--color-surface); color: var(--color-ink); box-shadow: inset 0 -2px var(--color-accent); }
+.stage .horizon-select { background: var(--color-surface-2); color: var(--color-ink); border-color: var(--color-line-control); }
+.stage .inspector-metric-card { background: var(--color-surface); border-color: var(--color-line); }
+.stage .inspector-metric-card.final { border-color: var(--color-forecast); box-shadow: inset 0 0 0 1px var(--color-forecast); }
+.stage .metric-label { color: var(--color-ink-2); }
+.stage .metric-value { color: var(--color-ink); font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
+.stage .metric-value.adjustment-positive { color: var(--color-forecast); }
+.stage .metric-value.adjustment-negative { color: var(--color-physics); }
+.stage .metric-source { color: var(--color-ink-3); }
+.stage .equation-op { color: var(--color-ink-3); }
+.stage .inspector-footnote { color: var(--color-ink-3); border-top-color: var(--color-line); }
+
+/* Wearable lanes on the stage */
+.stage .input-lanes { border-top-color: var(--color-line); padding-top: 14px; }
+.stage .input-lanes-heading { color: var(--color-ink); font-family: var(--font-display); font-size: 16px; font-weight: 500; padding: 0 24px 8px; }
+.stage .input-lane-label { padding: 2px 24px 0; color: var(--color-ink-3); }
+.stage .input-lane-label strong { color: var(--color-ink-2); }
+.stage .isolated-step-note { background: var(--color-alert-bg); border-left-color: var(--color-alert-edge); color: var(--color-alert-ink); margin: 0 24px 12px; }
+
+/* Side column on paper */
+.tw-side .insights-panel, .tw-side .patient-context { border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); }
+.risk-estimate { font-family: var(--font-display); font-size: 52px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; }
+.risk-estimate span { font-family: var(--font-sans); font-size: 12px; letter-spacing: 0; }
+
+/* What-if: the scenario lab */
+.tw-whatif { border-radius: var(--radius-lg); }
+.whatif-panel { background: var(--color-surface); padding: 22px 24px; gap: 14px; }
+.whatif-panel .section-heading h2 { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+.whatif-disclaimer { border-left-color: var(--color-projection); background: color-mix(in srgb, var(--color-projection) 6%, var(--color-surface)); }
+.whatif-presets .secondary-button { border-radius: 999px; padding: 8px 14px; font-weight: 500; }
+.whatif-presets .secondary-button:hover:not(:disabled) { border-color: var(--color-ink); }
+.whatif-actions .primary-button { background: var(--color-ink); border-radius: 8px; }
+.whatif-result.stage { border-radius: var(--radius-md); border: 1px solid #1d262f; padding: 18px 20px; }
+.whatif-result.stage .whatif-result-title { color: var(--color-ink-2); }
+.whatif-result.stage .whatif-metrics dt { color: var(--color-ink-3); }
+.whatif-result.stage .whatif-metrics dd { color: var(--color-ink); font-family: var(--font-mono); }
+.whatif-result.stage .whatif-metrics dd small { color: var(--color-ink-3); font-family: var(--font-sans); }
+.whatif-result.stage .whatif-caution { background: var(--color-alert-bg); border-left-color: var(--color-alert-edge); color: var(--color-alert-ink); }
+.whatif-result.stage .whatif-caution strong { color: var(--color-ink); }
+.whatif-result.stage .chart-axis { fill: var(--color-ink-3); font-family: var(--font-mono); font-size: 11px; }
+.whatif-result.stage .whatif-legend, .whatif-result.stage .fine-print { color: var(--color-ink-3); }
+
+/* ==========================================================================
+   Landing (overview)
+   ========================================================================== */
+.landing { max-width: var(--page-max); margin: 0 auto; padding: 40px 32px 48px; }
+.landing-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: center; margin-bottom: 36px; }
+.landing-hero .eyebrow { color: var(--color-accent); }
+.landing h1 { font-size: clamp(34px, 4.2vw, 56px); line-height: 1.04; margin: 12px 0 16px; }
+.landing-lead { font-size: 18px; line-height: 1.55; color: var(--color-ink-2); max-width: 620px; margin: 0 0 24px; }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.landing-cta { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 10px; background: var(--color-ink); color: #f6f7f8; font-weight: 600; font-size: 15px; text-decoration: none; }
+.landing-cta:hover { background: #262b30; }
+.landing-link { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-weight: 500; text-decoration: none; }
+.landing-link:hover { border-color: var(--color-ink); }
+.landing-boundary { font-size: 12.5px; color: var(--color-ink-3); max-width: 600px; line-height: 1.6; }
+.landing-diagram { border-radius: var(--radius-lg); padding: 22px 22px 18px; }
+.landing-diagram svg { display: block; width: 100%; height: auto; }
+.landing-diagram figcaption { margin-top: 10px; font-size: 12px; color: var(--color-ink-3); }
+.landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.landing-step { padding: 20px 22px; }
+.landing-step .step-num { font-family: var(--font-mono); font-size: 12px; color: var(--color-accent); letter-spacing: 0.08em; }
+.landing-step h2 { font-size: 22px; line-height: 1.2; margin: 8px 0 8px; }
+.landing-step p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--color-ink-2); }
+.landing-evidence { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; overflow: hidden; }
+.landing-evidence > div { padding: 18px 22px; border-left: 1px solid var(--color-line); }
+.landing-evidence > div:first-child { border-left: 0; }
+.landing-evidence dt { font-size: 12px; color: var(--color-ink-3); margin-bottom: 6px; }
+.landing-evidence dd { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 500; letter-spacing: -0.02em; }
+.landing-evidence dd small { display: block; margin-top: 4px; font-family: var(--font-sans); font-size: 12px; color: var(--color-ink-3); letter-spacing: 0; }
+.landing-evidence .failed dd { color: var(--color-danger); }
+.landing-section-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ink-3); margin: 0 0 12px; font-weight: 600; }
+
+/* Cohort: the demonstration entry becomes an instrument card */
+.demo-entry.stage { border: 1px solid #1d262f; border-radius: var(--radius-lg); box-shadow: 0 24px 60px -34px rgb(12 17 22 / 0.65); padding: 22px 26px; }
+.demo-entry.stage .eyebrow { color: var(--color-accent); }
+.demo-entry.stage h2 { color: var(--color-ink); font-size: 26px; font-weight: 500; }
+.demo-entry.stage p { color: var(--color-ink-2); }
+.demo-entry.stage .demo-entry-link { background: #e9eef2; color: #10161c; }
+
+@media (max-width: 1100px) {
+  .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+}
+@media (max-width: 720px) {
+  .landing { padding: 24px 16px 32px; }
+  .landing-lead { font-size: 16px; }
+  .landing-steps, .landing-evidence { grid-template-columns: minmax(0, 1fr); }
+  .landing-evidence > div { border-left: 0; border-top: 1px solid var(--color-line); }
+  .landing-evidence > div:first-child { border-top: 0; }
+  .twin-workstation .tw-header h1 { font-size: 30px; }
+  .stage .current-glucose { font-size: 38px; }
+  .stage .trajectory-header, .stage .current-summary { padding-left: 16px; padding-right: 16px; }
+  .stage .hybrid-inspector { margin: 0 12px 14px; }
+  .stage .input-lanes-heading, .stage .input-lane-label { padding-left: 16px; padding-right: 16px; }
+  .stage .model-caption { padding: 12px 16px; }
+  .whatif-panel { padding: 16px; }
+  .risk-estimate { font-size: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage .skeleton { animation: none; }
+}
+.stage .chart-threshold-label { fill: var(--color-amber); }

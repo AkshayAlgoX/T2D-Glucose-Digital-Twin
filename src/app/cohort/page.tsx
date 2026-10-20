@@ -61,7 +61,7 @@ export default function CohortPage() {
       <NavigationRail active="cohort" />
       <main id="main-content" className="overview-page cohort-page">
         <header className="workspace-heading"><div><span className="eyebrow">Research workspace</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as a digital twin workspace. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
-        {state === 'ready' && demo && <section className="demo-entry panel" aria-labelledby="demo-entry-heading">
+        {state === 'ready' && demo && <section className="demo-entry panel stage" aria-labelledby="demo-entry-heading">
           <div>
             <span className="eyebrow">Start here · demonstration subject</span>
             <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · {demo.split} split</h2>

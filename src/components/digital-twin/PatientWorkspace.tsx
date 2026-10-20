@@ -323,7 +323,7 @@ export function PatientWorkspace({
       ) : (
         <>
           <div className="tw-grid">
-            <section className="trajectory-panel panel" aria-labelledby="trajectory-heading">
+            <section className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
                 <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
                 <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>

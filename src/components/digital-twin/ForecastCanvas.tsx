@@ -14,7 +14,8 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const [selection, setSelection] = useState<{ key: string; source: 'pointer' | 'keyboard' } | null>(null);
   const pointerDismissed = useRef(false);
   const keyboardFocused = useRef(false);
-  const [historyHours, setHistoryHours] = useState(6);
+  // Two hours of history by default so the two-hour forecast gets half the chart; six hours is one click away.
+  const [historyHours, setHistoryHours] = useState(2);
   const [selectedHorizon, setSelectedHorizon] = useState<number>(60);
   const chartId = 'trajectory-' + useId().replace(/:/g, '');
 
@@ -204,9 +205,9 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <defs><clipPath id={chartId + '-clip'}><rect x={margin.left} y={margin.top} width={right - margin.left} height={bottom - margin.top} /></clipPath></defs>
             <rect x={x(anchor)} y={margin.top} width={right - x(anchor)} height={bottom - margin.top} fill="var(--color-surface-2)" opacity={0.5} />
             {yTicks.map(tick => <g key={tick}>
-              <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} stroke={tick === 180 ? 'var(--color-line-control)' : 'var(--color-line)'} strokeDasharray={tick === 180 ? '5 4' : undefined} />
+              <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} stroke={tick === 180 ? 'var(--color-amber)' : 'var(--color-line)'} strokeOpacity={tick === 180 ? 0.85 : 1} strokeDasharray={tick === 180 ? '5 4' : undefined} />
               <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
-              {tick === 180 && <text x={margin.left + 7} y={y(tick) - 7} className="chart-axis">180 · spike level</text>}
+              {tick === 180 && <text x={margin.left + 7} y={y(tick) - 7} className="chart-axis chart-threshold-label">180 mg/dL · spike level</text>}
             </g>)}
             {x.ticks(narrow ? 4 : 7).map(tick => <g key={tick.getTime()}>
               <line x1={x(tick)} x2={x(tick)} y1={margin.top} y2={bottom} stroke="var(--color-line)" strokeDasharray="2 5" />
@@ -216,14 +217,14 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <text x={right} y={size.height - 2} textAnchor="end" className="chart-axis">UTC</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
               <g className="forecast-layer" opacity={mappedScenario.length ? 0.5 : 1}>
-                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.07} stroke="var(--color-forecast)" strokeWidth={1} strokeDasharray="1 4" />
-                <path data-testid="quantile-band" d={area('p10', 'p90')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.15} stroke="var(--color-forecast)" strokeWidth={1} />
-                <path d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} strokeDasharray="5 3" />
+                <path data-testid="outer-quantile-band" d={area('p05', 'p95')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.13} stroke="var(--color-forecast)" strokeOpacity={0.55} strokeWidth={1} strokeDasharray="1 4" />
+                <path data-testid="quantile-band" d={area('p10', 'p90')(mapped) ?? ''} fill="var(--color-forecast)" fillOpacity={0.3} stroke="var(--color-forecast)" strokeOpacity={0.8} strokeWidth={1} />
+                <path data-testid="forecast-median" d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
                 {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeDasharray="3 5" />}
               </g>
               {!!mappedScenario.length && <g className="scenario-layer"><path d={median(mappedScenario) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2} strokeDasharray="2 3" /></g>}
               {historySegments.map((segment, index) => <g key={index} data-testid="observed-segment">
-                <path d={observed(segment) ?? ''} fill="none" stroke="var(--color-ink)" strokeWidth={2} />
+                <path d={observed(segment) ?? ''} fill="none" stroke="var(--color-ink)" strokeWidth={2} strokeLinejoin="round" />
                 {segment.length === 1 && <circle cx={x(segment[0].time)} cy={y(segment[0].value)} r={3} fill="var(--color-ink)" />}
               </g>)}
               {current != null && <circle data-testid="current-observation" cx={x(anchor)} cy={y(current)} r={4} fill="var(--color-ink)" stroke="white" strokeWidth={2} />}
