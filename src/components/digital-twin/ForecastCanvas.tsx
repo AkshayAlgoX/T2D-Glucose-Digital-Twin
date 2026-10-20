@@ -223,7 +223,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
                 {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={5} strokeOpacity={0.85} aria-hidden="true" />}
                 {hasPhysics && <path d={physics(mapped) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeDasharray="4 4" />}
                 <path d={median(mapped) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} strokeLinejoin="round" aria-hidden="true" />
-                <path data-testid="forecast-median" d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
+                <path data-testid="forecast-median" className="forecast-median-draw" pathLength={1} d={median(mapped) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.75} strokeLinejoin="round" />
               </g>
               {!!mappedScenario.length && <g className="scenario-layer"><path d={median(mappedScenario) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2} strokeDasharray="2 3" /></g>}
               {historySegments.map((segment, index) => <g key={index} data-testid="observed-segment">

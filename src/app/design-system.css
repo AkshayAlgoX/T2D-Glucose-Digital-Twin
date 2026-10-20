@@ -489,3 +489,52 @@ body { background: var(--color-bg); color: var(--color-ink); }
 .whatif-caution summary { cursor: pointer; font-weight: 600; }
 .whatif-caution details p { margin: 6px 0 0; }
 @media (max-width: 640px) { .whatif-presets .secondary-button { font-size: 12px; padding: 8px 10px; white-space: nowrap; } }
+
+/* ==========================================================================
+   Motion: short, purposeful, and off under prefers-reduced-motion.
+   Entrances run once on mount; live data updates change values in place.
+   ========================================================================== */
+:root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); --dur-enter: 520ms; --dur-ui: 160ms; }
+@keyframes gt-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes gt-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gt-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+/* Staggered page entrance */
+.landing > *, .overview-page > *, .twin-workstation > *, .tw-grid > *, .tw-side > * {
+  animation: gt-rise var(--dur-enter) var(--ease-out) both;
+}
+.landing > :nth-child(2), .overview-page > :nth-child(2), .twin-workstation > :nth-child(2), .tw-grid > :nth-child(2), .tw-side > :nth-child(2) { animation-delay: 60ms; }
+.landing > :nth-child(3), .overview-page > :nth-child(3), .twin-workstation > :nth-child(3), .tw-grid > :nth-child(3), .tw-side > :nth-child(3) { animation-delay: 120ms; }
+.landing > :nth-child(n+4), .overview-page > :nth-child(n+4), .twin-workstation > :nth-child(n+4), .tw-grid > :nth-child(n+4) { animation-delay: 180ms; }
+
+/* Charts: the forecast median draws in once; bands fade in. */
+.forecast-median-draw { stroke-dasharray: 1; animation: gt-draw 900ms var(--ease-out) 120ms both; }
+.stage [data-testid="quantile-band"], .stage [data-testid="outer-quantile-band"] { animation: gt-fade 700ms var(--ease-out) both; }
+.whatif-result { animation: gt-rise 420ms var(--ease-out) both; }
+.whatif-result .whatif-chart path { animation: gt-fade 600ms var(--ease-out) both; }
+.input-lanes, .hybrid-inspector { animation: gt-fade 600ms var(--ease-out) 150ms both; }
+
+/* Tactile controls */
+.landing-cta, .landing-link, .demo-entry-link, .secondary-button, .primary-button, .whatif-presets .secondary-button,
+.horizon-pill, .chart-window button, .subject-open, .navigation-link, .evidence-disclosure > summary {
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease, border-color var(--dur-ui) ease,
+              box-shadow var(--dur-ui) ease, transform var(--dur-ui) var(--ease-out);
+}
+.landing-cta:hover, .demo-entry-link:hover, .whatif-actions .primary-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -10px rgb(22 25 28 / 0.55); }
+.landing-cta:active, .landing-link:active, .demo-entry-link:active, .secondary-button:active:not(:disabled),
+.primary-button:active:not(:disabled), .horizon-pill:active:not(:disabled), .chart-window button:active { transform: scale(0.98); }
+.whatif-presets .secondary-button:hover:not(:disabled) { transform: translateY(-1px); }
+.panel { transition: box-shadow 200ms ease, border-color 200ms ease; }
+.cohort-directory .directory-table tbody tr { transition: background-color 140ms ease; }
+.navigation-link { position: relative; }
+
+/* Disclosures open smoothly */
+details[open] > :not(summary) { animation: gt-fade 260ms var(--ease-out) both; }
+
+/* Value changes in the live stream are not animated (no counting numbers, no flashing). */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .forecast-median-draw { stroke-dasharray: none; }
+}
+html { scroll-behavior: smooth; }

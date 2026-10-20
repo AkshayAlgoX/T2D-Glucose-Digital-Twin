@@ -192,13 +192,22 @@ export function ScenarioComparisonChart({ result, step = null }: { result: Scena
 }
 
 function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 'result' }>; liveAsOf?: string | null }) {
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = resultRef.current;
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const rect = el.getBoundingClientRect();
+    // Only scroll when the new result is mostly off-screen (typically on phones).
+    if (rect.top > window.innerHeight * 0.6) el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }, [state.asOf, state.result]);
   const { metrics, warnings, fallback_used } = state.result;
   const riskAvailable = metrics.baseline_probability != null && metrics.new_probability != null;
   const sum = summarizeComparison(state.result);
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   return (
-    <div className="whatif-result stage" data-testid="scenario-result">
+    <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
       <p className="whatif-result-title">{describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></p>
       {outOfRange && <div className="whatif-caution" role="note" data-testid="scenario-out-of-range">
         <strong>{outOfRange.title}.</strong> The network was not trained on inputs like this, so compare its curve with the physiology twin&apos;s.
