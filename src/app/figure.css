@@ -1034,3 +1034,8 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 .reproducibility-details > summary::after { display: none !important; content: none !important; }
 .reproducibility-summary svg.lucide-chevron-down { display: inline-block !important; }
 .reproducibility-details[open] .reproducibility-summary svg.lucide-chevron-down { transform: rotate(180deg); }
+@media (max-width: 720px) {
+  .trajectory-panel .forecast-metadata { flex-basis: 100%; }
+  .trajectory-panel .forecast-metadata span { white-space: normal; }
+  .trajectory-panel .forecast-metadata span:first-child { white-space: nowrap; }
+}
