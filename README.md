@@ -1,12 +1,19 @@
-# T2D Glucose Digital Twin — Clinical Workstation & Replay Engine
+# Glucose Twin: a type 2 diabetes digital twin you can take apart
 
-**A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
+**Forecasts a patient's next 2 hours of glucose from their EHR record and wearable streams, warns about spikes about an hour ahead, and shows what every forecast is made of:** a physiology twin (Bergman glucose–insulin model kept in step with each CGM reading by a Kalman filter), plus a learned correction (PR-TFT neural network), plus calibrated uncertainty.
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-45%20suites%20%7C%20424%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-140%20passed-brightgreen.svg)]()
-[![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
-[![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
-[![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
+![Patient workspace: observed CGM, 2-hour forecast with 50/80/90% bands, physiology twin (dashed), learned correction (hatched), and the spike-risk rail](docs/presentation/screens/workstation.png)
+
+| What a doctor gets | Result (synthetic validation patients, 95% CI where shown) |
+|---|---|
+| **Spike warning up to 2 h ahead** | 90% of spikes caught (87–92%) in 29 Prediabetes and Type 2 patients, median **70 min** warning, 1.77 false alerts per patient-day; a CGM trend line warns only 20 min ahead ([details](docs/evidence/event_eval/RESULTS.md)) |
+| **2-hour glucose forecast** | RMSE60 **19.5 mg/dL** on 44 patients vs 23.2 for the physiology twin alone and 36.1 for "glucose stays flat" |
+| **Forecast you can audit** | Every forecast is split into twin + learned correction = final, on the chart itself |
+| **What-If for meals and activity** | The backend re-runs twin and network from the same moment; medication changes are refused, not guessed |
+
+**Honest limits:** synthetic patients only; the realism gate failed (a classifier can tell our synthetic data apart), and we publish that; validation patients also chose the checkpoint. A preregistered real-data study (ShanghaiT2DM, CGMacros, BIG IDEAs) is in progress: [`docs/evidence/real_data/PREREGISTRATION.md`](docs/evidence/real_data/PREREGISTRATION.md). Research prototype, not for clinical decisions.
+
+**Run it:** backend `python backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d`, frontend `npm run build && npx next start`, then open `/patients/6f50ef50-b6e5-5408-a70c-d8f0509d6012` (setup below).
 
 ---
 
