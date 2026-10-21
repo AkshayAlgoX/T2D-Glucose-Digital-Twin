@@ -879,3 +879,11 @@ input, select { border-radius: 2px !important; }
   .home-copy > .fig-section-label { order: 1; } .fig-home h1 { order: 2; } .home-why { order: 3; } .home-dek-short { order: 4; } .fig-home .landing-actions { order: 5; }
   .home-hero > .hero-figure, .home-hero > .landing-diagram { order: 6; } .home-copy > .landing-boundary { order: 7; }
 }
+.twin-workstation .tw-header .workspace-status.tw-status { flex-direction: row !important; justify-content: flex-start !important; align-items: center !important; }
+.trajectory-panel .forecast-metadata span:first-child { text-transform: none; }
+@media (max-width: 1100px) {
+  .twin-workstation .tw-quality { order: 1; margin-left: 0; }
+  .twin-workstation .tw-clock { order: 2; }
+  .twin-workstation .replay-toggle { order: 3; }
+}
+@media (max-width: 720px) { .twin-workstation .tw-header { grid-template-columns: minmax(0, 1fr); } }
