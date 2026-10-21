@@ -320,6 +320,7 @@ export default async function EvidencePage() {
             <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
+            <p className="evidence-glossary" data-testid="evidence-glossary"><strong>Terms:</strong> <em>PR-TFT</em> is the neural network that makes the learned adjustment; <em>UKF</em> is the filter that keeps the physiology twin in step with the readings; <em>Arm D</em> is the trained configuration evaluated here; <em>persistence</em> assumes glucose stays where it is.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
             <span

@@ -146,3 +146,32 @@ describe('Replay hold', () => {
     expect(result.current.forecast).toEqual(f('08:05'));
   });
 });
+
+describe('What-If compares each model with itself, and says plainly when nothing changes', () => {
+  const base = {
+    pinned_as_of: anchor, subject_id: 's', fallback_used: null, current_mg_dl: 150, warnings: [],
+    metrics: { delta_peak_mg_dl: 0, new_peak_mg_dl: 0, baseline_peak_mg_dl: 0, delta_probability: 0, new_probability: 0.1, baseline_probability: 0.1 },
+  };
+  const run = async (result: object, name: string) => {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, status: 200, json: async () => result });
+    render(<ScenarioEditor patientId="s" currentForecast={{ as_of: anchor, data_quality: { status: 'ok' }, forecast: { points: [] }, ehr_context: { med_classes: ['metformin'] } } as never} />);
+    if (name === 'skip') {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Change' }), { target: { value: 'skip_habitual_meal' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    } else fireEvent.click(screen.getByRole('button', { name: name }));
+    return screen.findByTestId('scenario-result');
+  };
+  it('draws the twin unchanged beside the twin with the change', async () => {
+    await run({ ...base, baseline_forecast: curve(150, 0, () => 150), scenario_forecast: curve(150, 0.5, i => 150 + 2 * i) }, '60 g carb meal in 30 min');
+    expect(screen.getByTestId('whatif-twin-base-line').getAttribute('d')).toBeTruthy();
+    expect(screen.getByTestId('whatif-twin-line').getAttribute('d')).toBeTruthy();
+  });
+  it('replaces charts with one explanation when the backend returns no change', async () => {
+    const flat = curve(150, 0, () => 150);
+    await run({ ...base, baseline_forecast: flat, scenario_forecast: flat }, 'skip');
+    expect(screen.getByTestId('scenario-no-change')).toHaveTextContent('Nothing changes in the next 2 hours.');
+    expect(screen.getByTestId('scenario-no-change')).toHaveTextContent('No usual dinner is expected between 11:55 and 13:55 UTC');
+    expect(screen.queryByTestId('whatif-change-chart')).not.toBeInTheDocument();
+    expect(screen.getByTestId('scenario-announcement')).toHaveTextContent('Nothing changes in the next 2 hours.');
+  });
+});

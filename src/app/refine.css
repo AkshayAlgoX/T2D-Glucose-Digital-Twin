@@ -308,3 +308,20 @@
 @media (min-width: 1025px) { .evidence-pillar-grid { align-items: stretch; } .evidence-pillar-card.pillar-limitations { align-self: start; } }
 .navigation-environment { font-size: 12px; }
 .landing-audience { margin: 0 0 14px; }
+
+/* --- Round 3d ------------------------------------------------------------------ */
+.whatif-swatch.twin.solid.thin { border-top-width: 1.5px; }
+.whatif-legend span { align-items: flex-start; }
+.whatif-legend .whatif-swatch { flex: none; margin-top: 0.6em; }
+.whatif-nochange { padding: 16px 18px; border-radius: var(--radius-md); border: 1px solid var(--color-line); background: var(--color-surface-2); }
+.whatif-nochange strong { display: block; font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--color-ink); }
+.whatif-nochange p { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: var(--color-ink-2); }
+/* Hero actions: the primary on its own row and the two secondaries together, whenever they cannot share one row. */
+@media (min-width: 1101px) and (max-width: 1420px) {
+  .landing-actions .landing-cta { flex-basis: 100%; justify-content: center; max-width: 420px; }
+}
+/* Limitations: whole items on a two-by-two grid. */
+@media (min-width: 1025px) {
+  .evidence-pillar-card.pillar-limitations .pillar-limits-list { columns: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 28px; }
+}
+.evidence-glossary { margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--color-ink-2); max-width: 900px; }
