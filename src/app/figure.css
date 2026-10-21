@@ -815,3 +815,27 @@ input, select { border-radius: 2px !important; }
 @media (max-width: 720px) { .methodology-appendix > summary { font-size: 17px; } }
 .twin-workstation .tw-quality { white-space: nowrap; }
 .contributions > summary { display: flex; justify-content: space-between; align-items: baseline; }
+.wf-band-base { fill: var(--color-ghost); fill-opacity: .16; stroke: none; }
+.wf-band-scen { fill-opacity: .1; }
+.hero-equation dd { font-size: 14.5px; letter-spacing: -.02em; }
+.cohort-page .filter-controls select {
+  appearance: none; -webkit-appearance: none; border-radius: 2px; min-width: 170px; display: block; padding: 0 32px 0 10px; font-size: 14px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23111418' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 11px center / 12px 8px;
+}
+.cohort-page .filter-controls select:open { border-color: var(--color-ink); background-color: #fff; }
+@media (max-width: 640px) {
+  .cohort-page .cohort-directory .directory-table tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "id id open" "group group part" "age bmi hba"; gap: 8px 12px; padding: 14px 0; border-bottom: 1px solid var(--color-line); }
+  .cohort-page .cohort-directory .directory-table tbody tr > * { padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .cohort-page .cohort-directory .directory-table tbody tr.is-demo { background: #f2f4fc; box-shadow: inset 4px 0 var(--color-forecast); padding-left: 12px; }
+  .cohort-page .directory-table tbody tr > th { grid-area: id; }
+  .cohort-page .directory-table tbody tr > td:nth-child(2) { grid-area: group; }
+  .cohort-page .directory-table tbody tr > td:nth-child(3) { grid-area: age; }
+  .cohort-page .directory-table tbody tr > td:nth-child(4) { grid-area: bmi; }
+  .cohort-page .directory-table tbody tr > td:nth-child(5) { grid-area: hba; }
+  .cohort-page .directory-table tbody tr > td:nth-child(6) { grid-area: part; justify-self: end; align-self: center; }
+  .cohort-page .directory-table tbody tr > td:nth-child(7) { grid-area: open; justify-self: end; align-self: center; }
+  .cohort-page .filter-controls select { min-width: 0; }
+}
+.twin-workstation .tw-side .identity-section, .twin-workstation .clinical-panel .identity-section { background: transparent !important; border: 0 !important; padding-left: 0 !important; }
+.identity-mark svg { display: none; }
+.identity-mark strong { font-family: var(--font-display); font-size: 22px; }
