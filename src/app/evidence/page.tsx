@@ -1,7 +1,7 @@
-import { readLandingEvidence, readJumpExperiment, readGate3Checks, readEventEvaluation } from '@/lib/landing';
+import { readLandingEvidence, readJumpExperiment, readGate3Checks, readEventEvaluation, readRealDataResults } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
-import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding, EventWarning } from '@/components/figure/EvidenceFigures';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding, EventWarning, RealDataBenchmark } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -292,7 +292,7 @@ export default async function EvidencePage() {
     }
   }
 
-  const [landing, jumps, g3c, events] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks(), readEventEvaluation()]);
+  const [landing, jumps, g3c, events, realData] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks(), readEventEvaluation(), readRealDataResults()]);
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -597,6 +597,7 @@ export default async function EvidencePage() {
         )}
 
         {hasBenchmarks && events && <EventWarning data={events} />}
+        {hasBenchmarks && realData && <RealDataBenchmark data={realData} />}
         {hasBenchmarks && jumps && <EvidenceDisclosure labelledBy="jump-heading" label="Known model artefact · isolated one-step jumps"><JumpFinding data={jumps} /></EvidenceDisclosure>}
 
         {/* Verified Benchmark Tables rendered ONLY when validated artifact benchmarks are present */}

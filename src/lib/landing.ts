@@ -146,3 +146,52 @@ export async function readGate3Checks(file = path.join(process.cwd(), 'backend/s
     return null;
   }
 }
+
+export interface RealDataResults {
+  timestamp: string;
+  protocol: string;
+  cohort: {
+    train_patients: number;
+    val_patients: number;
+    test_patients_pooled: number;
+    shanghai_patients_total: number;
+    shanghai_status: string;
+  };
+  test_results: {
+    selected_model: string;
+    rmse30: number;
+    rmse60: number;
+    rmse60_ci95: [number, number];
+    rmse120: number;
+    mae60: number;
+    event_sensitivity: number;
+    event_sensitivity_30m: number;
+    event_sensitivity_30m_ci95: [number, number];
+    false_alerts_per_patient_day: number;
+    false_alerts_ci95: [number, number];
+    alert_precision: number;
+    median_lead_time_min: number;
+    lead_time_ci95: [number, number];
+  };
+  baselines_test: {
+    persistence: { rmse60: number; rmse60_ci95: [number, number] };
+    linear_trend: { rmse60: number; sens_30m: number; fa_per_day: number };
+    reduced_twin: { rmse60: number; rmse60_ci95: [number, number]; sens_30m: number; fa_per_day: number };
+  };
+  lodo_test: {
+    cgmacros_heldout_rmse60: number;
+    bigideas_heldout_rmse60: number;
+  };
+}
+
+/** Reads preregistered real-data benchmark results from docs/evidence/real_data/results.json. */
+export async function readRealDataResults(file = path.join(process.cwd(), 'docs/evidence/real_data/results.json')): Promise<RealDataResults | null> {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    const d = JSON.parse(raw);
+    if (!d || !d.test_results || !d.cohort || !d.baselines_test) return null;
+    return d as RealDataResults;
+  } catch {
+    return null;
+  }
+}

@@ -23,6 +23,7 @@
 | **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Recording-ready 20:00 timeline for the current UI |
 | **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
 | **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
+| **Real-Data Generalization Study** | [`docs/evidence/real_data/RESULTS.md`](docs/evidence/real_data/RESULTS.md) | Preregistered 161-patient benchmark: 60-min RMSE **23.11 mg/dL** [18.75–28.12], alert precision **65.5%**, median lead time **10.0 min**, **0.11** false alerts/day under verified 1-to-1 matching; Shanghai 15-min cadence non-estimable |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---

@@ -140,6 +140,76 @@ export function EventWarning({ data }: { data: import('@/lib/landing').EventEval
   );
 }
 
+/** Preregistered real-data generalization evaluation on 161 real patients across 3 open clinical cohorts. */
+export function RealDataBenchmark({ data }: { data: import('@/lib/landing').RealDataResults }) {
+  const t = data.test_results;
+  const b = data.baselines_test;
+  return (
+    <section className="jump-finding real-data-benchmark" aria-labelledby="real-data-heading" data-testid="real-data-benchmark">
+      <span className="eyebrow">Preregistered Real-Data Benchmark · PREREGISTRATION.md v1</span>
+      <h2 id="real-data-heading">Generalization on 161 Real Patients across 3 Cohorts</h2>
+      <p className="jump-lede">
+        Evaluated on held-out test partitions under the preregistered locked alert policy (primary threshold 0.35, 120-min refractory cooldown, deterministic 1-to-1 alert matching, 2,000 paired patient-bootstrap 95% CIs).
+        Cohorts: CGMacros (27/9/9), BIG IDEAs (9/3/4), and ShanghaiT2DM (60/20/20).
+      </p>
+      <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Real-data test results">
+        <table className="jump-table">
+          <caption className="sr-only">Held-out real-data evaluation results across models</caption>
+          <thead>
+            <tr>
+              <th scope="col">Model</th>
+              <th scope="col">60-min RMSE (mg/dL)</th>
+              <th scope="col">Spikes Caught</th>
+              <th scope="col">Alert Precision</th>
+              <th scope="col">False Alerts / Day</th>
+              <th scope="col">Median Warning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Persistence Baseline</th>
+              <td>{b.persistence.rmse60.toFixed(2)} <small>({b.persistence.rmse60_ci95[0]}–{b.persistence.rmse60_ci95[1]})</small></td>
+              <td>0.0%</td>
+              <td>—</td>
+              <td>0.00</td>
+              <td>0 min</td>
+            </tr>
+            <tr>
+              <th scope="row">Linear Trend (30 min)</th>
+              <td>{b.linear_trend.rmse60.toFixed(2)}</td>
+              <td>{b.linear_trend.sens_30m.toFixed(1)}%</td>
+              <td>16.4%</td>
+              <td>{b.linear_trend.fa_per_day.toFixed(2)}</td>
+              <td>25 min</td>
+            </tr>
+            <tr>
+              <th scope="row">Reduced Twin (UKF Prior)</th>
+              <td>{b.reduced_twin.rmse60.toFixed(2)} <small>({b.reduced_twin.rmse60_ci95[0]}–{b.reduced_twin.rmse60_ci95[1]})</small></td>
+              <td>{b.reduced_twin.sens_30m.toFixed(1)}%</td>
+              <td>30.8%</td>
+              <td>{b.reduced_twin.fa_per_day.toFixed(2)}</td>
+              <td>5 min</td>
+            </tr>
+            <tr className="highlight-row">
+              <th scope="row"><strong>Masked Physiological Hybrid (Ours)</strong></th>
+              <td><strong>{t.rmse60.toFixed(2)}</strong> <small>({t.rmse60_ci95[0]}–{t.rmse60_ci95[1]})</small></td>
+              <td><strong>{t.event_sensitivity.toFixed(1)}%</strong> <small>({t.event_sensitivity_30m.toFixed(1)}% &ge;30m)</small></td>
+              <td><strong>{t.alert_precision.toFixed(1)}%</strong></td>
+              <td><strong>{t.false_alerts_per_patient_day.toFixed(2)}</strong> <small>({t.false_alerts_ci95[0]}–{t.false_alerts_ci95[1]})</small></td>
+              <td><strong>{t.median_lead_time_min.toFixed(0)} min</strong> <small>({t.lead_time_ci95[0]}–{t.lead_time_ci95[1]})</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="real-data-notes" style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+        <p><strong>Cross-Cohort LODO Generalization:</strong> CGMacros test (trained on BIG IDEAs only): RMSE60 = {data.lodo_test.cgmacros_heldout_rmse60} mg/dL; BIG IDEAs test (trained on CGMacros only): RMSE60 = {data.lodo_test.bigideas_heldout_rmse60} mg/dL.</p>
+        <p><strong>ShanghaiT2DM 15-min Cadence:</strong> Achieves &le;33.4% coverage on 5-min grid, failing locked &ge;70% past-coverage rule &rarr; reported honestly as <em>NOT ESTIMABLE (N/E)</em> without interpolation.</p>
+        <p>Single irreversible test execution recorded on {data.timestamp}. Source: <code>docs/evidence/real_data/RESULTS.md</code>.</p>
+      </div>
+    </section>
+  );
+}
+
 /** The isolated-step artefact and the pre-registered repair: measured, recorded, not applied. */
 export function JumpFinding({ data }: { data: import('@/lib/landing').JumpExperiment }) {
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
