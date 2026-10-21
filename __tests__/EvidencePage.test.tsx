@@ -420,7 +420,7 @@ describe('EvidencePage', () => {
     expect(screen.getByText('4. Realism · Gate 3 analysis')).toBeInTheDocument();
     expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
     expect(screen.getByText('AUROC 0.932 (Target ≤ 0.65)')).toBeInTheDocument();
-    expect(screen.getByText('No clinical generalization')).toBeInTheDocument();
+    expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });
 
   it('renders technical reproducibility details inside collapsible disclosure with byte verification', async () => {
@@ -509,7 +509,7 @@ describe('EvidencePage', () => {
 
     // Negative governance findings must be explicit and unhidden
     expect(screen.getByText('Validation status and provenance register')).toBeInTheDocument();
-    expect(screen.getByText('Synthetic-data indistinguishability')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic-data realism check')).toBeInTheDocument();
     expect(screen.getByText('Sealed · not run')).toBeInTheDocument();
     expect(screen.getByText('ShanghaiT2DM diagnostic')).toBeInTheDocument();
     expect(screen.getByText('NO-GO')).toBeInTheDocument();
@@ -534,6 +534,9 @@ describe('EvidencePage', () => {
     expect(analysis).toHaveTextContent('Historical AUROC');
     expect(analysis).toHaveTextContent('16,719 synthetic windows with 16,443 mock-real windows');
     expect(analysis).toHaveTextContent('Null control');
+    expect(analysis).toHaveTextContent('Power control');
+    expect(analysis).toHaveTextContent('backend/synthetic_v2/validation/validation_report.json');
+    expect(within(analysis as HTMLElement).getByRole('link', { name: 'Back to the status register' })).toHaveAttribute('href', '#status-register');
     expect(analysis).toHaveTextContent('jerk_sd (SHAP 0.8878)');
     expect(analysis).toHaveTextContent('What it does not establish');
 
@@ -562,7 +565,7 @@ describe('EvidencePage', () => {
     expect(appendix).toContainElement(screen.getByText('Historical development reference (18-subject partition)'));
     expect(appendix.querySelector('details.reproducibility-details')).not.toBeNull();
     // The negative register stays outside the appendix.
-    expect(appendix).not.toContainElement(screen.getByText('Synthetic-data indistinguishability'));
+    expect(appendix).not.toContainElement(screen.getByText('Synthetic-data realism check'));
   });
 
   it('answers the four essential questions on the first screen hero', async () => {
@@ -592,7 +595,7 @@ describe('EvidencePage', () => {
 
     // Question 4: the authoritative Gate 3 analysis
     expect(screen.getByText('Is the synthetic data realistic?')).toBeInTheDocument();
-    expect(screen.getByText(/Realism gate \(Gate 3\) FAILED/i)).toBeInTheDocument();
+    expect(screen.getByText(/How it was tested:/)).toBeInTheDocument();
     expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });
 

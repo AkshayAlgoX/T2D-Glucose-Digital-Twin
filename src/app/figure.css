@@ -1143,3 +1143,8 @@ details[open] > summary .repro-hint { display: none; }
 .register-details { margin-top: 6px; }
 .register-more > summary { font-size: 13.5px; color: var(--color-accent); }
 .evidence-page .register .register-head h2 { font-family: var(--font-display); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.g3-back { display: inline-block; margin-top: 10px; }
+.g3-back::after { content: ' ↓' !important; }
+#status-register { scroll-margin-top: 84px; }
+#status-register:focus { outline: none; }
+@media (max-width: 720px) { #status-register { scroll-margin-top: 16px; } }

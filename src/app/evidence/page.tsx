@@ -325,7 +325,7 @@ export default async function EvidencePage() {
             <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
-            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> Gate 3, the realism check, failed (<a href="#gate3-analysis">analysis</a>) · no real-human validation · the held-out test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator.</p>
+            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> Gate 3, the realism check, failed (<a href="#gate3-analysis">Gate 3 analysis</a>) · no real-human validation · the held-out test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator.</p>
             <p className="evidence-glossary" data-testid="evidence-glossary"><strong>Terms:</strong> <em>PR-TFT</em> is the neural network that makes the learned adjustment; <em>UKF</em> is the filter that keeps the physiology twin in step with the readings; <em>Arm D</em> is the trained configuration evaluated here; <em>persistence</em> assumes glucose stays where it is.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -486,21 +486,21 @@ export default async function EvidencePage() {
                   </div>
                   <h3 className="pillar-question" id="gate3-analysis-heading">Is the synthetic data realistic?</h3>
                   <div className="pillar-stat stat-danger">
-                    Gate 3 {gate3?.status ?? 'FAILED'}
+                    {gate3 ? `Gate 3 ${gate3.status}` : 'Gate 3 status unavailable'}
                   </div>
                   <div className="pillar-substat">
-                    AUROC {gate3?.historical_auroc.toFixed(3) ?? '0.932'} (Target &le; 0.65)
+                    {gate3 ? `AUROC ${gate3.historical_auroc.toFixed(3)} (Target ≤ 0.65)` : 'The realism artifact could not be read; no value is shown.'}
                   </div>
-                  <span className="pillar-tag g3-tag">No clinical generalization</span>
                 </div>
                 <div className="g3-body">
                   {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
-                  <p className="g3-method"><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells our synthetic glucose traces apart from an independent mock-real generator&apos;s data, itself synthetic. It compared 16,719 synthetic windows with 16,443 mock-real windows; an AUROC of 0.5 would mean the two are indistinguishable, and the gate passes at 0.65 or below.</p>
+                  <p className="g3-method"><strong>How it was tested:</strong> an XGBoost classifier, 5-fold cross-validated with each patient kept within one fold, tries to tell 6-hour glucose windows (40 features on a 5-minute grid) from our generator apart from an HbA1c-matched mock-real cohort made by an independent generator, itself synthetic. It compared 16,719 synthetic windows with 16,443 mock-real windows from 300 and 300 patients. An AUROC of 0.5 would mean the two are indistinguishable; the gate requires the 90% interval of the AUROC to sit at or below the target.</p>
                   <dl className="g3-metrics">
-                    <div><dt>Historical AUROC</dt><dd>{gate3?.historical_auroc.toFixed(3) ?? '0.932'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.historical[0].toFixed(3)}–{landing.gate3ci.historical[1].toFixed(3)}</small> : null}</dd></div>
-                    <div><dt>Duration-corrected AUROC</dt><dd>{gate3?.duration_corrected_auroc?.toFixed(3) ?? '0.929'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.correctedCi[0].toFixed(3)}–{landing.gate3ci.correctedCi[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Historical AUROC</dt><dd>{gate3 ? gate3.historical_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.historical[0].toFixed(3)}–{landing.gate3ci.historical[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Duration-corrected AUROC</dt><dd>{gate3?.duration_corrected_auroc != null ? gate3.duration_corrected_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.correctedCi[0].toFixed(3)}–{landing.gate3ci.correctedCi[1].toFixed(3)}</small> : null}</dd></div>
                     <div><dt>Acceptance target</dt><dd>AUROC &le; 0.65</dd></div>
-                    <div><dt>Null control</dt><dd>0.507<small> pipeline check: indistinguishable data score near 0.5</small></dd></div>
+                    <div><dt>Null control</dt><dd>0.507<small> 90% interval 0.481–0.533; two random halves of the synthetic cohort, so the pipeline does not invent differences</small></dd></div>
+                    <div><dt>Power control</dt><dd>1.000<small> +5 mg/dL sensor noise on one half is detected, so the classifier can see real distortions</small></dd></div>
                     <div><dt>Strongest tells</dt><dd><code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></dd></div>
                   </dl>
                   {landing?.gate3ci?.mechanism && <p className="g3-mechanism"><strong>Recorded mechanism:</strong> {landing.gate3ci.mechanism}</p>}
@@ -521,7 +521,8 @@ export default async function EvidencePage() {
                       </ul>
                     </div>
                   </div>
-                  <p className="fine-print g3-source">The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository. Source: <code>docs/evidence/validation_ceiling_results.json</code> → <code>gate3_realism_status</code>.</p>
+                  <p className="fine-print g3-source"><strong>Historical</strong> is the recorded discriminator run (30 Sep 2026). <strong>Duration-corrected</strong> is a later re-estimate taken from the recorded summary; its definition and the script that computed it are not in the repository. Sources: status, AUROCs, intervals and mechanism from <code>docs/evidence/validation_ceiling_results.json</code> → <code>gate3_realism_status</code>; window and patient counts, features, folds, null and power controls and SHAP tells from <code>backend/synthetic_v2/validation/validation_report.json</code> (check G3.1–G3.3).</p>
+                  <a className="register-link g3-back" href="#status-register">Back to the status register</a>
                 </div>
               </div>
             </div>
@@ -987,7 +988,7 @@ export default async function EvidencePage() {
             )}
 
             {/* 6. Scientific governance & Boundary Disclosures Register */}
-            <section className="panel evidence-section register" aria-labelledby="governance-heading">
+            <section className="panel evidence-section register" id="status-register" tabIndex={-1} aria-labelledby="governance-heading">
               <div className="register-head">
                 <div>
                   <span className="eyebrow">Scientific governance</span>
@@ -1005,7 +1006,7 @@ export default async function EvidencePage() {
                         <XCircle size={12} aria-hidden="true" /> {gate3.status}
                       </span>
                     </div>
-                    <h3 className="register-title">Synthetic-data indistinguishability</h3>
+                    <h3 className="register-title">Synthetic-data realism check</h3>
                     <p className="register-text">Our synthetic glucose traces remain distinguishable from the comparison generator&apos;s, so realism is not established.</p>
                     <a className="register-link" href="#gate3-analysis">View Gate 3 analysis</a>
                   </div>
