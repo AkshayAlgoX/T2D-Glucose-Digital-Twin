@@ -669,7 +669,7 @@ export default async function EvidencePage() {
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#8c5b0c' }}>UKF Twin</td>
+                          <td className="model-twin">UKF Twin</td>
                           <td>
                             {row.tw?.estimate ? row.tw.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -682,7 +682,7 @@ export default async function EvidencePage() {
                           <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
                         </tr>
                         <tr>
-                          <td style={{ color: 'var(--color-danger)' }}>Persistence</td>
+                          <td className="model-persistence">Persistence</td>
                           <td>
                             {row.pe?.estimate ? row.pe.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>

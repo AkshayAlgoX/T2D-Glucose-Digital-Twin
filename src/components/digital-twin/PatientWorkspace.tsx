@@ -271,7 +271,7 @@ export function PatientWorkspace({
   const summary = recordSummary(forecast);
   const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality: OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality: Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Data quality: Insufficient data' : null;
   return (
-    <main id="main-content" className="workspace-page twin-workstation">
+    <main id="main-content" className={'workspace-page twin-workstation' + (!forecast && isReconnecting ? ' is-unreachable' : '')}>
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
       <header className="workspace-heading tw-header">
         <div className="tw-identity">

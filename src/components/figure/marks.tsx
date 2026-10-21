@@ -161,9 +161,7 @@ export function GainBar({ hybrid, twin, persistence, id, unit = 'mg/dL' }: { hyb
       <line x1={l} x2={x(hybrid)} y1={16} y2={16} className="gain-hybrid" />
       <line x1={x(twin)} x2={x(twin)} y1={7} y2={25} className="gain-twin" />
       {persistence != null && <line x1={x(persistence)} x2={x(persistence)} y1={9} y2={23} className="gain-persist" />}
-      <text x={x(hybrid)} y={40} textAnchor="end" className="gain-label lbl-scen">hybrid {hybrid.toFixed(1)}</text>
-      <text x={x(twin) + 4} y={40} className="gain-label lbl-twin">twin {twin.toFixed(1)}</text>
-      {persistence != null && <text x={x(persistence)} y={40} textAnchor="end" className="gain-label lbl-base">persistence {persistence.toFixed(1)}</text>}
+      <text x={l} y={40} className="gain-label"><tspan className="lbl-scen">hybrid {hybrid.toFixed(1)}</tspan><tspan className="lbl-twin" dx={10}>twin {twin.toFixed(1)}</tspan>{persistence != null && <tspan className="lbl-base" dx={10}>persistence {persistence.toFixed(1)}</tspan>}</text>
     </svg>
   );
 }
