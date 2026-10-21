@@ -54,7 +54,8 @@ export default async function Home() {
           <div className="home-copy">
             <p className="fig-section-label">Digital twin · type 2 diabetes · research prototype</p>
             <h1 id="landing-title">A glucose forecast you can take apart.</h1>
-            <p className="home-dek">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose from their EHR record and wearable streams. It shows how much of each forecast comes from a physiology model fitted to the patient, how much from a learned correction, how uncertain it is, and how a meal or some activity would change it.</p>
+            <p className="home-dek home-dek-short">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose and shows what each forecast is made of: physiology, a learned correction, and uncertainty.</p>
+            <p className="home-dek home-dek-long">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose from their EHR record and wearable streams. It shows how much of each forecast comes from a physiology model fitted to the patient, how much from a learned correction, how uncertain it is, and how a meal or some activity would change it.</p>
             <div className="landing-actions">
               <Link href={`/patients/${DEMO_SUBJECT_ID}`} className="landing-cta">Open the demo twin · P0017 <ArrowRight size={16} aria-hidden="true" /></Link>
               <span className="landing-secondary">
