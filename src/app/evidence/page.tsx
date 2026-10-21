@@ -1,7 +1,7 @@
-import { readLandingEvidence } from '@/lib/landing';
+import { readLandingEvidence, readJumpExperiment } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
-import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes } from '@/components/figure/EvidenceFigures';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -288,7 +288,7 @@ export default async function EvidencePage() {
     }
   }
 
-  const landing = await readLandingEvidence();
+  const [landing, jumps] = await Promise.all([readLandingEvidence(), readJumpExperiment()]);
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -560,6 +560,8 @@ export default async function EvidencePage() {
             <p className="fine-print evidence-figure-foot">Development-validation partition, also used for checkpoint selection and calibration; not held-out or human evidence. Source: <code>runs/pr_tft_ablation_arm_d/evaluation_report.json</code>.</p>
           </section>
         )}
+
+        {hasBenchmarks && jumps && <JumpFinding data={jumps} />}
 
         {/* Verified Benchmark Tables rendered ONLY when validated artifact benchmarks are present */}
         {hasBenchmarks && models && paired && (

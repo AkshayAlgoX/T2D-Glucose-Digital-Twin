@@ -59,3 +59,27 @@ export async function readLandingEvidence(file = path.join(process.cwd(), 'docs/
     return null;
   }
 }
+
+export interface JumpVariant { rmse: { '30min': number; '60min': number; '120min': number }; share_isolated_step_gt_20: number; share_isolated_step_gt_40: number; p10_p90_coverage: number }
+export interface JumpExperiment {
+  validation: { original: JumpVariant; R3: JumpVariant; n: number; worseThanNeighbours: number; upward: number };
+  train: { original: JumpVariant; R3: JumpVariant; n: number };
+}
+
+/** The pre-registered isolated-step experiment (docs/evidence/jump_experiment); null if absent or malformed. */
+export async function readJumpExperiment(file = path.join(process.cwd(), 'docs/evidence/jump_experiment/results.json')): Promise<JumpExperiment | null> {
+  try {
+    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const ok = (v: any): v is JumpVariant => v && ['30min', '60min', '120min'].every(k => Number.isFinite(v.rmse?.[k])) && Number.isFinite(v.share_isolated_step_gt_20) && Number.isFinite(v.share_isolated_step_gt_40) && Number.isFinite(v.p10_p90_coverage);
+    const v = d.validation, t = d.train_sample;
+    if (!ok(v?.original) || !ok(v?.R3) || !ok(t?.original) || !ok(t?.R3)) return null;
+    const dg = v.jump_diagnostics ?? {};
+    if (![dg.n_forecasts, dg.share_step_worse_than_neighbour_mean, dg.share_upward_steps, t.jump_diagnostics?.n_forecasts].every(Number.isFinite)) return null;
+    return {
+      validation: { original: v.original, R3: v.R3, n: dg.n_forecasts, worseThanNeighbours: dg.share_step_worse_than_neighbour_mean, upward: dg.share_upward_steps },
+      train: { original: t.original, R3: t.R3, n: t.jump_diagnostics.n_forecasts },
+    };
+  } catch {
+    return null;
+  }
+}

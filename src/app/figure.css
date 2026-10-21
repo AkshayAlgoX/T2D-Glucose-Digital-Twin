@@ -1080,3 +1080,11 @@ details[open] > summary .repro-hint { display: none; }
 .fig-marker.m-adj circle.fig-marker-dot { fill: var(--color-learned-text); }
 /* An explicit surface under the risk rail text, so contrast is computed against white, not the dark button below. */
 .twin-workstation .risk-panel, .twin-workstation .contributions { background: #fff; }
+.jump-finding { border-top: 2px solid var(--color-rule); padding: 12px 0 8px; margin: 24px 0; }
+.jump-finding .eyebrow { color: var(--color-amber); }
+.jump-finding h2 { font-family: var(--font-display); font-size: 26px; font-weight: 600; margin: 4px 0 8px; }
+.jump-lede, .jump-decision { font-size: 14.5px; line-height: 1.55; color: var(--color-ink-2); max-width: 980px; }
+.jump-decision { border-left: 3px solid var(--color-alert-edge); padding-left: 12px; }
+.jump-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.jump-table th, .jump-table td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--color-line); white-space: nowrap; }
+.jump-table thead th { font-size: 12.5px; color: var(--color-ink-3); border-bottom: 1px solid var(--color-ink); font-weight: 600; }

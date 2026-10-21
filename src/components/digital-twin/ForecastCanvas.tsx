@@ -369,7 +369,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
       </div>
 
       {isolatedStep && isolatedStep.size > ISOLATED_STEP_NOTE_MG_DL && <p className="isolated-step-note" data-testid="isolated-step-note">
-        The forecast median jumps by {isolatedStep.size.toFixed(0)} mg/dL in a single 5-min step at +{isolatedStep.offset} min. Isolated steps like this come from the learned adjustment, not from the physiology twin, and are a known limitation of this model; read the band and the twin line, not that single point.
+        The forecast median jumps by {isolatedStep.size.toFixed(0)} mg/dL in a single 5-min step at +{isolatedStep.offset} min. Isolated steps like this come from the learned adjustment, not from the physiology twin, and are a known limitation of this model, measured on the Evidence page; read the band and the twin line, not that single point.
       </p>}
 
       <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />

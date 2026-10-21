@@ -1,59 +1,39 @@
-# 20-Minute Demonstration Script — Verified Submission Draft
+# 20-minute demonstration script (round-4 UI)
 
-> [!CAUTION]
-> **SUBMISSION RELEASE BLOCKER**: A written script alone is insufficient. An actual demonstration video of at least 20 minutes must be recorded, verified for legibility and privacy, and published to a permanent public/unlisted URL. As of this release candidate, the video asset is **MISSING** and remains an active release blocker.
+> **Release blocker until done:** the challenge requires a demonstration video of **at least 20 minutes**, published as a public or unlisted link that the evaluators can open. This script is ready to record; the video itself must be recorded by the team, checked, uploaded, and linked in `README.md` (row "Demonstration Video").
 
-Target recording duration: **20:00** (minimum 20:00 required by challenge rules).  
-This script provides the step-by-step walkthrough for demonstrating the prototype using validation-split demonstration subject P0017 (`6f50ef50-b6e5-5408-a70c-d8f0509d6012`). Do not use protected cohorts, quarantined data, or unapproved evaluators during rehearsal or recording.
+Every number below is what the running prototype shows for the validation-split demonstration subject **P0017** at the 08:00 UTC replay hold (synthetic data). If a number on screen differs, read the screen, not this script.
 
----
+## Before recording
+1. Start the backend and a **production** build (README §2–3): `npm run build && npx next start -p 3000`; backend on `127.0.0.1:8001`. Use `http://localhost:3000`.
+2. Browser at 1440×900 or larger, zoom 100%, one tab. Hide bookmarks, extensions, notifications, terminal paths and tokens.
+3. Open `/`, `/cohort`, `/patients/6f50ef50-b6e5-5408-a70c-d8f0509d6012` and `/evidence` once so the replay has warmed up; wait for **"Replay paused at 08:00 UTC"** on the workspace.
+4. Keep `docs/presentation/presentation.pdf` open in a second window for the slides.
 
-## Recording Preconditions & Constraints
+## Timeline (20:00)
 
-1. **Placeholders**: Prior to recording, team lead must confirm `[DEMO_RELEASE]`, `[APPROVED_DEMO_DATA_ID]`, `[SUBJECT_UUID]`, `[REPLAY_TIME]`, and public repository URLs.
-2. **Credential Sanitization**: Ensure browser screen capture, terminal output, and network inspector mask all bearer tokens (`PR_TFT_SERVICE_TOKEN`), API keys, and local home filesystem paths (`/home/akshaya/...`).
-3. **Fixture Labelling**: If any design review or edge-case screen is demonstrated (`/design-review`), clearly narrate and visually caption it as **"UI FIXTURE — ILLUSTRATIVE DESIGN ONLY, NOT REAL MODEL INFERENCE"**.
-4. **Boundary Disclosures**:
-   - Telemetry stream includes observable static EHR context by default (`ehr_context=True`); explain how static clinical covariates condition the residual model.
-   - The What-If panel is live and backend-driven; say on camera: "Simulated model response — not a validated causal treatment effect."
-   - Do NOT invoke `/v1/subjects/{id}/twin` on camera: its handler triggers cohort RMSE computations over anchor records.
-   - Explain that model contribution bars describe internal arithmetic decomposition, not causal patient drivers.
+| Time | Screen | Do | Say (key lines) |
+|---|---|---|---|
+| 00:00–01:30 | Slide 1–2 | Title, team, institutions | "Glucose Twin is a research prototype for type 2 diabetes. It combines a synthetic patient's EHR record with CGM and wearable streams, and forecasts glucose two hours ahead. Synthetic data only; not a medical device." |
+| 01:30–03:30 | Slide 3–4 (architecture) | Point at EHR → physiology twin → learned adjustment → forecast | "A physiology twin, a Bergman glucose–insulin model kept in step with each reading by an unscented Kalman filter, sets the shape. A neural network (PR-TFT) learns what the equations miss. We show both, so the forecast can be taken apart." |
+| 03:30–05:30 | `/` home | Point at Figure 1; drag across the forecast | "This is P0017's real forecast at 08:00, replayed from the backend. Dots are observed CGM readings; the blue line is the forecast with its 50, 80 and 90% bands; the dashed rust line is the physiology twin; the hatched teal wedge is the learned adjustment. At +60 min: 232.5 from the twin, −15.4 from the network, 217.1 forecast." |
+| 05:30–06:30 | `/cohort` | Point at the P0017 case and the composition bar; filter Partition = Validation | "249 served synthetic subjects across healthy, prediabetes and type 2. P0017 comes from the validation split, so the network was not trained on it; training subjects are in-sample. The sealed test split is not served." Open P0017. |
+| 06:30–09:00 | Workspace header + Figure 1 | Read the case line; point at the replay row; hover the chart; press +15 / +30 / +60 / +120 | "53-year-old man, BMI 37.2, HbA1c 6.8%, on metformin. Glucose is 148 and rising about 2 mg/dL per minute. The equation above the chart follows the selected horizon; the numbered markers on the curve are the same three numbers." |
+| 09:00–10:30 | Input lanes under the chart | Point at the meal, steps, heart rate, HRV and sleep lanes | "These are the wearable and log inputs the model actually read, on the same time axis: a 123 g logged meal at 07:35, waking from sleep just before 08:00, almost no steps. Nothing is drawn after 'now'." |
+| 10:30–12:30 | Risk rail | Read the window, the onset risk and the disagreement note | "The bands put the median above 180 from +15 to +85 minutes; even the lower 10% bound is above 180 from +35 to +60. A separate calibrated classifier gives 53.3% for a new spike within two hours. The two models disagree here, and the product says so rather than hiding it. Neither is validated in people." |
+| 12:30–15:30 | What-if | Show the 4 steps; run **60 g carb meal in 30 min**; walk Figure 2 then Figure 3; read the metrics; open "Highest values" | "The backend re-runs the twin and the network from the same 08:00 anchor. The input is outside the network's training range, so we read the twin first. Biggest gap between the two forecast curves: +27.7 mg/dL at +110 min; the physiology twin alone: +47.8. The hatched gap is the learned adjustment offsetting part of the twin's response. Onset risk 53.3% → 56.9%. Simulated model response — not a validated causal treatment effect." |
+| 15:30–16:30 | What-if | Run **30 min moderate activity now**; then **Medication change** | "Activity is supported. Medication changes are refused by the backend — the twin has no drug terms — rather than guessed." |
+| 16:30–19:00 | `/evidence` | Read-first box; findings; Gate 3 figure; Figure 1 (wedge); Figure 2 (intervals); the isolated-step finding | "On 44 synthetic validation patients, 60-minute RMSE is 19.53 for the hybrid, 23.23 for the twin alone and 36.05 for persistence: 16% lower than the twin. These patients were also used for checkpoint selection and calibration, so this is development evidence, not an independent test. The realism gate failed — a classifier tells our synthetic traces apart, AUROC 0.932 against a 0.65 target — and we publish that. One known model artefact: in about 20% of forecasts the median jumps by more than 20 mg/dL in one step. We pre-registered a fixed repair, measured it, and recorded it without applying it, because the published evidence describes the current model." |
+| 19:00–20:00 | Slide 12 / README | Reproducibility and next steps | "Everything shown is reproducible from the public repository: setup, tests (42 frontend suites, 134 backend tests) and the evidence scripts. Next steps: retrain with a smoothness penalty, run the sealed test once, and validate against real CGM under an approved protocol." |
 
----
+## On-camera rules
+- Say the disclaimer sentence for the What-If verbatim.
+- Do not quote a What-If number as the effect of a meal; read the whole curve and the twin alongside it.
+- Do not call 53.3% "the chance of going above 180"; it is the chance that a *new* spike starts.
+- Do not show `/design-review` (UI fixtures) unless it is captioned "UI fixture — not model output".
+- Do not show tokens, home paths, or terminal history.
 
-## Timed Walkthrough (Exact 20:00 Timeline)
-
-| Time | Duration | Screen / Action | Narration & Evidence Focus | Technical Reference |
-|---|---|---|---|---|
-| **00:00–01:00** | 1:00 | Title slide, team details, research disclaimer | Introduce project title, participating team and institution, and the explicit boundary: *"A synthetic research prototype for predictive metabolic monitoring; not validated for clinical diagnosis or treatment."* | README, Slide 1 |
-| **01:00–02:30** | 1:30 | Clinician workflow diagram | Conceptual clinical journey: Patient context → Continuous trajectory → Risk horizon → Data quality review → Decision context. | `docs/architecture/architecture.pdf`, Slide 2 |
-| **02:30–04:00** | 1:30 | System architecture & code tour | Explain observable static inputs vs. dynamic telemetry; show UKF S3 physiological prior feeding PR-TFT deep residual model. | `backend/input_contract.py`, `backend/ukf_twin.py`, Slide 4 |
-| **04:00–05:30** | 1:30 | Cohort directory (`/cohort`) | Navigate to `/cohort`. Filter by split (`val`) and group (`Type 2`); note that sealed test-split subjects are not listed. Open `P0017` (`6f50ef50-b6e5-5408-a70c-d8f0509d6012`). | `src/app/cohort/page.tsx` |
-| **05:30–08:00** | 2:30 | Patient workspace (`/patients/[id]`) | Demonstrate live SSE stream connection (`"Synthetic stream connected"`). Read out the current glucose shown on screen, the 24-step forecast ribbon (p05–p95) and the 120-minute horizon. Inspect incoming SSE packets via browser network tab (`forecast.updated`). | `PatientWorkspace.tsx`, `ForecastCanvas.tsx` |
-| **08:00–10:00** | 2:00 | Risk panel & adverse event monitoring | Inspect `RiskPanel`: spike onset probability within 120 minutes, the risk tier badge and the alert status as served at that moment (measured for P0017: 0.0% at the replay start 2026-09-28T23:55Z and 10.6% at 2026-10-05T07:30Z; see `docs/evidence/whatif_probe_P0017.json`). Emphasize that risk represents onset *within* 120 min, not guaranteed 2-hour lead time. | `RiskPanel.tsx`, `serve_pr_tft.py` |
-| **10:00–11:30** | 1:30 | Twin physiological state & EHR context | Show twin state parameters (`insulin_sensitivity_rel`, unannounced meal indication). Disclose that unannounced meal probability is a physiological filter heuristic. | `twin_state`, `ServiceContext` |
-| **11:30–13:00** | 1:30 | "How this forecast is built" panel | Inspect arithmetic contribution bars (learned residual, habitual meal, baseline return). Explicitly state: *"These bars explain model arithmetic, not causal patient biology."* | `drivers`, `RiskPanel.tsx` |
-| **13:00–14:30** | 1:30 | Data quality, fallbacks & edge cases | Show data quality indicator (`status: ok`, `cgm_coverage: 100%`). Discuss fallback handling (insufficient input, sensor gaps, twin-only fallback). | `data_quality`, `useRealtimeTelemetry.ts` |
-| **14:30–16:00** | 1:30 | Scenario exploration & boundary | Run *60 g carb meal in 30 min* and *30 min brisk walk now*; read the before/after peak (with timing), the largest same-time difference and the spike risk. Click *Medication change* to show the backend refusal (`SCENARIO_UNSUPPORTED`). State that these are synthetic-model outputs, not validated causal effects. | `ScenarioEditor.tsx`, `serve_pr_tft.py` |
-| **16:00–18:30** | **2:30** | Evidence ledger, test logs & limitations | Walk through the Claim–Evidence Ledger: separate verified implementation from historical validation metrics and unexecuted experiments. Show verified test log (37 passing Jest suites with 346 passing tests, and 111 passing Pytest backend tests). Disclose synthetic realism Gate 3 failure (AUROC 0.9320 historical / 0.9290 corrected vs 0.65 threshold) and unexecuted EW-01 status. | `CLAIM_EVIDENCE_LEDGER.md`, `validation_report.json` |
-| **18:30–19:30** | 1:00 | Reproducibility & setup walkthrough | Walk through verified installation: Node 22, Next.js dev server with Webpack, Python 3.12 venv, FastAPI backend on 8001. Show deterministic test commands. | `README.md`, setup instructions |
-| **19:30–20:00** | 0:30 | Conclusion, research scope & Q&A | Summarize demonstrated capabilities: reliable chunk-invariant SSE streaming, calibrated uncertainty visualization, bounded fail-closed error handling. Outline future clinical trial requirements. | Slide 12 |
-
----
-
-## Exact Segment Check
-
-- **Segment 16:00–18:30**: Exactly **2 minutes and 30 seconds** (150 seconds).  
-  *Calculation*: $18:30 - 16:00 = 2:30$. (Corrected from draft that erroneously wrote 2:50 or 2:00).
-- **Total Duration**: Exactly **20 minutes and 00 seconds** (1,200 seconds).
-
----
-
-## Minimum Live Proof Checklist on Camera
-
-- [ ] Validation-split patient `P0017` loaded from permitted local backend (`http://127.0.0.1:8001`), browser at `http://localhost:3000`.
-- [ ] At least two successive SSE stream events (`000143-forecast`, `000144-forecast`) rendered live without page refresh.
-- [ ] Companion event (`000143-alert`) observed without wiping or resetting forecast canvas.
-- [ ] Forecast quantile ribbon (p05, p10, p25, p50, p75, p90, p95) visibly rendered.
-- [ ] Risk probability curve (0–120m) displayed in `RiskPanel`.
-- [ ] Zero unhandled JavaScript exceptions in browser console.
+## After recording
+- Length ≥ 20:00. Audio clear; text legible at 1080p.
+- Upload as public or unlisted; open the link in a private window to confirm it plays logged-out.
+- Replace "DEFERRED — PENDING RECORDING" in `README.md` with the link.

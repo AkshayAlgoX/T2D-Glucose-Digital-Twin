@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-41%20suites%20%7C%20411%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-42%20suites%20%7C%20413%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
@@ -146,7 +146,7 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 41 Jest test suites (411 tests: unit, integration, contracts, safety invariants):
+# Run all 42 Jest test suites (413 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
 # Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
@@ -186,7 +186,7 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 - **Audit (2026-10-20)**: see `docs/evidence/model_audit/MODEL_AUDIT_20261020.md`.
   - **Meal timing:** scenario meals were entered 5 min late. This is fixed and covered by a regression test.
   - **Out-of-range inputs:** a meal scenario feeds the network a meal probability of 1.0 and its full carbohydrate amount in one 5-min step. In training these inputs never exceeded 0.29 and 33 g, so the service attaches `SCENARIO_OUT_OF_RANGE`.
-  - **Isolated steps:** the learned adjustment adds isolated one-step jumps of more than 20 mg/dL to 19.8% of sampled validation forecasts, and the physiology twin never does. This is a disclosed model limitation. The chart flags it when present.
+  - **Isolated steps:** the learned adjustment adds isolated one-step jumps of more than 20 mg/dL to 19.8% of sampled validation forecasts, and the physiology twin never does. This is a disclosed model limitation. The chart flags it when present. A pre-registered check ([`docs/evidence/jump_experiment/`](docs/evidence/jump_experiment/RESULTS.md)) found the steps are late-horizon, almost always upward and wrong against the observed CGM (worse than their neighbours' average in 81% of cases); a fixed 3-point median repair removes 88% of them with no loss of RMSE or coverage on both the training sample and validation. It is recorded, not applied: the published metrics describe the unrepaired network and no independent test exists.
 - **Boundary**: These are synthetic-model outputs. Neither their direction nor their size has been validated against a reference counterfactual. Activity is modelled as immediate insulin-independent uptake only (the service attaches `SCENARIO_APPROXIMATION`). Medication changes are refused with `SCENARIO_UNSUPPORTED` because the served twin has no drug terms.
 
 ### 5. Validation Trajectory Benchmark & Matched Baseline Audit

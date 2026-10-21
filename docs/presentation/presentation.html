@@ -366,9 +366,9 @@
       <div class="shot-row">
         <img class="shot" src="screens/workstation.png" alt="Patient workspace for P0017 at 08:00: EHR summary, observed CGM, forecast bands, spike risk and model contributions">
         <div class="shot-notes">
-          <div class="card"><h4>One record, one story</h4><p>EHR summary in the header; the replay opens at 08:00 on the first morning with CGM, heart rate, HRV, steps, sleep and the meal log on one time axis.</p></div>
-          <div class="card"><h4>Forecast with uncertainty</h4><p>Median, P10–P90 and P05–P95 bands, the 180 mg/dL spike line and the calibrated 2-hour spike risk.</p></div>
-          <div class="card"><h4>Built in plain sight</h4><p>① physiology-based estimate + ② learned adjustment = ③ final forecast, at any horizon.</p></div>
+          <div class="card"><h4>One record, one time axis</h4><p>EHR summary in the case header; the replay holds at 08:00 with CGM dots, the meal log, steps, heart rate, HRV and sleep under the same axis.</p></div>
+          <div class="card"><h4>A forecast you can take apart</h4><p>① physiology twin (dashed) + ② learned adjustment (hatched wedge) = ③ forecast (line, with 50/80/90% bands), on the chart and in the equation above it.</p></div>
+          <div class="card"><h4>Risk, stated honestly</h4><p>When the median is above 180 mg/dL, and a separate calibrated onset risk; when the two disagree, the product says so.</p></div>
         </div>
       </div>
       <p class="shot-caption">Captured from the running prototype (synthetic data, development-validation subject). Not a clinical device.</p>
@@ -523,7 +523,7 @@
               <li>Observable-input contract enforcement.</li>
               <li>PR-TFT + UKF S3 model architecture.</li>
               <li>Chunk-invariant SSE proxy & recovery hook.</li>
-              <li>41 Jest suites (411 tests) & 134 backend tests passed on the published candidate.</li>
+              <li>42 Jest suites (413 tests) & 134 backend tests passed on the published candidate.</li>
             </ul>
           </div>
           <div class="card" style="padding: 10px 14px;">

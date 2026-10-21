@@ -103,3 +103,27 @@ export function DispersionBoxes({ dist, compact = false }: { dist: { rmse_60?: Q
     </figure>
   );
 }
+
+/** The isolated-step artefact and the pre-registered repair: measured, recorded, not applied. */
+export function JumpFinding({ data }: { data: import('@/lib/landing').JumpExperiment }) {
+  const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+  const rows: Array<[string, string, import('@/lib/landing').JumpVariant]> = [
+    ['Validation', 'current checkpoint', data.validation.original], ['Validation', 'R3 repair', data.validation.R3],
+    ['Train sample', 'current checkpoint', data.train.original], ['Train sample', 'R3 repair', data.train.R3],
+  ];
+  return (
+    <section className="jump-finding" aria-labelledby="jump-heading" data-testid="jump-finding">
+      <span className="eyebrow">Known model artefact · pre-registered check</span>
+      <h2 id="jump-heading">Isolated one-step jumps in the forecast median</h2>
+      <p className="jump-lede">In {pct(data.validation.original.share_isolated_step_gt_20)} of {data.validation.n} sampled validation forecasts the median jumps by more than 20 mg/dL in a single 5-minute step. The jumps come from the learned adjustment (the physiology twin has none), sit late in the horizon, are {pct(data.validation.upward)} upward, and are wrong against the observed CGM: in {pct(data.validation.worseThanNeighbours)} of cases the step is further from the reading than its neighbours&apos; average.</p>
+      <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Isolated-step experiment results">
+        <table className="jump-table">
+          <caption className="sr-only">RMSE in mg/dL, share of forecasts with an isolated step, and P10–P90 coverage, for the current checkpoint and the R3 repair</caption>
+          <thead><tr><th scope="col">Sample</th><th scope="col">Forecast</th><th scope="col">RMSE +30</th><th scope="col">RMSE +60</th><th scope="col">RMSE +120</th><th scope="col">Step &gt; 20 mg/dL</th><th scope="col">Step &gt; 40 mg/dL</th><th scope="col">P10–P90 coverage</th></tr></thead>
+          <tbody>{rows.map(([sample, name, v]) => <tr key={sample + name}><th scope="row">{sample}</th><td>{name}</td><td>{v.rmse['30min'].toFixed(2)}</td><td>{v.rmse['60min'].toFixed(2)}</td><td>{v.rmse['120min'].toFixed(2)}</td><td>{pct(v.share_isolated_step_gt_20)}</td><td>{pct(v.share_isolated_step_gt_40)}</td><td>{pct(v.p10_p90_coverage)}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <p className="jump-decision"><strong>Decision, as pre-registered: recorded, not applied.</strong> A fixed 3-point median filter on the learned adjustment (R3, no tuned parameters) removes most jumps with no loss of accuracy or coverage on both samples. It is not applied to the served model: the published metrics and calibration describe the unrepaired network, and validation was already used for checkpoint selection, so this is development evidence, not an independent test. The product flags jumps where they occur instead. Plan and data: <code>docs/evidence/jump_experiment/</code>.</p>
+    </section>
+  );
+}
