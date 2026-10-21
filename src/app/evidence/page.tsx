@@ -499,6 +499,7 @@ export default async function EvidencePage() {
                     <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
                   </ul>
                 </div>
+                {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} /></div>}
                 <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
                   No clinical generalization
                 </span>
@@ -991,7 +992,7 @@ export default async function EvidencePage() {
                       <div><strong>Acceptance target:</strong> AUROC &le; 0.65</div>
                       <div><strong>Top tells:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
                     </div>
-                    {landing?.gate3ci && <Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} />}
+
                     <p className="fine-print register-foot">
                       Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507). The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository.
                     </p>
