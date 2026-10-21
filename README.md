@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-42%20suites%20%7C%20413%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-44%20suites%20%7C%20422%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
@@ -17,10 +17,10 @@
 | **Project Title** | `T2D Glucose Digital Twin` | Focus: Prediabetes & Type 2 Diabetes Adverse Event Early Warning |
 | **Team & Institution** | **T2D Digital Twin Team**<br>• Akshaya R — BGS College of Engineering and Technology<br>• Nikhil VS — East West Institute of Technology | Descriptive project-team label; independent engineering college affiliations |
 | **Public GitHub Repository** | [`https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin`](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) | Authoritative GitHub repository (clone: `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git`) |
-| **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch (tag: `v1.0.0-top1`) |
+| **Release Branch** | `release/candidate-clean` | Default branch; the submitted code, documents and evidence |
 | **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 3-page landscape document; source in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) |
 | **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
-| **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Verified 20:00 exact timeline (segment 16:00–18:30 is exactly 2:30) |
+| **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Recording-ready 20:00 timeline for the current UI |
 | **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
 | **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
@@ -146,7 +146,7 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 42 Jest test suites (413 tests: unit, integration, contracts, safety invariants):
+# Run all 44 Jest test suites (422 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
 # Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
@@ -182,7 +182,7 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 - **Status**: **INTERACTIVE, BACKEND-DRIVEN — NOT A VALIDATED CAUSAL EFFECT**
 - **Detail**: The patient workspace sends meal, activity and skip-a-usual-meal scenarios through `/api/forecast` to `POST /v1/forecasts`. The linearized twin re-rolls the plan and the network re-scores it. Baseline and scenario come from the same response at the same anchor. The panel shows the highest median in the next 2 h for each (with its time), the largest same-time difference, and the calibrated 2-h spike probability before and after.
 - **Example (genuine backend output, P0017, validation split, anchor 2026-10-05T07:30Z, 60 g carbohydrate meal in 30 min)**: highest median 185.0 → 199.3 mg/dL (peaks at +60 → +95 min), largest same-time difference +34.5 mg/dL, spike probability 10.6% → 17.3%. The physiology twin alone moves glucose by up to +55.3 mg/dL. At anchor 2026-09-28T23:55Z the same meal gives 101.5 → 133.6 mg/dL and 0.0% → 3.3%.
-- **Default demonstration view**: every subject's replay opens at 08:00 UTC on the cohort's first morning (cohort start 23:55 plus 97 readings; the same rule for every subject). For P0017 the window shows the night, waking and a 123 g breakfast logged at 07:35. The 08:00 forecast's median rises to 222.5 mg/dL at +45 min; observed CGM then reads 207 mg/dL at 08:30 and 216 mg/dL at 09:00 (`backend/synthetic_v2/patient_cgm_telemetry.csv`). This is one favourable example; aggregate accuracy is on the Evidence page. From 08:00, a further 60 g meal in 30 min moves the physiology twin alone by up to +47.8 mg/dL, the network's highest median from 222.5 to 228.5 mg/dL, and the spike probability from 53.3% to 56.9%. This view does not show the one-step artefact described below. At 05:55, the same meal gives a network curve with a single 5-min spike at +75 min, 53.7 mg/dL above the physiology twin and about 54 mg/dL above its neighbouring steps (`docs/evidence/whatif_probe_P0017.json`).
+- **Default demonstration view**: every subject's replay opens at 08:00 UTC on the cohort's first morning (cohort start 23:55 plus 97 readings; the same rule for every subject). For P0017 the window shows the night, waking and a 123 g breakfast logged at 07:35. The 08:00 forecast's median rises to 222.5 mg/dL at +45 min; observed CGM then reads 207 mg/dL at 08:30 and 216 mg/dL at 09:00 (`backend/synthetic_v2/patient_cgm_telemetry.csv`). This is one favourable example; aggregate accuracy is on the Evidence page. From 08:00, a further 60 g meal in 30 min moves the physiology twin alone by up to +47.8 mg/dL, the network's highest median from 222.5 to 228.5 mg/dL, and the spike probability from 53.3% to 56.9%. In that What-If, the change chart flags one 5-min blip in the learned adjustment at +30 min, when the meal starts; no isolated step above 20 mg/dL (the artefact described below) is flagged. At 05:55, the same meal gives a network curve with a single 5-min spike at +75 min, 53.7 mg/dL above the physiology twin and about 54 mg/dL above its neighbouring steps (`docs/evidence/whatif_probe_P0017.json`).
 - **Audit (2026-10-20)**: see `docs/evidence/model_audit/MODEL_AUDIT_20261020.md`.
   - **Meal timing:** scenario meals were entered 5 min late. This is fixed and covered by a regression test.
   - **Out-of-range inputs:** a meal scenario feeds the network a meal probability of 1.0 and its full carbohydrate amount in one 5-min step. In training these inputs never exceeded 0.29 and 33 g, so the service attaches `SCENARIO_OUT_OF_RANGE`.

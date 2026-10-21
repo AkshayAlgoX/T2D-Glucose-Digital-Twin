@@ -514,15 +514,9 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         <li className="n-adj"><b className="n">2</b><span>the learned adjustment&apos;s share</span></li>
         <li className="n-final"><b className="n">3</b><span>the final forecast and its risk</span></li>
       </ol>
-      <p className="whatif-intro">Change this patient&apos;s plan and the twin re-forecasts the next 2 hours from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of the current forecast</> : 'the moment of the current forecast'}.</p>
+      <p className="whatif-intro">Choose a meal or some activity and the backend re-runs the twin and the network from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of Figure 1&apos;s forecast</> : 'the moment of Figure 1\'s forecast'}. Compare the whole curve, not one number.</p>
       <p className="whatif-disclaimer" data-testid="scenario-disclaimer"><strong>{SCENARIO_DISCLAIMER}</strong> The size of the change has not been validated against human data.</p>
 
-      <ol className="whatif-sequence" aria-label="How a what-if works">
-        <li><b>1</b>Start from Figure 1&apos;s forecast at {liveAsOf ? `${formatTime(liveAsOf)} UTC` : 'the current moment'}</li>
-        <li><b>2</b>Choose a meal, activity or skipped meal</li>
-        <li><b>3</b>The backend re-runs the twin and the network</li>
-        <li><b>4</b>Compare the whole curve, the twin&apos;s response and the risk</li>
-      </ol>
       <p className="whatif-step-label" id="whatif-presets-label">Try a common change</p>
       <div className="whatif-presets" role="group" aria-labelledby="whatif-presets-label">
         {PRESETS.map(p => {

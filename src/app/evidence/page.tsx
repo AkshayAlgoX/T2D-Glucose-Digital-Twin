@@ -36,6 +36,10 @@ const ManifestSchema = z.object({
     path: z.string().optional(),
     sha256: HashSchema.optional(),
   }).passthrough().refine(checkpoint => !!(checkpoint.path || checkpoint.name), 'Checkpoint path or name required'),
+  validation: z.object({
+    hazard_raw: z.object({ auroc: z.number().finite().min(0).max(1), auprc: z.number().finite().min(0).max(1) }).passthrough().optional(),
+    hazard_calibrated: z.object({ auroc: z.number().finite().min(0).max(1), auprc: z.number().finite().min(0).max(1), ece: z.number().finite().min(0).optional() }).passthrough().optional(),
+  }).passthrough().optional(),
 }).passthrough();
 
 const MetricSchema = z.object({
@@ -296,6 +300,8 @@ export default async function EvidencePage() {
   const wins = primaryPop?.patient_pairwise_wins;
   const subgroups = primaryPop?.subgroups;
   const cal = primaryPop?.calibration_resubstitution_diagnostics;
+  const hazard = manifest?.validation?.hazard_calibrated;
+  const hazardRaw = manifest?.validation?.hazard_raw;
   const gate3 = primaryPop?.gate3_realism_status;
   const dist = primaryPop?.patient_level_distribution;
 
@@ -960,6 +966,16 @@ export default async function EvidencePage() {
                     <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Resubstitution evaluation on {cal.at_risk_anchors?.toLocaleString()} at-risk anchors.</div>
                   </div>
 
+                  {hazard && (
+                    <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }} data-testid="spike-discrimination">
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Spike classifier AUROC · AUPRC</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
+                        {hazard.auroc.toFixed(4)} · {hazard.auprc.toFixed(4)}
+                        {hazardRaw && <small style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {hazardRaw.auroc.toFixed(4)} · {hazardRaw.auprc.toFixed(4)})</small>}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Calibrated onset probability on the validation partition (<code>run_manifest.json</code> → <code>validation.hazard_calibrated</code>); resubstitution, not an independent test.</div>
+                    </div>
+                  )}
                   {cal.threshold_evaluations?.['0.35'] && (
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
                       <div style={{ fontSize: '12.5px', color: 'var(--color-ink-3)' }}>Evaluated threshold 0.35 (resubstitution)</div>
@@ -984,7 +1000,7 @@ export default async function EvidencePage() {
                 {landing?.reliability && <ReliabilityFigure data={landing.reliability} />}
 
                 <p className="fine-print" style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
-                  Conformal coverage ({metrics.coverage_80_conformal.estimate ? (metrics.coverage_80_conformal.estimate * 100).toFixed(2) : '80.00'}%, width {metrics.width_80_conformal_mg_dl?.estimate?.toFixed(2) ?? '37.30'} mg/dL), Expected Calibration Error (ECE 0.000094), and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting. No threshold should be treated as an approved clinical operating recommendation.
+                  Conformal coverage{metrics.coverage_80_conformal?.estimate != null && <> ({(metrics.coverage_80_conformal.estimate * 100).toFixed(2)}%{metrics.width_80_conformal_mg_dl?.estimate != null && <>, width {metrics.width_80_conformal_mg_dl.estimate.toFixed(2)} mg/dL</>})</>}, Expected Calibration Error{hazard?.ece != null && <> (ECE {hazard.ece.toFixed(6)})</>}, discrimination and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting.
                 </p>
               </EvidenceDisclosure>
             )}

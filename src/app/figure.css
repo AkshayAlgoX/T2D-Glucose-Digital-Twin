@@ -429,10 +429,6 @@ input, select { border-radius: 2px !important; }
 .whatif-intro { font-family: var(--font-display); font-size: 18px; line-height: 1.45; color: var(--color-ink-2); margin: 0; max-width: 760px; }
 .whatif-disclaimer { margin: 0; padding: 8px 12px; border-left: 3px solid var(--color-ink); background: var(--color-surface-2); font-size: 13.5px; color: var(--color-ink-2); border-radius: 0; }
 .whatif-disclaimer strong { color: var(--color-ink); }
-.whatif-sequence { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); }
-.whatif-sequence li { display: flex; gap: 8px; align-items: baseline; padding: 10px 14px 10px 0; font-size: 13.5px; line-height: 1.4; color: var(--color-ink-2); }
-.whatif-sequence li + li { padding-left: 14px; border-left: 1px solid var(--color-line); }
-.whatif-sequence b { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--color-ink); line-height: 1; }
 .whatif-step-label { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--color-ink-3); margin: 6px 0 0; }
 .whatif-presets { display: flex; flex-wrap: wrap; gap: 10px; }
 .whatif-presets .secondary-button, .whatif-presets .preset { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--color-ink); border-radius: 2px; background: #fff; color: var(--color-ink); font-weight: 500; font-size: 14.5px; }
@@ -479,7 +475,6 @@ input, select { border-radius: 2px !important; }
 .whatif-error { border-left: 3px solid var(--color-danger); background: var(--color-danger-bg); padding: 10px 14px; border-radius: 0; }
 .whatif-error.neutral { border-left-color: var(--color-ink); background: var(--color-surface-2); }
 .whatif-nochange { border-left: 3px solid var(--color-ink); background: var(--color-surface-2); padding: 10px 14px; }
-@media (max-width: 900px) { .whatif-sequence { grid-template-columns: repeat(2, minmax(0, 1fr)); } .whatif-sequence li:nth-child(3) { padding-left: 0; border-left: 0; } .whatif-sequence li:nth-child(n+3) { border-top: 1px solid var(--color-line); } }
 @media (max-width: 720px) {
   .whatif-metrics, .whatif-result.stage .whatif-metrics { grid-template-columns: minmax(0, 1fr); }
   .whatif-metrics > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--color-line); }

@@ -478,6 +478,32 @@ describe('EvidencePage', () => {
     expect(screen.getByText('High Threshold Diagnostic (0.60)')).toBeInTheDocument();
   });
 
+  it('reads spike-classifier discrimination from the hash-verified manifest and shows none when it is absent', async () => {
+    const manifest = JSON.stringify({ ...BASE_MANIFEST, validation: {
+      hazard_raw: { auroc: 0.9220612796666005, auprc: 0.6387910589660569 },
+      hazard_calibrated: { auroc: 0.9226164870676722, auprc: 0.6314089233854392, ece: 9.39627770104291e-05 },
+    } }, null, 2);
+    const report = { ...FULL_BENCHMARK_REPORT, provenance: { ...FULL_BENCHMARK_REPORT.provenance, run_manifest_sha256: sha256(manifest) } };
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(manifest);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(report));
+      throw new Error('Not found');
+    });
+    const { unmount } = render(await EvidencePage());
+    expect(screen.getByTestId('spike-discrimination')).toHaveTextContent('0.9226 · 0.6314 (Raw: 0.9221 · 0.6388)');
+    expect(screen.getByText(/ECE 0\.000094/)).toBeInTheDocument();
+    unmount();
+
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+    render(await EvidencePage());
+    expect(screen.queryByTestId('spike-discrimination')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ECE 0\./)).not.toBeInTheDocument();
+  });
+
   it('draws the evidence figures inline from the artifacts, each with an accessible description', async () => {
     const realFs = jest.requireActual('fs/promises');
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {

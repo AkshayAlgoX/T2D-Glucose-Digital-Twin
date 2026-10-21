@@ -170,7 +170,7 @@
           <strong>Target Use Case:</strong> Early Warning & Continuous Glucose Forecasting for Prediabetes and Type 2 Diabetes.<br>
           <strong>Team:</strong> T2D Digital Twin Team (Akshaya R — BGS College of Engineering and Technology; Nikhil VS — East West Institute of Technology)<br>
           <strong>Target Platform:</strong> Web-based Clinical Workstation & Replay Dashboard.<br>
-          <strong>Release Commit:</strong> <code>67431af93f4e32d68c9df8c57e7ad24da9419de8</code>
+          <strong>Release branch:</strong> <code>release/candidate-clean</code>
         </p>
       </div>
       <div class="alert-box">
@@ -523,7 +523,7 @@
               <li>Observable-input contract enforcement.</li>
               <li>PR-TFT + UKF S3 model architecture.</li>
               <li>Chunk-invariant SSE proxy & recovery hook.</li>
-              <li>42 Jest suites (413 tests) & 134 backend tests passed on the published candidate.</li>
+              <li>44 Jest suites (422 tests) and 134 backend tests pass on the release branch.</li>
             </ul>
           </div>
           <div class="card" style="padding: 10px 14px;">
@@ -603,7 +603,7 @@
         <div class="card">
           <h4>Demonstrated & Frozen in this Release</h4>
           <ul>
-            <li><strong>Candidate Release Commit:</strong> <code>67431af93f4e32d68c9df8c57e7ad24da9419de8</code> passed all independent reviews and test suites.</li>
+            <li><strong>Release branch:</strong> <code>release/candidate-clean</code>; 44 Jest suites (422 tests) and 134 backend tests pass on it.</li>
             <li><strong>End-to-End Pipeline:</strong> Live synthetic backend &rarr; Next.js SSE proxy &rarr; browser patient dashboard verified.</li>
             <li><strong>Framing Resilience:</strong> Chunk-invariant earliest-delimiter parser verified across all split boundaries.</li>
             <li><strong>Strict Validation:</strong> Comprehensive fail-closed error handling and contract enforcement.</li>
@@ -615,12 +615,12 @@
             <li><strong>Real Sensor Ingestion:</strong> Hardware connectivity with Dexcom, Abbott FreeStyle Libre, and wearable APIs.</li>
             <li><strong>Prospective Clinical Trials:</strong> Multi-center observational studies evaluating actual glycemic variability and HbA1c impact.</li>
             <li><strong>Causal Counterfactuals:</strong> Clinically validated pharmacodynamic and lifestyle intervention models.</li>
-            <li><strong>Interactive UI Scenarios:</strong> Connecting What-If controls after human efficacy verification.</li>
+            <li><strong>Medication What-Ifs:</strong> Meal and activity What-Ifs ship now as simulated model responses; medication changes stay refused until the twin has validated drug terms.</li>
           </ul>
         </div>
       </div>
       <div class="success-box">
-        <strong>Release Status:</strong> Code is verified on candidate commit <code>67431af9</code>. Full documentation assets, architecture exports, and demo scripts are reconciled.
+        <strong>Release Status:</strong> Code, documents and demo script are reconciled on <code>release/candidate-clean</code>. The demonstration video is pending recording.
       </div>
     </div>
     <div class="footer">
