@@ -1005,3 +1005,32 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 .bm-twin { stroke-width: 2; } .bm-fc { stroke-width: 2.4; } .bm-wedge { fill-opacity: .75; }
 @media (max-width: 640px) { .cohort-page .directory-table tbody tr > th, .cohort-page .directory-table tbody tr > td:nth-child(7) { align-self: center; } .cohort-page .directory-identity { display: flex; align-items: center; gap: 8px; min-height: 40px; } }
 @media (max-width: 720px) { .hybrid-equation .equation-op, .stage .hybrid-equation .equation-op { justify-self: start; align-self: start; } }
+.reliability-figure .fig-axis { font-size: 13px; }
+.ec-narrow .gate3-figure .fig-axis { font-size: 13px; }
+/* ---- round-6 review fixes ---- */
+/* grey series labels: the line stays light, the text meets AA */
+.lbl-base { fill: #5f666e !important; color: #5f666e; }
+.gain-label .lbl-base { fill: #5f666e !important; }
+/* one disclosure marker */
+.reproducibility-details > summary::marker { content: ''; }
+.reproducibility-details > summary > svg, .reproducibility-summary svg.lucide-chevron-down, .reproducibility-summary svg.lucide-chevron-right { display: none; }
+/* risk: the definition sits under the number; the watch note aligns with its title */
+.risk-alert-why { margin-left: 0 !important; }
+.risk-panel .muted-copy { margin: 2px 0 10px; font-size: 13.5px; color: var(--color-ink-2); }
+/* reliability: figure and caption side by side on wide screens */
+@media (min-width: 900px) { .reliability-figure { display: grid; grid-template-columns: 360px minmax(0, 420px); gap: 28px; align-items: center; max-width: none; } }
+/* phone workspace: the chart comes before the equation; a tighter transport row */
+@media (max-width: 720px) {
+  .forecast-canvas { display: flex; flex-direction: column; }
+  .forecast-canvas > .chart-toolbar { order: 1; } .forecast-canvas > .forecast-plot { order: 2; } .forecast-canvas > .above-strip { order: 3; }
+  .forecast-canvas > .chart-legend { order: 4; } .forecast-canvas > .chart-readout { order: 5; } .forecast-canvas > .hybrid-inspector { order: 6; margin-top: 12px; }
+  .forecast-canvas > .isolated-step-note { order: 7; } .forecast-canvas > .input-lanes { order: 8; } .forecast-canvas > p { order: 9; }
+  .twin-workstation .tw-status { gap: 6px 10px; margin-top: 8px; padding-top: 8px; }
+  .twin-workstation .tw-clock { font-size: 12.5px; } .twin-workstation .tw-clock time { font-size: 17px; }
+  .trajectory-panel .forecast-metadata span { white-space: nowrap; }
+  .trajectory-panel .forecast-metadata { font-size: 12.5px; }
+  .trajectory-panel .tw-story { display: none; }
+}
+.reproducibility-details > summary::after { display: none !important; content: none !important; }
+.reproducibility-summary svg.lucide-chevron-down { display: inline-block !important; }
+.reproducibility-details[open] .reproducibility-summary svg.lucide-chevron-down { transform: rotate(180deg); }

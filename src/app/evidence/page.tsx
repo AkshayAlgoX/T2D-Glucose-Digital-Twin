@@ -350,7 +350,7 @@ export default async function EvidencePage() {
               )}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>
-              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA‑256 matches the run manifest'}
+              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results'}
             </span>
           </div>
         </header>
@@ -663,10 +663,10 @@ export default async function EvidencePage() {
                           <td>{row.maePr?.estimate ? row.maePr.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardPr?.estimate ? `${row.mardPr.estimate.toFixed(2)}%` : '—'}</td>
                           <td style={{ fontWeight: 600 }}>
-                            {row.diffPe?.diff ? `${row.diffPe.diff.toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}%)` : '—'}
+                            {row.diffPe?.diff ? `${row.diffPe.diff < 0 ? '−' : '+'}${Math.abs(row.diffPe.diff).toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}% lower)` : '—'}
                           </td>
                           <td style={{ color: 'var(--color-accent-ink)', fontWeight: 600 }}>
-                            {row.diffTw?.diff ? `${row.diffTw.diff.toFixed(2)} (${row.diffTw.relative_reduction_pct.toFixed(1)}%)` : '—'}
+                            {row.diffTw?.diff ? `${row.diffTw.diff < 0 ? '−' : '+'}${Math.abs(row.diffTw.diff).toFixed(2)} (${row.diffTw.relative_reduction_pct.toFixed(1)}% lower)` : '—'}
                           </td>
                         </tr>
                         <tr>
@@ -679,7 +679,7 @@ export default async function EvidencePage() {
                           </td>
                           <td>{row.maeTw?.estimate ? row.maeTw.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardTw?.estimate ? `${row.mardTw.estimate.toFixed(2)}%` : '—'}</td>
-                          <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
+                          <td style={{ color: 'var(--color-ink-3)' }} title="The paired analysis compares the hybrid with each baseline; twin versus persistence was not part of it">—</td>
                           <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
                         </tr>
                         <tr>

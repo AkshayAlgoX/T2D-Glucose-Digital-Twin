@@ -80,6 +80,7 @@ export function RiskPanel({ forecast, unreachable = false }: { forecast: Forecas
             {!!forecast.forecast?.points?.length && <HighGlucoseWindow points={forecast.forecast.points} />}
             <span className="risk-kicker">New-spike onset risk</span>
             <div className="risk-estimate">{prob != null ? formatPct(prob, 1) : '—'}<span>onset probability</span></div>
+            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}.</p>
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
             <div className={'risk-alert ' + tone}>{alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong>{alert?.state === 'watch' ? <span className="risk-alert-why">{prob != null ? `Onset risk ${formatPct(prob, 1)} is above the 35% watch line of the research alert policy (60% is its warning line). Not a clinical alert.` : 'Onset risk is above the 35% watch line.'}</span> : alert?.state === 'warning' ? <span className="risk-alert-why">{prob != null ? `Onset risk ${formatPct(prob, 1)} is above the 60% warning line.` : 'Onset risk is above the 60% warning line.'}</span> : null}</div>
             {(() => {
@@ -90,7 +91,6 @@ export function RiskPanel({ forecast, unreachable = false }: { forecast: Forecas
                 ? <p className="risk-reconcile disagree" data-testid="risk-reconcile"><strong>The two models disagree here.</strong> {range(w.lower).replace(/^from/, 'From').replace(/^at/, 'At')}, the forecast&apos;s lower 10% bound is above 180, so the trajectory model puts at least 90% of its range above 180 at those times. The separate onset classifier gives {formatPct(prob, 1)} for a new spike, which also requires a rise of at least 50 mg/dL within 60 min lasting 15 min. Neither model is validated in people; read both and do not average them.</p>
                 : <p className="risk-reconcile" data-testid="risk-reconcile"><strong>Why both numbers?</strong> The bands above say where glucose is likely to be. This probability answers a narrower question: whether a <em>new</em> spike, a rise of at least 50 mg/dL within 60 min to 180 or more that lasts 15 min, starts in the next 2 h. It is not the chance of being above 180.</p>;
             })()}
-            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}.</p>
             {risk?.spike_in_progress && <p className="risk-in-progress" data-testid="spike-in-progress">The service reports a spike already in progress.</p>}
             <p className="fine-print risk-definition" data-testid="risk-definition">Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min, and stays there 15 min.</p>
             {!!checkpoints.length && <div className="cumulative-summary">
@@ -110,7 +110,7 @@ export function RiskPanel({ forecast, unreachable = false }: { forecast: Forecas
             </div>}
           </>
         )}
-        <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>
+        {forecast && <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>}
         <details className="spike-definition context-details">
           <summary>How to read this probability</summary>
           <p className="fine-print" data-testid="risk-vs-curve">The curve shows the middle outcome at each time. A median above 180 mg/dL means the model puts at least half of its predicted range above 180 at that time. It does not mean a spike is certain: a spike also needs a rise of at least 50 mg/dL within 60 min that lasts 15 min. The probability is a separate estimate, calibrated on the validation data, that a new spike starts within 120 min.</p>

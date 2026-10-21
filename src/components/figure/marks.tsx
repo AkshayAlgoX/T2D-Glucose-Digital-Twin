@@ -149,9 +149,10 @@ export function Glyph({ kind }: { kind: 'obs' | 'median' | 'twin' | 'wedge' | 'b
 }
 
 /** A one-line version of the grammar for a headline: twin error, hybrid error, and the hatched gap between them. */
-export function GainBar({ hybrid, twin, persistence, id, unit = 'mg/dL' }: { hybrid: number; twin: number; persistence?: number | null; id: string; unit?: string }) {
+export function GainBar({ hybrid, twin, persistence, id, unit = 'mg/dL', domainMax }: { hybrid: number; twin: number; persistence?: number | null; id: string; unit?: string; domainMax?: number }) {
   const W = 260, H = 44, l = 4, r = 8;
-  const max = Math.ceil(Math.max(twin, hybrid, persistence ?? 0) / 10) * 10;
+  // A shared domainMax keeps bars in one figure on the same scale.
+  const max = domainMax ?? Math.ceil(Math.max(twin, hybrid, persistence ?? 0) / 10) * 10;
   const x = (v: number) => l + (v / max) * (W - l - r);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="gain-bar" role="img" aria-label={`RMSE ${hybrid.toFixed(2)} ${unit} for the hybrid against ${twin.toFixed(2)} for the physiology twin alone${persistence != null ? ` and ${persistence.toFixed(2)} for persistence` : ''}; the hatched gap is the error the learned adjustment removes.`}>

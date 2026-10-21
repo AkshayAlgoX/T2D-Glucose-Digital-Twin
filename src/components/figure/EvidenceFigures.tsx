@@ -5,6 +5,8 @@ import type { LandingEvidence } from '@/lib/landing';
 
 /** Subgroup errors in the product grammar: one gain bar per subgroup and horizon (hybrid, twin, persistence). */
 export function SubgroupGains({ rows }: { rows: NonNullable<LandingEvidence['subgroups']> }) {
+  // One scale for every bar in the figure, so rows and horizons can be compared.
+  const domainMax = Math.ceil(Math.max(...rows.flatMap(r => [...r.h60, ...r.h120])) / 10) * 10;
   return (
     <figure className="subgroup-gains" aria-label="Error the learned adjustment removes, by subgroup and horizon">
       <table className="subgroup-gain-table">
@@ -12,11 +14,11 @@ export function SubgroupGains({ rows }: { rows: NonNullable<LandingEvidence['sub
         <thead><tr><th scope="col">Subgroup</th><th scope="col">60 min</th><th scope="col">120 min</th></tr></thead>
         <tbody>{rows.map(r => <tr key={r.name} className={r.name === 'Type 2' ? 'is-focus' : undefined}>
           <th scope="row">{r.name}<small>{r.n} patients{r.name === 'Type 2' ? ' · exploratory' : ''}</small></th>
-          <td><GainBar id={`sg-${r.name.replace(/\s/g, '')}-60`} hybrid={r.h60[0]} twin={r.h60[1]} persistence={r.h60[2]} /></td>
-          <td><GainBar id={`sg-${r.name.replace(/\s/g, '')}-120`} hybrid={r.h120[0]} twin={r.h120[1]} persistence={r.h120[2]} /></td>
+          <td><GainBar id={`sg-${r.name.replace(/\s/g, '')}-60`} hybrid={r.h60[0]} twin={r.h60[1]} persistence={r.h60[2]} domainMax={domainMax} /></td>
+          <td><GainBar id={`sg-${r.name.replace(/\s/g, '')}-120`} hybrid={r.h120[0]} twin={r.h120[1]} persistence={r.h120[2]} domainMax={domainMax} /></td>
         </tr>)}</tbody>
       </table>
-      <figcaption className="fig-caption">RMSE in mg/dL. In each bar the hatched gap is the error the learned adjustment removes from the physiology twin; the grey tick is persistence. No interval on subgroup differences; 10–19 patients per group.</figcaption>
+      <figcaption className="fig-caption">RMSE in mg/dL, every bar on the same 0–{domainMax} scale. In each bar the hatched gap is the error the learned adjustment removes from the physiology twin; the grey tick is persistence. No interval on subgroup differences; 10–19 patients per group.</figcaption>
     </figure>
   );
 }
@@ -44,7 +46,7 @@ export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence[
 
 /** Gate 3: can a classifier tell our synthetic traces from a mock-real generator's? AUROC with 90% intervals against the ≤ 0.65 target. */
 export function Gate3Figure({ historical, ci, compact = false }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean }) {
-  const W = compact ? 340 : 520, H = 120, M = { l: compact ? 112 : 150, r: compact ? 12 : 20, t: 18, b: 30 };
+  const W = compact ? 340 : 520, H = 120, M = { l: compact ? 128 : 150, r: compact ? 12 : 20, t: 18, b: 30 };
   const x = d3Scale.scaleLinear().domain([0.5, 1]).range([M.l, W - M.r]);
   const rows: Array<[string, number, [number, number]]> = [['Historical', historical, ci.historical], ['Duration-corrected', ci.corrected, ci.correctedCi]];
   return (

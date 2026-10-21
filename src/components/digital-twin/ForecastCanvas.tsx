@@ -45,6 +45,9 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
     return () => observer.disconnect();
   }, []);
 
+  // Phones show one hour of history by default so the two-hour forecast gets most of the width.
+  const compactWindow = size.width < 520;
+  const shownHours = compactWindow && historyHours === 2 ? 1 : historyHours;
   const anchor = forecast?.as_of ? Date.parse(forecast.as_of) : NaN;
   const hasAnchor = Number.isFinite(anchor);
   const points = (forecast?.forecast?.points ?? []) as QuantilePoint[];
@@ -58,7 +61,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
   const scenario = forecast?.scenarios?.[0]?.points ?? [];
   const mappedScenario = scenario.map(point => ({ ...point, time: anchor + point.offset_min * 60000 }));
   const history = (cache?.cgm ?? []).map(point => ({ ...point, time: Date.parse(point.t) }))
-    .filter(point => Number.isFinite(point.time) && Number.isFinite(point.value) && point.time >= anchor - historyHours * 3600000 && point.time <= anchor);
+    .filter(point => Number.isFinite(point.time) && Number.isFinite(point.value) && point.time >= anchor - shownHours * 3600000 && point.time <= anchor);
   const historySegments = history.reduce<(typeof history)[]>((segments, point, index) => {
     if (index === 0 || point.time - history[index - 1].time > 5 * 60000) segments.push([]);
     segments[segments.length - 1].push(point);
@@ -179,7 +182,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
   const xm = (m: number) => x(anchor + m * 60000);
   const fig: FigPoint[] = joined.map(point => ({ m: point.offset_min, p05: point.p05, p10: point.p10, p25: point.p25, p50: point.p50, p75: point.p75, p90: point.p90, p95: point.p95, twin: point.twin_p50 }));
   const obs = history.map(point => ({ m: (point.time - anchor) / 60000, v: point.value }));
-  const tickStepMin = narrow || historyHours > 2 ? 60 : 30;
+  const tickStepMin = narrow || shownHours > 2 ? 60 : 30;
   const xTicks = Array.from({ length: Math.floor((120 - (start - anchor) / 60000) / tickStepMin) + 1 }, (_, i) => Math.ceil((start - anchor) / 60000 / tickStepMin) * tickStepMin + i * tickStepMin).filter(m => m <= 120);
   const tickLabel = (m: number) => m === 0 ? formatTime(anchor) : `${m > 0 ? '+' : '−'}${Math.abs(m) / 60} h`;
   const markerPoint = points.find(point => point.offset_min === activeOffset) ?? null;
@@ -265,8 +268,8 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
       </div>
 
       <div className="chart-toolbar">
-        <span className="chart-toolbar-title">Glucose, mg/dL · {historyHours} h observed · {forecast?.forecast?.horizon_min ?? 120}-min forecast</span>
-        <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} disabled={!forecast} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div>
+        <span className="chart-toolbar-title">Glucose, mg/dL · {shownHours} h observed · {forecast?.forecast?.horizon_min ?? 120}-min forecast</span>
+        <div className="chart-window" role="group" aria-label="Observed history window">{(compactWindow ? [1, 6] : [2, 6]).map(hours => <button key={hours} aria-pressed={shownHours === hours} disabled={!forecast} onClick={() => { setHistoryHours(hours === 1 ? 2 : hours); setSelection(null); }}>Past {hours}h</button>)}</div>
       </div>
       <div ref={plotRef} className="forecast-plot" onPointerLeave={() => {
         pointerDismissed.current = false;
@@ -316,7 +319,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
                 <MedianLine pts={fig} x={xm} y={y} className="fig-median forecast-median-draw" />
               </g>
               {!!mappedScenario.length && <g className="scenario-layer"><path d={median(mappedScenario) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2} strokeDasharray="2 3" /></g>}
-              <ObservedDots obs={obs} x={xm} y={y} r={historyHours > 2 || narrow ? 1.9 : 2.5} />
+              <ObservedDots obs={obs} x={xm} y={y} r={shownHours > 2 || narrow ? 1.9 : 2.5} />
               {current != null && <circle data-testid="current-observation" cx={x(anchor)} cy={y(current)} r={4.5} className="fig-current" />}
               {selected && <g pointerEvents="none"><line x1={x(selected.time)} x2={x(selected.time)} y1={margin.top} y2={bottom} className="fig-scrub" />{selected.kind === 'observed' && <circle cx={x(selected.time)} cy={y(selected.value)} r={5} className="fig-select-ring" />}</g>}
             </g>
@@ -357,7 +360,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
       </div>
 
       <div className="chart-readout">
-        <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · times in UTC · hover or focus the chart to inspect points</span>
+        <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · times in UTC · point at, tap or focus the chart to inspect points</span>
         <span className="sr-only" aria-live={selection?.source === 'keyboard' ? 'polite' : 'off'} aria-atomic="true">
           {selected && (selected.point
             ? `${formatTime(selectedTimestamp)} UTC · Median ${selected.value} mg/dL · P10–P90 ${quantile(selected.point.p10)}–${quantile(selected.point.p90)} mg/dL · P05–P95 ${quantile(selected.point.p05)}–${quantile(selected.point.p95)} mg/dL · +${selected.point.offset_min} min of ${forecast?.forecast?.horizon_min ?? 'unavailable'} min forecast horizon`
