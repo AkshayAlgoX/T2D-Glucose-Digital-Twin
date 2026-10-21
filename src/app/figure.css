@@ -887,3 +887,7 @@ input, select { border-radius: 2px !important; }
   .twin-workstation .replay-toggle { order: 3; }
 }
 @media (max-width: 720px) { .twin-workstation .tw-header { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  .trajectory-panel .trajectory-header, .trajectory-panel .current-summary, .stage .trajectory-header, .stage .current-summary { padding-left: 0 !important; padding-right: 0 !important; }
+  .hybrid-equation, .stage .hybrid-equation { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; overflow: visible !important; }
+}
