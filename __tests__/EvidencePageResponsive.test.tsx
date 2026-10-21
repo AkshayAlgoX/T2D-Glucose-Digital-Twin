@@ -143,7 +143,7 @@ describe('EvidencePage Responsive & Accessibility Audit', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Evidence & validation');
 
     // Generalization banner region
-    const banner = screen.getByRole('region', { name: 'Generalization Boundary Disclosure' });
+    const banner = screen.getByRole('region', { name: 'Generalization boundary' });
     expect(banner).toBeInTheDocument();
 
     // Table accessibility

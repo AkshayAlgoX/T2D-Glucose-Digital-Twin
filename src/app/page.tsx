@@ -5,6 +5,7 @@ import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 import { DEMO_SUBJECT_ID, readLandingEvidence } from '@/lib/landing';
 import { readHeroForecast } from '@/lib/hero';
 import { HeroForecast } from '@/components/landing/HeroForecast';
+import { ErrorCurve } from '@/components/figure/ErrorCurve';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,7 @@ export default async function Home() {
           <div className="home-copy">
             <p className="fig-section-label">Digital twin · type 2 diabetes · research prototype</p>
             <h1 id="landing-title">A glucose forecast you can take apart.</h1>
+            <p className="home-why">Physiology equations set the shape. A neural network corrects what they miss. The bands show how sure it is.</p>
             <p className="home-dek home-dek-short">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose and shows what each forecast is made of: physiology, a learned correction, and uncertainty.</p>
             <p className="home-dek home-dek-long">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose from their EHR record and wearable streams. It shows how much of each forecast comes from a physiology model fitted to the patient, how much from a learned correction, how uncertain it is, and how a meal or some activity would change it.</p>
             <div className="landing-actions">
@@ -94,13 +96,18 @@ export default async function Home() {
             <h2 id="evidence-heading">Evidence at a glance</h2>
             <p>From the committed evaluation artifact. <Link href="/evidence">Full evidence and limitations</Link></p>
           </div>
-          {evidence ? (
+          {evidence ? (<div className="home-evidence-grid">
+            {evidence.progression && <div className="home-error-figure">
+              <p className="fig-caption"><b>Figure 3.</b> Forecast error at every horizon on the 44-patient synthetic validation split. The hatched wedge is the error the learned adjustment removes from the physiology twin.</p>
+              <div className="ec-wide"><ErrorCurve data={evidence.progression} id="home-ec" /></div>
+              <div className="ec-narrow"><ErrorCurve data={evidence.progression} id="home-ec-n" compact /></div>
+            </div>}
             <dl className="landing-evidence" data-testid="landing-evidence">
               <div><dt>60-min forecast error (RMSE)</dt><dd><span className="num">{evidence.rmse60.hybrid.toFixed(2)}</span> mg/dL<small>vs {evidence.rmse60.twin.toFixed(2)} physiology twin alone · {evidence.rmse60.persistence.toFixed(2)} persistence</small></dd></div>
               <div><dt>Evaluated on</dt><dd><span className="num">{evidence.patients}</span> synthetic patients<small>Development-validation split; also used for calibration</small></dd></div>
               <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}. A classifier can still tell our synthetic data from an independent mock-real generator&apos;s, itself synthetic, so realism is not established.</small></dd></div>
             </dl>
-          ) : (
+          </div>) : (
             <p className="landing-boundary" data-testid="landing-evidence-missing">The evaluation artifact could not be read, so no metrics are shown. See the Evidence page.</p>
           )}
         </section>

@@ -762,3 +762,56 @@ input, select { border-radius: 2px !important; }
 @media (max-width: 720px) { .register-grid { grid-template-columns: minmax(0, 1fr); } .register-card, .register-card + .register-card { padding: 14px 0; border-left: 0; border-top: 1px solid var(--color-line); } .register-card.failed { padding: 14px 12px; } }
 .risk-alert { flex-wrap: wrap; align-items: center; column-gap: 6px; }
 .risk-alert-why { flex-basis: 100%; margin-left: 21px; }
+/* One select component everywhere: flat, ink chevron */
+.filter-controls select, .whatif-form select, .horizon-select, .stage .horizon-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  min-height: 40px; height: auto; line-height: 1.2; padding: 0 32px 0 10px; border: 1px solid var(--color-line-control); border-radius: 2px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23111418' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 11px center / 12px 8px;
+  color: var(--color-ink); font-size: 14px;
+}
+.horizon-select, .stage .horizon-select { min-height: 32px; font-size: 13px; }
+.filter-controls select:hover:not(:disabled), .whatif-form select:hover:not(:disabled) { border-color: var(--color-ink); background-color: #fff; }
+/* ---- round-2 review fixes ---- */
+.home-why { font-family: var(--font-display); font-style: italic; font-size: 19px; line-height: 1.4; color: var(--color-ink); margin: -6px 0 16px; }
+.home-evidence-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 48px; align-items: start; }
+.home-evidence-grid .landing-evidence { grid-template-columns: minmax(0, 1fr) !important; }
+.home-evidence-grid .landing-evidence > div { padding: 12px 0 !important; border-left: 0 !important; }
+.home-evidence-grid .landing-evidence > div + div { border-top: 1px solid var(--color-line); }
+.home-error-figure .fig-caption { margin: 0 0 6px; }
+.error-curve { margin: 0; }
+.error-curve svg { display: block; width: 100%; height: auto; }
+.error-curve-labels text { font: 500 12px var(--font-sans); }
+.error-curve-legend { margin-top: 6px; }
+.ec-narrow { display: none; }
+@media (max-width: 640px) { .ec-wide { display: none; } .ec-narrow { display: block; } }
+@media (max-width: 1000px) { .home-evidence-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
+.hero-disagree, .risk-reconcile.disagree { border-left: 3px solid var(--color-alert-edge); background: var(--color-alert-bg); padding: 6px 10px; color: var(--color-ink); }
+.hero-disagree { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.nowrap { white-space: nowrap; }
+.whatif-key { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; }
+.whatif-key li { display: inline-grid; grid-template-columns: 22px auto; font-size: 14px; }
+.whatif-tech { margin-top: 6px; } .whatif-tech > summary { cursor: pointer; font-size: 13.5px; color: var(--color-accent); }
+.chart-tooltip { width: 210px; }
+.fig-above-row .fig-above-run { fill: var(--color-threshold); fill-opacity: 1 !important; }
+.fig-above-row.p90 .fig-above-run { fill: #b08433; } .fig-above-row.p50 .fig-above-run { fill: #8a5a00; } .fig-above-row.p10 .fig-above-run { fill: #5c3c00; }
+/* focused results stay clear of the sticky masthead and section tabs */
+.whatif-result, .whatif-result-title, [data-testid="scenario-error"] { scroll-margin-top: 128px; }
+@media (max-width: 640px) { .whatif-result, .whatif-result-title, [data-testid="scenario-error"] { scroll-margin-top: 64px; } }
+.tw-details { margin-top: 48px !important; border-top: 2px solid var(--color-rule); padding-top: 12px; }
+.tw-details-heading { font-family: var(--font-display) !important; font-size: 26px !important; font-weight: 600 !important; }
+/* cohort */
+.cohort-heading .status-badge { display: none; }
+.composition-segment[data-group="Healthy"], .composition-legend i[data-group="Healthy"], .group-label[data-group="Healthy"]::before { background: #878e96; }
+.composition-segment[data-group="Prediabetes"], .composition-legend i[data-group="Prediabetes"], .group-label[data-group="Prediabetes"]::before { background: #4b5259; }
+.partition-label { white-space: nowrap; }
+@media (max-width: 720px) {
+  .directory-table tbody tr { position: relative; }
+  .directory-table .subject-open { justify-content: flex-end; width: 100%; min-height: 40px; }
+}
+/* evidence */
+.evidence-page .workspace-heading .status-badge { border: 0 !important; padding: 0 !important; color: var(--color-ink-2) !important; font-weight: 400; }
+.evidence-page .workspace-heading .status-badge svg { display: none; }
+.methodology-appendix > summary { display: block; line-height: 1.3; }
+@media (max-width: 720px) { .methodology-appendix > summary { font-size: 17px; } }
+.twin-workstation .tw-quality { white-space: nowrap; }
+.contributions > summary { display: flex; justify-content: space-between; align-items: baseline; }

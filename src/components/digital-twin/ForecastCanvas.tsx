@@ -326,7 +326,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             {!mapped.length && <text x={(margin.left + right) / 2} y={(margin.top + bottom) / 2} textAnchor="middle" className="chart-axis">Prediction unavailable; observed values only</text>}
           </svg>)}
         {selected && <div id={chartId + '-tooltip'} role="tooltip" className="chart-tooltip"
-          style={x(selected.time) > margin.left + (right - margin.left) * 0.35 ? { left: margin.left + 8 } : { right: 8 }}>
+          style={{ left: x(selected.time) > (margin.left + right) / 2 ? Math.max(margin.left, x(selected.time) - 232) : Math.min(right - 220, x(selected.time) + 14), top: Math.max(margin.top, Math.min(bottom - 150, y(selected.value) - 70)) }}>
           <strong>{selected.kind === 'observed' ? 'Observed CGM' : `Forecast · +${selected.point?.offset_min} min`}</strong>
           <time dateTime={selectedTimestamp} title={selectedTimestamp}>{formatTime(selectedTimestamp)} UTC</time>
           <dl>
@@ -342,8 +342,18 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
       </div>
       {forecast && hasAnchor && mapped.length > 0 && <svg width={size.width} height={40} viewBox={`0 0 ${size.width} 40`} aria-hidden="true" className="above-strip">
         <AboveBars pts={fig.slice(1)} x={xm} x0={x(anchor)} x1={right} top={1} row={12} labels={false} />
-        {(narrow ? ['Upper 10% >180', 'Median >180', 'Lower 10% >180'] : ['Upper 10% above 180', 'Median above 180', 'Lower 10% above 180']).map((l, i) => <text key={l} x={x(anchor) - 8} y={1 + i * 12 + 9.5} textAnchor="end" className="fig-above-label">{l}</text>)}
+        {(narrow ? ['High case >180', 'Median >180', 'Low case >180'] : ['High case (P90) above 180', 'Median above 180', 'Low case (P10) above 180']).map((l, i) => <text key={l} x={x(anchor) - 8} y={1 + i * 12 + 9.5} textAnchor="end" className="fig-above-label">{l}</text>)}
       </svg>}
+      <div className="chart-legend fig-legend" role="group" aria-label="Chart legend">
+        <span><Glyph kind="obs" /><span className="lg-long">Observed CGM, one dot per reading</span><span className="lg-short" aria-hidden="true">Observed</span></span>
+        <span><Glyph kind="median" /><span className="lg-long">Forecast median</span><span className="lg-short" aria-hidden="true">Median</span></span>
+        <span><Glyph kind="bands" /><span className="lg-long">50 · 80 · 90% bands (P25–75 · P10–90 · P05–95)</span><span className="lg-short" aria-hidden="true">50·80·90% bands</span></span>
+        {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
+        {hasPhysics && <span><Glyph kind="wedge" />Learned adjustment</span>}
+        <span><i className="legend-peak fig-glyph" aria-hidden="true" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
+        <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>
+      </div>
+
       <div className="chart-readout">
         <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · times in UTC · hover or focus the chart to inspect points</span>
         <span className="sr-only" aria-live={selection?.source === 'keyboard' ? 'polite' : 'off'} aria-atomic="true">
@@ -358,16 +368,6 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
       </p>}
 
       <InputLanes wearables={cache?.wearables ?? []} x={x} start={start} anchor={anchor} width={size.width} left={margin.left} right={right} />
-
-      <div className="chart-legend fig-legend" role="group" aria-label="Chart legend">
-        <span><Glyph kind="obs" /><span className="lg-long">Observed CGM, one dot per reading</span><span className="lg-short" aria-hidden="true">Observed</span></span>
-        <span><Glyph kind="median" /><span className="lg-long">Forecast median</span><span className="lg-short" aria-hidden="true">Median</span></span>
-        <span><Glyph kind="bands" /><span className="lg-long">50 · 80 · 90% bands (P25–75 · P10–90 · P05–95)</span><span className="lg-short" aria-hidden="true">50·80·90% bands</span></span>
-        {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
-        {hasPhysics && <span><Glyph kind="wedge" />Learned adjustment</span>}
-        <span><i className="legend-peak fig-glyph" aria-hidden="true" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
-        <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>
-      </div>
 
       {!!mappedScenario.length && <p className="fine-print">Existing scenario overlay · projection under model assumptions, not validated human causal effects.</p>}
     </div>

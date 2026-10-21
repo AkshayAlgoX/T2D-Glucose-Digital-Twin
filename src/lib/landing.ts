@@ -8,6 +8,8 @@ export interface LandingEvidence {
   rmse60: { twin: number; persistence: number; hybrid: number };
   patients: number;
   gate3: { auroc: number; threshold: string; status: string };
+  /** RMSE at every forecast step (5–120 min), from horizon_progression; absent if the arrays are malformed. */
+  progression?: { offsets: number[]; hybrid: number[]; twin: number[]; persistence: number[] };
 }
 
 /** Headline numbers, read from the committed evidence artifact at request time; null if it is absent or malformed. */
@@ -20,6 +22,11 @@ export async function readLandingEvidence(file = path.join(process.cwd(), 'docs/
       patients: d.cohort_scope.n_patients,
       gate3: { auroc: d.gate3_realism_status.historical_auroc, threshold: d.gate3_realism_status.acceptance_threshold, status: d.gate3_realism_status.status },
     };
+    const h = d.horizon_progression;
+    const arr = (a: unknown): a is number[] => Array.isArray(a) && a.length === h?.offsets_min?.length && a.every(v => typeof v === 'number' && Number.isFinite(v));
+    if (h && arr(h.offsets_min) && arr(h.pr_tft_rmse) && arr(h.twin_rmse) && arr(h.persistence_rmse) && h.offsets_min.length >= 2) {
+      out.progression = { offsets: h.offsets_min, hybrid: h.pr_tft_rmse, twin: h.twin_rmse, persistence: h.persistence_rmse };
+    }
     const nums = [out.rmse60.hybrid, out.rmse60.twin, out.rmse60.persistence, out.patients, out.gate3.auroc];
     return nums.every(n => typeof n === 'number' && Number.isFinite(n)) && typeof out.gate3.status === 'string' ? out : null;
   } catch {

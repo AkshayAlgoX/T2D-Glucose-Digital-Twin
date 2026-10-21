@@ -123,7 +123,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
       : ehr.med_classes.map(med => medicationClassLabels[med]).join(', '), 'context-medications'],
   ];
   return (
-    <aside className="clinical-panel panel" aria-label="Patient Identity">
+    <section className="clinical-panel panel" aria-label="Patient Identity">
       <div className="identity-section">
         <div className="identity-mark"><UserRound size={21} aria-hidden="true" /><strong>{forecast?.subject?.simulator?.param_set_id ?? 'Subject'}</strong></div>
         <span className="status-badge">{forecast?.subject?.synthetic ? 'Synthetic subject' : 'Metadata pending'}</span>
@@ -144,7 +144,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         )}
       </div>
       <section className="clinical-context" aria-labelledby="clinical-heading">
-        <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical Context</h2>
+        <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical context</h2>
         {!forecast ? (
           <dl className="clinical-fields" aria-label="Loading clinical context" aria-busy="true">
             <div><dt>Age</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
@@ -177,7 +177,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         </dl>
         {twin.unannounced_meal && <details className="context-details"><summary>Model estimate details</summary><p className="fine-print">Unannounced-meal heuristic: {formatPct(twin.unannounced_meal.probability, 0)}. This is a model estimate.</p></details>}
       </section>}
-    </aside>
+    </section>
   );
 }
 
@@ -276,7 +276,7 @@ export function PatientWorkspace({
       <header className="workspace-heading tw-header">
         <div className="tw-identity">
           <div className="eyebrow">{caseLabel(forecast)}</div>
-          <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
+          <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : connectionStatus === 'reconnecting' ? 'Subject stream unreachable' : 'Loading subject…')}</h1>
         </div>
         <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
         <div className="workspace-status tw-status" role="status">
@@ -385,9 +385,9 @@ export function PatientWorkspace({
             </section>
 
             <div className="tw-side">
-              <aside data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
+              <section data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
                 <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
-              </aside>
+              </section>
               <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif')}>
                 <span><strong>Test a change to the plan</strong><small>Add a meal or some activity, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
               </button>

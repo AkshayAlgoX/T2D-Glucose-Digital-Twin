@@ -163,7 +163,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat([...base, ...scen].flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: labelled ? 134 : 12, top: 14, bottom: 24 };
+  const m = { left: 40, right: labelled ? 134 : 12, top: 20, bottom: 24 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
@@ -179,6 +179,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
     <div ref={ref} className="whatif-chart">
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="whatif-chart-title">
         <title id="whatif-chart-title">Baseline forecast compared with the simulated scenario over the next 120 minutes</title>
+        <text x={m.left - 6} y={m.top - 2} textAnchor="end" className="chart-axis">mg/dL</text>
         {yTicks.map(t => <g key={t}>
           <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} className={t === 180 ? 'wf-threshold' : 'fig-grid'} />
           <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className={t === 180 ? 'chart-axis step-label' : 'chart-axis'}>{t}</text>
@@ -207,7 +208,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
             lt && { key: 'twin', y: y(lt.v), text: 'Twin + change', cls: 'lbl-twin' },
             baseTwin.length > 0 && { key: 'twinBase', y: y(baseTwin[baseTwin.length - 1].v), text: 'Twin, unchanged', cls: 'lbl-base' },
           ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
-          return <g aria-hidden="true">{spreadLabels(raw, 17, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
+          return <g aria-hidden="true">{spreadLabels(raw, 18, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
         })()}
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
@@ -222,8 +223,8 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         })()}
       </svg>
       <div className="whatif-legend fig-legend" aria-hidden="true">
-        <span><Glyph kind="ghost" />Forecast, unchanged plan (grey band: its P10–P90)</span>
-        <span><Glyph kind="median" />Forecast with this change (blue band: its P10–P90)</span>
+        <span><Glyph kind="ghost" />Forecast, unchanged plan (grey shading: its P10–P90)</span>
+        <span><Glyph kind="median" />Forecast with this change (blue shading: its P10–P90)</span>
         {baseTwin.length > 0 && <span><Glyph kind="ghost-twin" />Physiology twin, unchanged plan</span>}
         {scenTwin.length > 0 && <span><Glyph kind="twin" />Physiology twin with this change</span>}
         {scenTwin.length > 1 && <span><Glyph kind="wedge" />Learned adjustment with this change</span>}
@@ -387,7 +388,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       <dl className="whatif-metrics">
         <div className="lead">
           <dt>Biggest gap between the two forecast curves</dt>
-          <dd data-testid="scenario-largest-diff"><span className="num t-final">{signed(sum.largestDiff, 1, ' mg/dL')}</span> <small>at +{sum.largestDiffMin} min{gapPoint ? ` · with the change, 80% interval ${gapPoint.p10.toFixed(1)}–${gapPoint.p90.toFixed(1)} mg/dL then` : ''}</small>
+          <dd data-testid="scenario-largest-diff"><span className="num t-final">{signed(sum.largestDiff, 1, ' mg/dL')}</span> <small>at +{sum.largestDiffMin} min{gapPoint ? ` (${formatTime(gapPoint.timestamp)} UTC)` : ''} · the service returns bands for each plan, not for their difference, so this gap has no interval</small>
             {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
         </div>
         {sum.twinLargestDiff != null && <div>
@@ -398,7 +399,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
           <dt>New-spike onset risk, 2 h (calibrated on the validation split)</dt>
           <dd data-testid="scenario-risk">
             {riskAvailable
-              ? <><span className="num">{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)}</span> <strong>({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
+              ? <><span className="num">{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)}</span> <strong className="nowrap">({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
               : <>Unavailable{fallback_used === 'twin_only' ? ' (physics-only fallback; no calibrated risk)' : ''}</>}
           </dd>
         </div>
@@ -438,7 +439,7 @@ function ErrorPanel({ state }: { state: Extract<ScenarioState, { status: 'error'
     <div ref={ref} tabIndex={-1} className={`whatif-error ${error.kind === 'unsupported' ? 'neutral' : ''}`} data-testid="scenario-error" data-kind={error.kind}>
       <strong>{error.title}</strong>
       <p>{body}</p>
-      {error.detail && <p className="fine-print">Service detail ({error.code}): {error.detail}</p>}
+      {error.detail && <details className="whatif-tech"><summary>Technical detail</summary><p className="fine-print">Service detail ({error.code}): {error.detail}</p></details>}
     </div>
   );
 }
@@ -500,6 +501,11 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         <h2 id="simulation-heading"><FlaskConical size={16} aria-hidden="true" /> What-if simulation</h2>
         <span className="status-badge">Live backend model</span>
       </div>
+      <ol className="fig-notes whatif-key" aria-label="What each result shows">
+        <li className="n-twin"><b className="n">1</b><span>the physiology twin&apos;s own response</span></li>
+        <li className="n-adj"><b className="n">2</b><span>the learned adjustment&apos;s share</span></li>
+        <li className="n-final"><b className="n">3</b><span>the final forecast and its risk</span></li>
+      </ol>
       <p className="whatif-intro">Change this patient&apos;s plan and the twin re-forecasts the next 2 hours from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of the current forecast</> : 'the moment of the current forecast'}.</p>
       <p className="whatif-disclaimer" data-testid="scenario-disclaimer"><strong>{SCENARIO_DISCLAIMER}</strong> The size of the change has not been validated against human data.</p>
 

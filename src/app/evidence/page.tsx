@@ -1,3 +1,5 @@
+import { readLandingEvidence } from '@/lib/landing';
+import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -284,6 +286,7 @@ export default async function EvidencePage() {
     }
   }
 
+  const landing = await readLandingEvidence();
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -501,12 +504,24 @@ export default async function EvidencePage() {
           </section>
         )}
 
+        {hasBenchmarks && landing?.progression && (
+          <section className="panel evidence-figure" aria-labelledby="error-curve-heading">
+            <div className="evidence-figure-head">
+              <span className="eyebrow">Figure 1</span>
+              <h2 id="error-curve-heading">What the learned adjustment adds, at every horizon</h2>
+              <p className="fine-print">RMSE in mg/dL at each 5-minute forecast step, 44 synthetic validation patients. Point estimates only; intervals for 30, 60 and 120 min are in Figure 2. Source: <code>docs/evidence/validation_ceiling_results.json</code> → <code>horizon_progression</code>.</p>
+            </div>
+            <div className="ec-wide"><ErrorCurve data={landing.progression} id="ev-ec" /></div>
+            <div className="ec-narrow"><ErrorCurve data={landing.progression} id="ev-ec-n" compact /></div>
+          </section>
+        )}
+
         {/* Always-visible figure: forecast error by horizon, from the same validated report as the tables below. */}
         {hasBenchmarks && models && (
           <section className="panel evidence-figure" aria-labelledby="error-figure-heading" data-testid="error-by-horizon">
             <div className="evidence-figure-head">
-              <span className="eyebrow">Figure 1</span>
-              <h2 id="error-figure-heading">Forecast error by horizon</h2>
+              <span className="eyebrow">Figure 2</span>
+              <h2 id="error-figure-heading">Forecast error by horizon, with intervals</h2>
               <p className="fine-print">RMSE in mg/dL, lower is better · the dot is the estimate, the whisker its patient-clustered 95% CI · the hatched teal segment is the error the learned adjustment removes from the physiology twin · 44 synthetic validation patients</p>
             </div>
             {(['30', '60', '120'] as const).map(h => {
@@ -546,8 +561,8 @@ export default async function EvidencePage() {
         {hasBenchmarks && models && paired && (
           <>
             {/* Generalization Boundary Notice */}
-            <div className="generalization-banner" role="region" aria-label="Generalization Boundary Disclosure">
-              <strong>Generalization Boundary Disclosure</strong>
+            <div className="generalization-banner" role="region" aria-label="Generalization boundary">
+              <strong>Generalization boundary</strong>
               <p>
                 All performance metrics on this page are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They do not show how the model would perform in people or in clinical use. The held-out test split has not been run.
               </p>

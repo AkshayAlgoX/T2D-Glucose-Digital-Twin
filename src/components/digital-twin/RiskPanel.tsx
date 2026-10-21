@@ -80,7 +80,14 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             <div className="risk-estimate">{prob != null ? formatPct(prob, 1) : '—'}<span>onset probability</span></div>
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
             <div className={'risk-alert ' + tone}>{alert?.state === 'watch' || alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong>{alert?.state === 'watch' ? <span className="risk-alert-why">served policy: onset risk at or above the 35% reference</span> : alert?.state === 'warning' ? <span className="risk-alert-why">served policy: onset risk at or above 60%</span> : null}</div>
-            {aboveLevel(forecast.forecast?.points ?? []).median && prob != null && <p className="risk-reconcile" data-testid="risk-reconcile"><strong>Why both numbers?</strong> The bands above say where glucose is likely to be. This probability answers a narrower question: whether a <em>new</em> spike, a rise of at least 50 mg/dL within 60 min to 180 or more that lasts 15 min, starts in the next 2 h. It is not the chance of being above 180.</p>}
+            {(() => {
+              const w = aboveLevel(forecast.forecast?.points ?? []);
+              const range = (r: [number, number]) => (r[0] === r[1] ? `at +${r[0]} min` : `from +${r[0]} to +${r[1]} min`);
+              if (prob == null || !w.median) return null;
+              return w.lower && prob < 0.9
+                ? <p className="risk-reconcile disagree" data-testid="risk-reconcile"><strong>The two models disagree here.</strong> {range(w.lower)} the forecast&apos;s lower 10% bound is above 180, so the trajectory model puts at least 90% of its range above 180 at those times. The separate onset classifier gives {formatPct(prob, 1)} for a new spike, which also requires a rise of at least 50 mg/dL within 60 min lasting 15 min. Neither model is validated in people; read both and do not average them.</p>
+                : <p className="risk-reconcile" data-testid="risk-reconcile"><strong>Why both numbers?</strong> The bands above say where glucose is likely to be. This probability answers a narrower question: whether a <em>new</em> spike, a rise of at least 50 mg/dL within 60 min to 180 or more that lasts 15 min, starts in the next 2 h. It is not the chance of being above 180.</p>;
+            })()}
             <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}. A separate model output from the curve: it can fall while glucose is already high.</p>
             {risk?.spike_in_progress && <p className="risk-in-progress" data-testid="spike-in-progress">The service reports a spike already in progress.</p>}
             <p className="fine-print risk-definition" data-testid="risk-definition">Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min, and stays there 15 min.</p>

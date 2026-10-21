@@ -88,7 +88,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
           </svg>
           <svg width={W} height={40} viewBox={`0 0 ${W} 40`} aria-hidden="true" className="hero-above">
             <AboveBars pts={pts.slice(1)} x={xm} x0={x(0)} x1={W - M.r} top={1} row={12} labels={false} />
-            {(compact ? ['Upper 10% >180', 'Median >180', 'Lower 10% >180'] : ['Upper 10% above 180', 'Median above 180', 'Lower 10% above 180']).map((l, i) => <text key={l} x={x(0) - 8} y={1 + i * 12 + 9.5} textAnchor="end" className="fig-above-label">{l}</text>)}
+            {(compact ? ['High case >180', 'Median >180', 'Low case >180'] : ['High case (P90) above 180', 'Median above 180', 'Low case (P10) above 180']).map((l, i) => <text key={l} x={x(0) - 8} y={1 + i * 12 + 9.5} textAnchor="end" className="fig-above-label">{l}</text>)}
           </svg>
           <div className="fig-legend hero-legend" aria-hidden="true">
         <span><Glyph kind="obs" />Observed CGM, one dot per reading</span>
@@ -121,6 +121,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
             ? `Median above 180 ${high.median[0] === high.median[1] ? `at +${high.median[0]} min` : `from +${high.median[0]} to +${high.median[1]} min`}`
             : high.upper ? 'Median below 180; upper band reaches it' : 'Below 180 across the 80% band'}</p>
           {data.probability != null && <p className="hero-onset" data-testid="hero-onset">New-spike onset risk, next 2 h: <strong className="num">{(data.probability * 100).toFixed(1)}%</strong>{data.calibrated ? <span> · a separate classifier, calibrated on the validation split</span> : null}</p>}
+          {data.probability != null && high.lower && data.probability < 0.9 && <p className="hero-disagree" data-testid="hero-disagree"><strong>The two models disagree.</strong> The forecast&apos;s lower 10% bound is above 180 {high.lower[0] === high.lower[1] ? `at +${high.lower[0]} min` : `from +${high.lower[0]} to +${high.lower[1]} min`}, so the trajectory puts at least 90% of its range above 180 then; the onset classifier is more cautious. Neither is validated in people.</p>}
         </aside>
       </div>
     </figure>
@@ -154,9 +155,9 @@ function HeroLanes({ inputs, x, anchor, W, l, r, compact }: { inputs: HeroInput[
         : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No meal logged in this window</text>],
     ['Steps', last.steps != null ? `${Math.round(last.steps)} per 5 min` : '—', totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(1.5, Math.min(step * 0.7, x(0) - 1 - a))} y={h - bh} height={bh} className="lane-steps" />; })
       : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">0 steps recorded</text>],
-    [compact ? 'HR' : 'Heart rate', last.hr != null ? `${fmt(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
-    ['HRV', last.hrv != null ? `${fmt(last.hrv)} ms` : '—', hrv ? <path d={hrv} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
-    ['Sleep', last.asleep == null ? '—' : last.asleep ? 'asleep' : 'awake', rows.filter(i => i.asleep).map(i => {
+    [compact ? 'HR' : 'Heart rate', last.hr != null ? `${Math.round(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
+    ['HRV', last.hrv != null ? `${Math.round(last.hrv)} ms` : '—', hrv ? <path d={hrv} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
+    ['Sleep', last.asleep == null ? '—' : last.asleep ? 'Asleep' : 'Awake', rows.filter(i => i.asleep).map(i => {
       const a = Math.max(l, x(i.m) - step / 2), b = Math.min(x(0) - 1, x(i.m) + step / 2);
       return <rect key={i.t} x={a} width={Math.max(0, b - a)} y={4} height={h - 8} className="lane-sleep" />;
     })],

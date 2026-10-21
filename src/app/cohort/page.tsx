@@ -114,7 +114,7 @@ export default function CohortPage() {
                 <td className="numeric" data-label="Age">{subject.ehr?.age_years ?? '—'}{subject.ehr?.sex ? ` · ${subject.ehr.sex === 'male' ? 'M' : subject.ehr.sex === 'female' ? 'F' : subject.ehr.sex}` : ''}</td>
                 <td className="numeric" data-label="BMI">{num(subject.ehr?.bmi)}</td>
                 <td className="numeric" data-label="HbA1c">{subject.ehr?.hba1c_pct != null ? `${num(subject.ehr.hba1c_pct)}%` : '—'}</td>
-                <td><span className="partition-label" data-split={subject.split}>{subject.split === 'val' ? 'Validation' : subject.split === 'train' ? 'Training · in-sample' : subject.split ?? 'Unspecified'}</span></td>
+                <td><span className="partition-label" data-split={subject.split}>{subject.split === 'val' ? 'Validation' : subject.split === 'train' ? 'Training · in‑sample' : subject.split ?? 'Unspecified'}</span></td>
                 <td><Link prefetch={false} href={'/patients/' + encodeURIComponent(subject.subject_id)} className="subject-open" aria-label={'Open subject ' + (subject.patient_id ?? subject.subject_id)}>Open<ArrowRight size={14} aria-hidden="true" /></Link></td>
               </tr>)}</tbody>
             </table></div>

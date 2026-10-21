@@ -22,7 +22,7 @@ function workspace(forecast: ForecastResponse | null) {
     cache={{ patientId: source.subject.subject_id, cgm: [], risk: [], alerts: [], dataQuality: [] }}
     isConnected={!!forecast} isStale={false} />;
 }
-function context() { return screen.getByRole('region', { name: 'Clinical Context' }); }
+function context() { return screen.getByRole('region', { name: 'Clinical context' }); }
 function value(label: string) {
   const term = within(context()).getByText(label, { selector: 'dt' });
   expect(term.nextElementSibling?.tagName).toBe('DD');
