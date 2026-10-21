@@ -1070,3 +1070,7 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 }
 .repro-hint { font-size: 13.5px; color: var(--color-ink-2); }
 details[open] > summary .repro-hint { display: none; }
+@media (min-width: 1101px) {
+  .tw-grid { grid-template-areas: "traj side" "whatif side" "details details" !important; grid-template-rows: auto 1fr auto !important; }
+  .tw-whatif .whatif-panel { max-width: none; }
+}
