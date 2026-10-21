@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 /** Figure 2: the pipeline, drawn in the same colours as the figure grammar. A schematic, not data. */
 function PipelineSchematic() {
   const box = (x: number, y: number, w: number, h: number, title: string, lines: string[], tone: 'in' | 'twin' | 'net' | 'out', n?: string) => {
-    const stroke = { in: '#7b838c', twin: '#b9461a', net: '#00897b', out: '#2443c4' }[tone];
+    const stroke = { in: '#7b838c', twin: '#b9461a', net: '#00766a', out: '#2443c4' }[tone];
     return (
       <g>
         <rect x={x} y={y} width={w} height={h} rx={2} fill="#ffffff" stroke={stroke} strokeWidth={tone === 'in' ? 1 : 1.5} />

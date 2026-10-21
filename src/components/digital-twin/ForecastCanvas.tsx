@@ -307,8 +307,8 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
               <line x1={margin.left} x2={right} y1={y(tick)} y2={y(tick)} className="fig-grid" />
               <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
             </g>)}
-            {/* The spike level is a reference line, labelled on the line itself rather than as an axis tick. */}
-            <Threshold x0={margin.left} x1={right} y={y} label={narrow ? '180 mg/dL' : '180 mg/dL spike level'} />
+            {/* The 180 mg/dL level is a reference line, labelled on the line itself rather than as an axis tick. */}
+            <Threshold x0={margin.left} x1={right} y={y} label={narrow ? '180 mg/dL' : '180 mg/dL level'} />
             {xTicks.map(m => <text key={m} x={xm(m)} y={bottom + 22} textAnchor={xm(m) < margin.left + 20 ? 'start' : xm(m) > right - 20 ? 'end' : 'middle'} className={m === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{tickLabel(m)}</text>)}
             <text x={margin.left - 9} y={margin.top - 12} textAnchor="end" className="chart-axis">mg/dL</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
@@ -356,7 +356,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
         {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
         {hasPhysics && <span><Glyph kind="wedge" />Learned adjustment</span>}
         <span><i className="legend-peak fig-glyph" aria-hidden="true" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
-        <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">Spike level 180 mg/dL</span></span>
+        <span><Glyph kind="threshold" /><span className="lg-long">180 mg/dL level</span><span className="lg-short" aria-hidden="true">180 mg/dL level</span></span>
       </div>
 
       <div className="chart-readout">

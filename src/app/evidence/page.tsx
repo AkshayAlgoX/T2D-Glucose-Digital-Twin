@@ -843,7 +843,7 @@ export default async function EvidencePage() {
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Per-patient RMSE quantiles across the 44 simulated validation subjects, summarizing patient-to-patient error dispersion (median 18.86 mg/dL, IQR 3.42 mg/dL at 60m). <em>Clinical disclosure:</em> These cohort-level summary distributions describe median performance and spread, but do not rule out individual acute forecast errors or outlier trajectory deviations in specific subjects.
                 </p>
-                {dist && <DispersionBoxes dist={dist} />}
+                {dist && <><div className="ec-wide"><DispersionBoxes dist={dist} /></div><div className="ec-narrow"><DispersionBoxes dist={dist} compact /></div></>}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                   {dist['rmse_60'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>

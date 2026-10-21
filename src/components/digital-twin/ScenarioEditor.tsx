@@ -236,7 +236,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         {baseTwin.length > 0 && <span><Glyph kind="ghost-twin" />Physiology twin, unchanged plan</span>}
         {scenTwin.length > 0 && <span><Glyph kind="twin" />Physiology twin with this change</span>}
         {scenTwin.length > 1 && <span><Glyph kind="wedge" />Learned adjustment with this change</span>}
-        <span><Glyph kind="threshold" />Spike level 180 mg/dL</span>
+        <span><Glyph kind="threshold" />180 mg/dL level</span>
       </div>
     </div>
   );
@@ -264,7 +264,7 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
   const rows = changeSeries(result);
   const labelled = width >= 520;
   const height = width < 420 ? 170 : 190;
-  const m = { left: 40, right: labelled ? 100 : 12, top: 12, bottom: 24 };
+  const m = { left: 40, right: labelled ? 134 : 12, top: 12, bottom: 24 };
   // Both plans start from the same reading, so the change is zero at the anchor.
   const series = [{ min: 0, final: 0, twin: rows.some(r => r.twin != null) ? 0 : null }, ...rows];
   const vals = series.flatMap(r => [r.final, r.twin ?? 0]);
@@ -482,7 +482,7 @@ export function announce(state: ScenarioState): string {
   const risk = m.baseline_probability != null && m.new_probability != null ? ` Spike onset risk ${pct(m.baseline_probability)} to ${pct(m.new_probability)}.` : '';
   const warn = state.result.warnings.some(w => w.code === 'SCENARIO_OUT_OF_RANGE') ? ' Inputs are outside the training range.' : '';
   if (sum.noChange) return `Result ready: ${describeInput(state.input)}. Nothing changes in the next 2 hours.`;
-  return `Result ready: ${describeInput(state.input)}. Largest change at the same time ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
+  return `Result ready: ${describeInput(state.input)}. Biggest gap between the two forecast curves ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
 }
 
 export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast?: ForecastResponse | null }) {

@@ -73,16 +73,16 @@ export function Gate3Figure({ historical, ci, compact = false }: { historical: n
 type Quantiles = { min: number; p25: number; median: number; p75: number; max: number };
 
 /** Per-patient RMSE spread for the hybrid, as box plots on one scale, from the report's own quantiles. */
-export function DispersionBoxes({ dist }: { dist: { rmse_60?: Quantiles; rmse_120?: Quantiles } }) {
+export function DispersionBoxes({ dist, compact = false }: { dist: { rmse_60?: Quantiles; rmse_120?: Quantiles }; compact?: boolean }) {
   const rows: Array<[string, Quantiles]> = [];
   if (dist.rmse_60) rows.push(['60 min', dist.rmse_60]);
   if (dist.rmse_120) rows.push(['120 min', dist.rmse_120]);
   if (!rows.length) return null;
-  const W = 560, rowH = 34, M = { l: 70, r: 16, t: 8, b: 26 };
+  const W = compact ? 340 : 560, rowH = 34, M = { l: compact ? 60 : 70, r: 12, t: 8, b: 26 };
   const H = M.t + rows.length * rowH + M.b;
   const max = Math.ceil(Math.max(...rows.map(([, q]) => q.max)) / 5) * 5;
   const x = d3Scale.scaleLinear().domain([0, max]).range([M.l, W - M.r]);
-  const ticks = x.ticks(6);
+  const ticks = x.ticks(compact ? 4 : 6);
   return (
     <figure className="dispersion-boxes">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Per-patient RMSE of the hybrid forecast across the 44 validation patients: ${rows.map(([h, q]) => `${h} median ${q.median.toFixed(1)} mg/dL, interquartile range ${q.p25.toFixed(1)}–${q.p75.toFixed(1)}, range ${q.min.toFixed(1)}–${q.max.toFixed(1)}`).join('; ')}.`}>

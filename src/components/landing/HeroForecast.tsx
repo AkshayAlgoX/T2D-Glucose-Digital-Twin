@@ -72,7 +72,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
             <rect x={x(0)} y={M.t} width={x(120) - x(0)} height={H - M.b - M.t} className="fig-future" />
             {ticks.map(t => <g key={t}><line x1={M.l} x2={W - M.r} y1={y(t)} y2={y(t)} className="fig-grid" /><text x={M.l - 8} y={y(t) + 4} textAnchor="end" className="fig-axis">{t}</text></g>)}
             <text x={M.l - 8} y={M.t - 10} textAnchor="end" className="fig-axis">mg/dL</text>
-            <Threshold x0={M.l} x1={W - M.r} y={y} label={compact ? '180 spike level' : '180 mg/dL spike level'} />
+            <Threshold x0={M.l} x1={W - M.r} y={y} label={compact ? '180 mg/dL' : '180 mg/dL level'} />
             <Bands pts={pts} x={xm} y={y} testIds={false} />
             <Wedge pts={pts} x={xm} y={y} hatch={hatch} />
             <TwinLine pts={pts} x={xm} y={y} />

@@ -78,7 +78,7 @@ export function ObservedDots({ obs, x, y, r = 2.4, step = 5 }: { obs: Array<{ m:
   );
 }
 
-export function Threshold({ x0, x1, y, level = 180, label = '180 mg/dL spike level', labelX }: { x0: number; x1: number; y: Y; level?: number; label?: string | null; labelX?: number }) {
+export function Threshold({ x0, x1, y, level = 180, label = '180 mg/dL level', labelX }: { x0: number; x1: number; y: Y; level?: number; label?: string | null; labelX?: number }) {
   return (
     <g className="fig-threshold">
       <line x1={x0} x2={x1} y1={y(level)} y2={y(level)} />

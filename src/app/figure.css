@@ -1074,3 +1074,7 @@ details[open] > summary .repro-hint { display: none; }
   .tw-grid { grid-template-areas: "traj side" "whatif side" "details details" !important; grid-template-rows: auto 1fr auto !important; }
   .tw-whatif .whatif-panel { max-width: none; }
 }
+/* ---- round-8 review fixes ---- */
+/* white numerals on teal need the darker step (5.5:1); the wedge hatch keeps the brighter teal */
+.fig-notes .n-adj b.n, .home-steps .n-adj b.n, .whatif-key .n-adj b.n, .fig-marker.m-adj circle { fill: var(--color-learned-text); background: var(--color-learned-text); }
+.fig-marker.m-adj circle.fig-marker-dot { fill: var(--color-learned-text); }
