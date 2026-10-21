@@ -90,16 +90,24 @@ export function HeroForecast({ data }: { data: HeroData }) {
             <AboveBars pts={pts.slice(1)} x={xm} x0={x(0)} x1={W - M.r} top={1} row={12} labels={false} />
             {(compact ? ['Upper 10% >180', 'Median >180', 'Lower 10% >180'] : ['Upper 10% above 180', 'Median above 180', 'Lower 10% above 180']).map((l, i) => <text key={l} x={x(0) - 8} y={1 + i * 12 + 9.5} textAnchor="end" className="fig-above-label">{l}</text>)}
           </svg>
+          <div className="fig-legend hero-legend" aria-hidden="true">
+        <span><Glyph kind="obs" />Observed CGM, one dot per reading</span>
+        <span><Glyph kind="median" />Forecast median</span>
+        <span><Glyph kind="bands" />50 · 80 · 90% bands</span>
+        <span><Glyph kind="twin" />Physiology twin</span>
+        <span><Glyph kind="wedge" />Learned adjustment</span>
+        <span><Glyph kind="threshold" />180 mg/dL</span>
+          </div>
           {data.inputs && data.inputs.length > 1 && <HeroLanes inputs={data.inputs} x={xm} anchor={anchor} W={W} l={M.l} r={M.r} compact={compact} />}
         </div>
         <aside className="hero-margin">
           <p className="hero-now"><span>Now · {time} UTC</span><strong className="num">{fmt(c)}</strong> <small>mg/dL</small></p>
-          <div className="hero-equation">
+          <dl className="hero-equation"><div>
             <dt>At +{h} min: physiology twin + learned adjustment = forecast</dt>
             <dd>{sel.twin_p50 != null
               ? <><span className="t-twin">{fmt(sel.twin_p50)}</span> <span className="op">+</span> <span className="t-learn">{sel.p50 - sel.twin_p50 < 0 ? `(${signed(sel.p50 - sel.twin_p50)})` : signed(sel.p50 - sel.twin_p50)}</span> <span className="op">=</span> <span className="t-final">{fmt(sel.p50)}</span><small> mg/dL</small></>
               : <><span className="t-final">{fmt(sel.p50)}</span><small> mg/dL · twin value not returned</small></>}</dd>
-          </div>
+          </div></dl>
           <ol className="fig-notes hero-notes">
             <li className="n-twin"><b className="n">1</b><span><strong>Physiology twin.</strong> Glucose–insulin equations fitted to this patient.</span></li>
             <li className="n-adj"><b className="n">2</b><span><strong>Learned adjustment.</strong> A network trained on what the equations miss.</span></li>
@@ -114,14 +122,6 @@ export function HeroForecast({ data }: { data: HeroData }) {
             : high.upper ? 'Median below 180; upper band reaches it' : 'Below 180 across the 80% band'}</p>
           {data.probability != null && <p className="hero-onset" data-testid="hero-onset">New-spike onset risk, next 2 h: <strong className="num">{(data.probability * 100).toFixed(1)}%</strong>{data.calibrated ? <span> · a separate classifier, calibrated on the validation split</span> : null}</p>}
         </aside>
-      </div>
-      <div className="fig-legend hero-legend" aria-hidden="true">
-        <span><Glyph kind="obs" />Observed CGM, one dot per reading</span>
-        <span><Glyph kind="median" />Forecast median</span>
-        <span><Glyph kind="bands" />50 · 80 · 90% bands</span>
-        <span><Glyph kind="twin" />Physiology twin</span>
-        <span><Glyph kind="wedge" />Learned adjustment</span>
-        <span><Glyph kind="threshold" />180 mg/dL</span>
       </div>
     </figure>
   );
@@ -152,7 +152,7 @@ function HeroLanes({ inputs, x, anchor, W, l, r, compact }: { inputs: HeroInput[
     [compact ? 'Meal' : 'Meal log', meals.length ? `${Math.round(meals[meals.length - 1].carbs!)} g` : 'none',
       meals.length ? meals.map(i => <g key={i.t}><rect x={x(i.m) - 2} y={2} width={4} height={h - 4} className="lane-meal" />{!compact && <text x={x(i.m) - 6} y={h - 6} textAnchor="end" className="lane-note">{Math.round(i.carbs!)} g carbohydrate, {new Date(Date.parse(i.t)).toISOString().slice(11, 16)}</text>}</g>)
         : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No meal logged in this window</text>],
-    ['Steps', `${totalSteps} in 2 h`, totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(1.5, Math.min(step * 0.7, x(0) - 1 - a))} y={h - bh} height={bh} className="lane-steps" />; })
+    ['Steps', last.steps != null ? `${Math.round(last.steps)} per 5 min` : '—', totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(1.5, Math.min(step * 0.7, x(0) - 1 - a))} y={h - bh} height={bh} className="lane-steps" />; })
       : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">0 steps recorded</text>],
     [compact ? 'HR' : 'Heart rate', last.hr != null ? `${fmt(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
     ['HRV', last.hrv != null ? `${fmt(last.hrv)} ms` : '—', hrv ? <path d={hrv} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],

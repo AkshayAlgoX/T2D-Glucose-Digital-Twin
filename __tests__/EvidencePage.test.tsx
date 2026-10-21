@@ -419,7 +419,7 @@ describe('EvidencePage', () => {
     // Pillar 4: Realism & Limitations
     expect(screen.getByText('4. Governance and realism')).toBeInTheDocument();
     expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
-    expect(screen.getByText('AUROC 0.9320 (Target ≤ 0.65)')).toBeInTheDocument();
+    expect(screen.getByText('AUROC 0.932 (Target ≤ 0.65)')).toBeInTheDocument();
     expect(screen.getByText('No clinical generalization')).toBeInTheDocument();
   });
 

@@ -153,7 +153,7 @@ function spreadLabels<T extends { y: number }>(labels: T[], gap: number, top: nu
 
 export function ScenarioComparisonChart({ result, step = null, change = null, twinFirst = false }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null; twinFirst?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
-  const height = width < 420 ? 200 : 250;
+  const height = width < 420 ? 240 : 270;
   const labelled = width >= 520;
   const anchor = Date.parse(result.pinned_as_of);
   const toPoint = (p: ScenarioCurvePoint) => ({ ...p, min: (Date.parse(p.timestamp) - anchor) / 60000 });
@@ -183,7 +183,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
           <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} className={t === 180 ? 'wf-threshold' : 'fig-grid'} />
           <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className={t === 180 ? 'chart-axis step-label' : 'chart-axis'}>{t}</text>
         </g>)}
-        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className={t === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{t === 0 ? formatTime(result.pinned_as_of) : `+${t / 60} h`}</text>)}
         <HatchDefs id="whatif-hatch" />
         <path d={band(base) ?? ''} className="wf-band-base" />
         <path d={band(scen) ?? ''} className="wf-band-scen" />
@@ -207,7 +207,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
             lt && { key: 'twin', y: y(lt.v), text: 'Twin + change', cls: 'lbl-twin' },
             baseTwin.length > 0 && { key: 'twinBase', y: y(baseTwin[baseTwin.length - 1].v), text: 'Twin, unchanged', cls: 'lbl-base' },
           ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
-          return <g aria-hidden="true">{spreadLabels(raw, 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
+          return <g aria-hidden="true">{spreadLabels(raw, 17, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
         })()}
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
@@ -254,7 +254,7 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const rows = changeSeries(result);
   const labelled = width >= 520;
-  const height = width < 420 ? 150 : 170;
+  const height = width < 420 ? 170 : 190;
   const m = { left: 40, right: labelled ? 100 : 12, top: 12, bottom: 24 };
   // Both plans start from the same reading, so the change is zero at the anchor.
   const series = [{ min: 0, final: 0, twin: rows.some(r => r.twin != null) ? 0 : null }, ...rows];
@@ -295,13 +295,14 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
         })()}
         {blip && <g data-testid="change-blip" aria-hidden="true">
           <circle cx={x(blip.min)} cy={y(blip.final)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
-          <text x={x(blip.min) + (blip.min > 60 ? -10 : 10)} y={y(blip.final) + (y(blip.final) < height - m.bottom - 24 ? 20 : -10)} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
+          <line x1={x(blip.min)} x2={x(blip.min)} y1={y(blip.final) - 7} y2={m.top + 14} stroke="var(--color-amber)" strokeWidth={1} />
+          <text x={x(blip.min) + (blip.min > 60 ? -6 : 6)} y={m.top + 10} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
         </g>}
         {labelled && <g aria-hidden="true">{spreadLabels([
           { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
           ...(lastTwin ? [{ key: 't', y: y(lastTwin.twin), text: 'Twin alone', cls: 'lbl-twin' }] : []),
-        ], 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>}
-        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+        ], 17, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className={t === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{t === 0 ? formatTime(result.pinned_as_of) : `+${t / 60} h`}</text>)}
       </svg>
       <div className="whatif-legend fig-legend" aria-hidden="true">
         <span><Glyph kind="median" />Final forecast: with change minus unchanged</span>
@@ -363,6 +364,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   const change = changeWindow(state.input);
+  const gapPoint = state.result.scenario_forecast.find(p => Math.round((Date.parse(p.timestamp) - Date.parse(state.asOf)) / 60000) === sum.largestDiffMin) ?? null;
   return (
     <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
       <h3 ref={titleRef} tabIndex={-1} className="whatif-result-title">Result: {describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></h3>
@@ -384,12 +386,12 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
       </figure>
       <dl className="whatif-metrics">
         <div className="lead">
-          <dt>Largest change in the forecast, at the same time</dt>
-          <dd data-testid="scenario-largest-diff"><span className="num t-final">{signed(sum.largestDiff, 1, ' mg/dL')}</span> <small>at +{sum.largestDiffMin} min</small>
+          <dt>Biggest gap between the two forecast curves</dt>
+          <dd data-testid="scenario-largest-diff"><span className="num t-final">{signed(sum.largestDiff, 1, ' mg/dL')}</span> <small>at +{sum.largestDiffMin} min{gapPoint ? ` · with the change, 80% interval ${gapPoint.p10.toFixed(1)}–${gapPoint.p90.toFixed(1)} mg/dL then` : ''}</small>
             {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
         </div>
         {sum.twinLargestDiff != null && <div>
-          <dt>Physiology twin alone, same comparison</dt>
+          <dt>Same gap, physiology twin alone</dt>
           <dd data-testid="scenario-twin-diff"><span className="num t-twin">{signed(sum.twinLargestDiff, 1, ' mg/dL')}</span> <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
         </div>}
         <div>
@@ -480,6 +482,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
   const asOf = settling ? null : liveAsOf;
   const { state, run, clear } = useScenario(patientId, asOf);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
   const medClass: MedClass = currentForecast?.ehr_context?.med_classes?.[0] ?? 'metformin';
   const built = buildScenarioInput(form, medClass);
   const loading = state.status === 'loading';
@@ -514,8 +517,9 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           return (
             <button key={p.id} type="button" className={refused ? 'secondary-button preset preset-refused' : 'secondary-button preset'} disabled={!asOf || loading}
               aria-label={refused ? p.label : undefined}
+              aria-pressed={activePreset === p.id}
               title={refused ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
-              onClick={() => { const next = { ...form, ...p.form }; setForm(next); submit(next); }}>
+              onClick={() => { const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); }}>
               {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>{refused && <small aria-hidden="true">not modelled</small>}
             </button>
           );
@@ -524,7 +528,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
       <p className="whatif-preset-note" data-testid="whatif-preset-note">Any added meal is outside the network&apos;s training range, so meal results come with a warning: read them against the physiology twin&apos;s response.</p>
       <p className="whatif-step-label">Or set your own</p>
 
-      <form className="whatif-form" onSubmit={e => { e.preventDefault(); submit(form); }}>
+      <form className="whatif-form" onSubmit={e => { e.preventDefault(); setActivePreset(null); submit(form); }}>
         <label>Change
           <select value={form.kind} disabled={loading} onChange={e => set({ kind: e.target.value as Kind })}>
             <option value="meal">Add a meal</option>
@@ -561,7 +565,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         </label>}
         <div className="whatif-actions">
           <button type="submit" className="primary-button" disabled={!canRun}>{loading ? 'Simulating…' : 'Run simulation'}</button>
-          {state.status !== 'idle' && <button type="button" className="secondary-button" onClick={clear}>{loading ? 'Cancel' : 'Clear'}</button>}
+          {state.status !== 'idle' && <button type="button" className="secondary-button" onClick={() => { setActivePreset(null); clear(); }}>{loading ? 'Cancel' : 'Clear'}</button>}
         </div>
         {'error' in built && <p role="alert" className="whatif-invalid">{built.error}</p>}
       </form>

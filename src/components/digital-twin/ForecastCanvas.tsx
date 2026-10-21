@@ -75,7 +75,8 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
   const peakPoint = points.length ? points.reduce((best, p) => (p.p50 > best.p50 ? p : best), points[0]) : null;
   const peak = peakPoint?.p50;
   const peakOffset = peakPoint?.offset_min;
-  const start = Math.min(anchor - 30 * 60000, ...history.map(point => point.time));
+  // A few minutes of padding so the earliest reading's dot is not clipped at the plot edge.
+  const start = Math.min(anchor - 30 * 60000, ...history.map(point => point.time)) - 4 * 60000;
   const end = anchor + 120 * 60000;
   const narrow = size.width < 520;
   const margin = { left: narrow ? 66 : 92, right: narrow ? 10 : 20, top: 30, bottom: 32 };
@@ -141,7 +142,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
       diffDisplay = `+${diff.toFixed(1)} mg/dL`;
       diffClass = 'adjustment-positive';
     } else if (diff < 0) {
-      diffDisplay = `${diff.toFixed(1)} mg/dL`;
+      diffDisplay = `−${Math.abs(diff).toFixed(1)} mg/dL`;
       // Same colour as a positive adjustment: green is reserved for the physiology twin; the sign carries direction.
       diffClass = 'adjustment-negative';
     } else {
@@ -230,11 +231,11 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
 
         <div className="inspector-metrics hybrid-equation">
           <div className="inspector-metric-card twin" data-testid="physics-prior-card">
-            <span className="metric-label">① Physiology-based estimate</span>
+            <span className="metric-label">① Physiology twin</span>
             <span className="metric-value" data-testid="physics-prior-value">
               {!forecast ? '—' : physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
-            <span className="metric-source">Mechanistic twin median · returned by the service</span>
+            <span className="metric-source">Twin median, returned by the service</span>
           </div>
           <span className="equation-op" aria-hidden="true">+</span>
           <div className="inspector-metric-card learned" data-testid="forecast-adjustment-card">
@@ -265,7 +266,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
 
       <div className="chart-toolbar">
         <span className="chart-toolbar-title">Glucose, mg/dL · {historyHours} h observed · {forecast?.forecast?.horizon_min ?? 120}-min forecast</span>
-        <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div>
+        <div className="chart-window" role="group" aria-label="Observed history window">{[2, 6].map(hours => <button key={hours} aria-pressed={historyHours === hours} disabled={!forecast} onClick={() => { setHistoryHours(hours); setSelection(null); }}>Past {hours}h</button>)}</div>
       </div>
       <div ref={plotRef} className="forecast-plot" onPointerLeave={() => {
         pointerDismissed.current = false;
@@ -362,7 +363,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         <span><Glyph kind="obs" /><span className="lg-long">Observed CGM, one dot per reading</span><span className="lg-short" aria-hidden="true">Observed</span></span>
         <span><Glyph kind="median" /><span className="lg-long">Forecast median</span><span className="lg-short" aria-hidden="true">Median</span></span>
         <span><Glyph kind="bands" /><span className="lg-long">50 · 80 · 90% bands (P25–75 · P10–90 · P05–95)</span><span className="lg-short" aria-hidden="true">50·80·90% bands</span></span>
-        {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin (prior)</span><span className="lg-short" aria-hidden="true">Twin model</span></span>}
+        {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
         {hasPhysics && <span><Glyph kind="wedge" />Learned adjustment</span>}
         <span><i className="legend-peak fig-glyph" aria-hidden="true" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
         <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>

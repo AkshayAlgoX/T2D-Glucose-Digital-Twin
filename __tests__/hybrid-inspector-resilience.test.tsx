@@ -159,7 +159,7 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
       fireEvent.click(screen.getByTestId('horizon-pill-30'));
       expect(screen.getByTestId('physics-prior-value').textContent).toBe('140 mg/dL');
       expect(screen.getByTestId('hybrid-forecast-value').textContent).toBe('136.2 mg/dL');
-      expect(screen.getByTestId('forecast-adjustment-value').textContent).toBe('-3.8 mg/dL');
+      expect(screen.getByTestId('forecast-adjustment-value').textContent).toBe('−3.8 mg/dL');
     });
 
     it('allows selection of all horizons via the horizon dropdown', () => {
@@ -198,7 +198,7 @@ describe('TOP-1 P1: Visible Hybrid Value + End-to-End Resilience', () => {
           ? '0.0 mg/dL'
           : expectedDiff > 0
             ? `+${expectedDiff.toFixed(1)} mg/dL`
-            : `${expectedDiff.toFixed(1)} mg/dL`;
+            : `−${Math.abs(expectedDiff).toFixed(1)} mg/dL`; // typographic minus (U+2212)
 
         expect(physicsText).toBe(`${Number(point.twin_p50!.toFixed(1))} mg/dL`);
         expect(hybridText).toBe(`${Number(point.p50.toFixed(1))} mg/dL`);
