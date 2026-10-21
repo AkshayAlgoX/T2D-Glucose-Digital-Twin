@@ -1004,3 +1004,4 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 .brand-mark svg { width: 32px; height: 32px; }
 .bm-twin { stroke-width: 2; } .bm-fc { stroke-width: 2.4; } .bm-wedge { fill-opacity: .75; }
 @media (max-width: 640px) { .cohort-page .directory-table tbody tr > th, .cohort-page .directory-table tbody tr > td:nth-child(7) { align-self: center; } .cohort-page .directory-identity { display: flex; align-items: center; gap: 8px; min-height: 40px; } }
+@media (max-width: 720px) { .hybrid-equation .equation-op, .stage .hybrid-equation .equation-op { justify-self: start; align-self: start; } }
