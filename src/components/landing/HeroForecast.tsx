@@ -100,7 +100,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
           </div>
           {data.inputs && data.inputs.length > 1 && <HeroLanes inputs={data.inputs} x={xm} anchor={anchor} W={W} l={M.l} r={M.r} compact={compact} />}
         </div>
-        <aside className="hero-margin">
+        <div className="hero-margin">
           <p className="hero-now"><span>Now · {time} UTC</span><strong className="num">{fmt(c)}</strong> <small>mg/dL</small></p>
           <dl className="hero-equation"><div>
             <dt>At +{h} min: physiology twin + learned adjustment = forecast</dt>
@@ -122,7 +122,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
             : high.upper ? 'Median below 180; upper band reaches it' : 'Below 180 across the 80% band'}</p>
           {data.probability != null && <p className="hero-onset" data-testid="hero-onset">New-spike onset risk, next 2 h: <strong className="num">{(data.probability * 100).toFixed(1)}%</strong>{data.calibrated ? <span> · a separate classifier, calibrated on the validation split</span> : null}</p>}
           {data.probability != null && high.lower && data.probability < 0.9 && <p className="hero-disagree" data-testid="hero-disagree"><strong>The two models disagree.</strong> The forecast&apos;s lower 10% bound is above 180 {high.lower[0] === high.lower[1] ? `at +${high.lower[0]} min` : `from +${high.lower[0]} to +${high.lower[1]} min`}, so the trajectory puts at least 90% of its range above 180 then; the onset classifier is more cautious. Neither is validated in people.</p>}
-        </aside>
+        </div>
       </div>
     </figure>
   );
@@ -153,14 +153,14 @@ function HeroLanes({ inputs, x, anchor, W, l, r, compact }: { inputs: HeroInput[
     [compact ? 'Meal' : 'Meal log', meals.length ? `${Math.round(meals[meals.length - 1].carbs!)} g` : 'none',
       meals.length ? meals.map(i => <g key={i.t}><rect x={x(i.m) - 2} y={2} width={4} height={h - 4} className="lane-meal" />{!compact && <text x={x(i.m) - 6} y={h - 6} textAnchor="end" className="lane-note">{Math.round(i.carbs!)} g carbohydrate, {new Date(Date.parse(i.t)).toISOString().slice(11, 16)}</text>}</g>)
         : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No meal logged in this window</text>],
-    ['Steps', last.steps != null ? `${Math.round(last.steps)} per 5 min` : '—', totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(1.5, Math.min(step * 0.7, x(0) - 1 - a))} y={h - bh} height={bh} className="lane-steps" />; })
+    ['Steps', last.steps != null ? `${Math.round(last.steps)} per 5 min` : '—', totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(2, Math.min(step * 0.7, x(0) - 1 - a))} y={h - Math.max(6, bh)} height={Math.max(6, bh)} className="lane-steps" />; }).concat(totalSteps > 0 && totalSteps < 50 ? [<text key="few" x={mid} y={h - 6} textAnchor="middle" className="lane-empty">only {totalSteps} steps in these 2 h</text>] : [])
       : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">0 steps recorded</text>],
     [compact ? 'HR' : 'Heart rate', last.hr != null ? `${Math.round(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
     ['HRV', last.hrv != null ? `${Math.round(last.hrv)} ms` : '—', hrv ? <path d={hrv} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
     ['Sleep', last.asleep == null ? '—' : last.asleep ? 'Asleep' : 'Awake', rows.filter(i => i.asleep).map(i => {
       const a = Math.max(l, x(i.m) - step / 2), b = Math.min(x(0) - 1, x(i.m) + step / 2);
       return <rect key={i.t} x={a} width={Math.max(0, b - a)} y={4} height={h - 8} className="lane-sleep" />;
-    })],
+    }).concat(rows.some(i => i.asleep) ? [<text key="asleep" x={x(rows.find(i => i.asleep)!.m) + 6} y={h / 2 + 4} className="lane-in">asleep</text>] : [])],
   ];
   const total = lanes.length * (h + gap);
   return (<>

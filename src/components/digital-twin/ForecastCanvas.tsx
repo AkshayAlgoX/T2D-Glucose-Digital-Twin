@@ -235,7 +235,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
             <span className="metric-value" data-testid="physics-prior-value">
               {!forecast ? '—' : physicsP50 != null ? `${Number(physicsP50.toFixed(1))} mg/dL` : 'Unavailable'}
             </span>
-            <span className="metric-source">Twin median, returned by the service</span>
+            <span className="metric-source">Twin median, from the model</span>
           </div>
           <span className="equation-op" aria-hidden="true">+</span>
           <div className="inspector-metric-card learned" data-testid="forecast-adjustment-card">
@@ -418,7 +418,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     { key: 'steps', label: 'Steps', unit: 'per 5 min', latest: fmt(last.steps),
       render: () => anySteps ? rows.filter(w => w.steps > 0).map(w => {
         const r = clampRect(x(w.time), step);
-        const bh = Math.max(3, (w.steps / maxSteps) * (h - 4));
+        const bh = Math.max(6, (w.steps / maxSteps) * (h - 4));
         return <rect key={w.t} x={r.x} width={Math.max(2, r.width)} y={h - bh} height={bh} rx={1} className="lane-steps" />;
       }).concat(!narrow && rows.filter(w => w.steps > 0).length <= 3 ? (() => {
         // A near-sedentary window: say so beside the few bars rather than far from them.
@@ -436,7 +436,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
       render: () => anyAsleep ? rows.filter(w => w.asleep).map(w => {
         const r = clampRect(x(w.time), step * 1.25);
         return <rect key={w.t} x={r.x} width={r.width} y={5} height={h - 10} className="lane-sleep" />;
-      }) : empty('Awake throughout this window') },
+      }).concat([<text key="asleep" x={Math.max(left, x(rows.find(w => w.asleep)!.time)) + 6} y={h / 2 + 4} className="lane-in">asleep</text>]) : empty('Awake throughout this window') },
   ];
   return (
     <section className="input-lanes" aria-label="Wearable and log inputs the model used" data-testid="input-lanes">

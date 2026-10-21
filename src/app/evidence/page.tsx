@@ -1,5 +1,6 @@
 import { readLandingEvidence } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
+import { GainBar } from '@/components/figure/marks';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -435,7 +436,8 @@ export default async function EvidencePage() {
                   <div className="pillar-substat" data-testid="headline-definition">
                     60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
                   </div>
-                  <p className="pillar-note">Percentages are computed from the unrounded RMSE values in the report.</p>
+                  {models?.twin_only?.rmse_60 && <GainBar id="pillar-gain" hybrid={metrics.rmse_60.estimate} twin={models.twin_only.rmse_60.estimate} />}
+                  <p className="pillar-note">60-min RMSE in mg/dL; the hatched gap is the error the learned adjustment removes. Percentages are computed from the unrounded values.</p>
                   <details className="pillar-more"><summary>Per-horizon values and how to read them</summary>
                   <div className="pillar-compact-summary">
                     <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {minus(paired?.pr_minus_twin_rmse_30.diff)} vs twin alone; {minus(paired?.pr_minus_persistence_rmse_30.diff)} vs persistence)</span></div>
@@ -1084,7 +1086,7 @@ export default async function EvidencePage() {
 
         {/* Methodology appendix: everything a reviewer may audit, out of the reading path. */}
         <details className="panel evidence-section evidence-disclosure methodology-appendix" data-testid="methodology-appendix">
-          <summary><span>Methodology appendix <small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
+          <summary><span>Methodology appendix<small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
         <section className="evidence-disclosure-body" aria-labelledby="historical-record-heading">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate fixed evidence record</span>

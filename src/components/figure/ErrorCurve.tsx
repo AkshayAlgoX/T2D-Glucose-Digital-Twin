@@ -44,10 +44,10 @@ export function ErrorCurve({ data, id, compact = false }: { data: Progression; i
         <text x={M.l + 4} y={M.t + 10} className="fig-axis">RMSE, mg/dL</text>
       </svg>
       <figcaption className="fig-legend error-curve-legend">
-        <span><Glyph kind="median" />Hybrid: twin + learned adjustment</span>
-        <span><Glyph kind="twin" />Physiology twin alone</span>
+        <span><Glyph kind="median" />Hybrid: twin + learned adjustment{compact ? ` · ${last.h.toFixed(1)} at +${last.m} min` : ''}</span>
+        <span><Glyph kind="twin" />Physiology twin alone{compact ? ` · ${last.t.toFixed(1)}` : ''}</span>
         <span><Glyph kind="wedge" />Error the learned adjustment removes</span>
-        <span><Glyph kind="ghost" />Persistence (glucose stays flat)</span>
+        <span><Glyph kind="ghost" />Persistence (glucose stays flat){compact ? ` · ${last.p.toFixed(1)}` : ''}</span>
       </figcaption>
     </figure>
   );

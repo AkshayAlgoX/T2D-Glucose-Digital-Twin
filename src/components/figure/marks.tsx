@@ -147,3 +147,23 @@ export function AboveBars({ pts, x, x0, x1, top, row = 12, step = 5, labels = tr
 export function Glyph({ kind }: { kind: 'obs' | 'median' | 'twin' | 'wedge' | 'bands' | 'threshold' | 'above' | 'ghost' | 'ghost-twin' }) {
   return <i className={`fig-glyph g-${kind}`} aria-hidden="true" />;
 }
+
+/** A one-line version of the grammar for a headline: twin error, hybrid error, and the hatched gap between them. */
+export function GainBar({ hybrid, twin, persistence, id, unit = 'mg/dL' }: { hybrid: number; twin: number; persistence?: number | null; id: string; unit?: string }) {
+  const W = 260, H = 44, l = 4, r = 8;
+  const max = Math.ceil(Math.max(twin, hybrid, persistence ?? 0) / 10) * 10;
+  const x = (v: number) => l + (v / max) * (W - l - r);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="gain-bar" role="img" aria-label={`RMSE ${hybrid.toFixed(2)} ${unit} for the hybrid against ${twin.toFixed(2)} for the physiology twin alone${persistence != null ? ` and ${persistence.toFixed(2)} for persistence` : ''}; the hatched gap is the error the learned adjustment removes.`}>
+      <HatchDefs id={id} />
+      <line x1={l} x2={W - r} y1={16} y2={16} className="fig-grid" />
+      <rect x={x(hybrid)} y={9} width={Math.max(1, x(twin) - x(hybrid))} height={14} fill={`url(#${id})`} className="fig-wedge" />
+      <line x1={l} x2={x(hybrid)} y1={16} y2={16} className="gain-hybrid" />
+      <line x1={x(twin)} x2={x(twin)} y1={7} y2={25} className="gain-twin" />
+      {persistence != null && <line x1={x(persistence)} x2={x(persistence)} y1={9} y2={23} className="gain-persist" />}
+      <text x={x(hybrid)} y={40} textAnchor="end" className="gain-label lbl-scen">hybrid {hybrid.toFixed(1)}</text>
+      <text x={x(twin) + 4} y={40} className="gain-label lbl-twin">twin {twin.toFixed(1)}</text>
+      {persistence != null && <text x={x(persistence)} y={40} textAnchor="end" className="gain-label lbl-base">persistence {persistence.toFixed(1)}</text>}
+    </svg>
+  );
+}

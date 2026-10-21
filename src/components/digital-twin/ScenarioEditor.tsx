@@ -223,7 +223,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         })()}
       </svg>
       <div className="whatif-legend fig-legend" aria-hidden="true">
-        <span><Glyph kind="ghost" />Forecast, unchanged plan (grey shading: its P10–P90)</span>
+        <span><Glyph kind="ghost" />Forecast, unchanged plan (grey dotted edges: its P10–P90)</span>
         <span><Glyph kind="median" />Forecast with this change (blue shading: its P10–P90)</span>
         {baseTwin.length > 0 && <span><Glyph kind="ghost-twin" />Physiology twin, unchanged plan</span>}
         {scenTwin.length > 0 && <span><Glyph kind="twin" />Physiology twin with this change</span>}
@@ -297,7 +297,7 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
         {blip && <g data-testid="change-blip" aria-hidden="true">
           <circle cx={x(blip.min)} cy={y(blip.final)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
           <line x1={x(blip.min)} x2={x(blip.min)} y1={y(blip.final) - 7} y2={m.top + 14} stroke="var(--color-amber)" strokeWidth={1} />
-          <text x={x(blip.min) + (blip.min > 60 ? -6 : 6)} y={m.top + 10} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
+          <text x={x(blip.min) + (blip.min > 60 ? -6 : 6)} y={m.top + 10} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '5-min blip' : '5-min blip in the learned adjustment'}</text>
         </g>}
         {labelled && <g aria-hidden="true">{spreadLabels([
           { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
@@ -382,7 +382,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <figure className="whatif-figure">
-        <figcaption><strong>Figure 3. What the change does, and when</strong><span>With the change minus the unchanged plan, at each time. Blue: final forecast; rust dashed: physiology twin alone; hatched: the learned adjustment&apos;s share.</span></figcaption>
+        <figcaption><strong>Figure 3. What the change does, and when</strong><span>With the change minus the unchanged plan, at each time. Blue: final forecast; rust dashed: physiology twin alone; hatched: the learned adjustment&apos;s share. A circled 5-min blip is a known single-step artefact of the learned adjustment; it is flagged, never smoothed.</span></figcaption>
         <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <dl className="whatif-metrics">
@@ -522,7 +522,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           const refused = p.id === 'medication';
           return (
             <button key={p.id} type="button" className={refused ? 'secondary-button preset preset-refused' : 'secondary-button preset'} disabled={!asOf || loading}
-              aria-label={refused ? p.label : undefined}
+              aria-label={refused ? `${p.label} (not modelled)` : undefined}
               aria-pressed={activePreset === p.id}
               title={refused ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
               onClick={() => { const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); }}>

@@ -26,7 +26,7 @@ export function NavigationRail({ active, selectedSubjectId }: { active?: 'cohort
     <><header className="app-navigation">
       <a href="#main-content" className="skip-navigation">Skip to main content</a>
       <Link href="/" className="app-brand" aria-label="Glucose Twin home">
-        <span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28" width="28" height="28"><path d="M5 19 L11 15 L14 9" className="bm-obs" /><path d="M14 9 C17 5 20 6 23 11 L23 15 C20 10 17 10 14 9 Z" className="bm-wedge" /><path d="M14 9 C17 5 20 6 23 11" className="bm-twin" /><path d="M14 9 C17 10 20 10 23 15" className="bm-fc" /><circle cx="14" cy="9" r="1.8" className="bm-now" /></svg></span>
+        <span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28" width="28" height="28"><circle cx="4.5" cy="20" r="1.4" className="bm-now" /><circle cx="8.5" cy="17.5" r="1.4" className="bm-now" /><path d="M12 14 C16 4 20 4 24.5 9 L24.5 15 C20 9.5 16 9.5 12 14 Z" className="bm-wedge" /><path d="M12 14 C16 4 20 4 24.5 9" className="bm-twin" /><path d="M12 14 C16 9.5 20 9.5 24.5 15" className="bm-fc" /><circle cx="12" cy="14" r="2.2" className="bm-now" /></svg></span>
         <span>Glucose<span className="brand-secondary">Twin</span></span><span className="brand-descriptor">a research instrument for type 2 diabetes</span>
       </Link>
       <nav aria-label="Main navigation" className="navigation-links">

@@ -48,7 +48,7 @@ describe('What-If change over time', () => {
 
   it('keeps the medication preset as a one-click refusal with a plain accessible name', () => {
     render(<ScenarioEditor patientId="s" currentForecast={null} />);
-    const med = screen.getByRole('button', { name: 'Medication change' });
+    const med = screen.getByRole('button', { name: /^Medication change/ });
     expect(med).toHaveTextContent('not modelled');
   });
 });

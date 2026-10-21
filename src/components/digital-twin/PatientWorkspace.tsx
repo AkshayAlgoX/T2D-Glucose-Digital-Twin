@@ -376,7 +376,7 @@ export function PatientWorkspace({
                 ) : (
                   <div className="current-summary">
                     <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
-                    <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
+                    <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}{typeof forecast.current?.trend_mg_dl_per_min === 'number' && Number.isFinite(forecast.current.trend_mg_dl_per_min) ? ` · ${forecast.current.trend_mg_dl_per_min > 0 ? '+' : forecast.current.trend_mg_dl_per_min < 0 ? '−' : ''}${Math.abs(forecast.current.trend_mg_dl_per_min).toFixed(1)} mg/dL per min` : ''}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
                   </div>
                 )}
               </div>
