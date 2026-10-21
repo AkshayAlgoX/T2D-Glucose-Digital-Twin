@@ -503,6 +503,9 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
     if ('input' in b && asOf && !loading) void run(b.input);
   };
 
+  const runPreset = (p: typeof PRESETS[number]) => { const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); };
+  const medicationPreset = PRESETS.find(p => p.id === 'medication');
+
   return (
     <section className="whatif-panel" aria-labelledby="simulation-heading">
       <div className="section-heading">
@@ -519,21 +522,25 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
 
       <p className="whatif-step-label" id="whatif-presets-label">Try a common change</p>
       <div className="whatif-presets" role="group" aria-labelledby="whatif-presets-label">
-        {PRESETS.map(p => {
+        {PRESETS.filter(p => p.id !== 'medication').map(p => {
           const Icon = PRESET_ICONS[p.id];
-          const refused = p.id === 'medication';
           return (
-            <button key={p.id} type="button" className={refused ? 'secondary-button preset preset-refused' : 'secondary-button preset'} disabled={!asOf || loading}
-              aria-label={refused ? `${p.label} (not modelled)` : undefined}
+            <button key={p.id} type="button" className="secondary-button preset" disabled={!asOf || loading}
               aria-pressed={activePreset === p.id}
-              title={refused ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
-              onClick={() => { const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); }}>
-              {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>{refused && <small aria-hidden="true">not modelled</small>}
+              onClick={() => runPreset(p)}>
+              {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>
             </button>
           );
         })}
       </div>
       <p className="whatif-preset-note" data-testid="whatif-preset-note">Any added meal is outside the network&apos;s training range, so meal results come with a warning: read them against the physiology twin&apos;s response.</p>
+      {medicationPreset && <p className="whatif-med-note">The twin has no drug terms, so the backend refuses medication changes rather than guessing.{' '}
+        <button type="button" className="preset-refused-link" disabled={!asOf || loading}
+          aria-label={`${medicationPreset.label} (not modelled)`} aria-pressed={activePreset === medicationPreset.id}
+          onClick={() => runPreset(medicationPreset)}>
+          {medicationPreset.label} <small aria-hidden="true">not modelled</small>
+        </button>
+      </p>}
       <p className="whatif-step-label">Or set your own</p>
 
       <form className="whatif-form" onSubmit={e => { e.preventDefault(); setActivePreset(null); submit(form); }}>

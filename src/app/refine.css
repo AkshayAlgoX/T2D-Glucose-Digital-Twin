@@ -12,7 +12,12 @@
 .workspace-breadcrumb, .workspace-page .workspace-breadcrumb { font-size: 13px; }
 
 /* --- Workspace views: one at a time up to 1024 px ----------------------- */
-.tw-section-tabs, .tw-next { display: none; }
+.tw-section-tabs { display: none; }
+/* On desktop the call to action sits under the risk rail and scrolls to the What-If. */
+.tw-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--color-ink); background: var(--color-ink); color: var(--color-bg); text-align: left; font: inherit; cursor: pointer; }
+.tw-next strong { display: block; font-size: 15px; font-weight: 600; }
+.tw-next small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; color: inherit; }
+.tw-next:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 @media (max-width: 1024px) {
   .tw-section-tabs {
     position: sticky; top: var(--nav-h, 60px); z-index: 15;
@@ -136,8 +141,6 @@
 .whatif-step-label { margin: 14px 0 8px; font-size: 13px; font-weight: 600; color: var(--color-ink); }
 .whatif-presets .secondary-button.preset { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; font-size: 14px; font-weight: 500; }
 .whatif-presets .secondary-button.preset svg { color: var(--color-ink-2); flex: none; }
-.whatif-presets .preset-refused small { font-size: 12px; color: var(--color-ink-2); }
-.whatif-presets .preset-refused { border-style: dashed; }
 .whatif-form label { font-size: 13px; color: var(--color-ink-2); }
 .whatif-form input, .whatif-form select { min-height: 44px; font-size: 15px; }
 .whatif-result.stage { gap: 14px; padding: 20px 22px; }

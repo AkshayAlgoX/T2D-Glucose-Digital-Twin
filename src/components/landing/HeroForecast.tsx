@@ -121,7 +121,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
             ? `Median above 180 ${high.median[0] === high.median[1] ? `at +${high.median[0]} min` : `from +${high.median[0]} to +${high.median[1]} min`}`
             : high.upper ? 'Median below 180; upper band reaches it' : 'Below 180 across the 80% band'}</p>
           {data.probability != null && <p className="hero-onset" data-testid="hero-onset">New-spike onset risk, next 2 h: <strong className="num">{(data.probability * 100).toFixed(1)}%</strong>{data.calibrated ? <span> · a separate classifier, calibrated on the validation split</span> : null}</p>}
-          {data.probability != null && high.lower && data.probability < 0.9 && <p className="hero-disagree" data-testid="hero-disagree"><strong>The two models disagree.</strong> The forecast&apos;s lower 10% bound is above 180 {high.lower[0] === high.lower[1] ? `at +${high.lower[0]} min` : `from +${high.lower[0]} to +${high.lower[1]} min`}, so the trajectory puts at least 90% of its range above 180 then; the onset classifier is more cautious. Neither is validated in people.</p>}
+          {data.probability != null && high.lower && data.probability < 0.9 && <p className="hero-disagree" data-testid="hero-disagree"><strong>The two models disagree.</strong> The forecast&apos;s lower 10% bound is above 180 {high.lower[0] === high.lower[1] ? `at +${high.lower[0]} min` : `from +${high.lower[0]} to +${high.lower[1]} min`}, so the trajectory puts at least 90% of its range above 180 then; the onset classifier answers a stricter question, whether a new spike starts, and gives a lower number. Neither is validated in people.</p>}
         </div>
       </div>
     </figure>

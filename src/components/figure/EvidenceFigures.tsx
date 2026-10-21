@@ -123,7 +123,8 @@ export function JumpFinding({ data }: { data: import('@/lib/landing').JumpExperi
           <tbody>{rows.map(([sample, name, v]) => <tr key={sample + name}><th scope="row">{sample}</th><td>{name}</td><td>{v.rmse['30min'].toFixed(2)}</td><td>{v.rmse['60min'].toFixed(2)}</td><td>{v.rmse['120min'].toFixed(2)}</td><td>{pct(v.share_isolated_step_gt_20)}</td><td>{pct(v.share_isolated_step_gt_40)}</td><td>{pct(v.p10_p90_coverage)}</td></tr>)}</tbody>
         </table>
       </div>
-      <p className="jump-decision"><strong>Decision, as pre-registered: recorded, not applied.</strong> A fixed 3-point median filter on the learned adjustment (R3, no tuned parameters) removes most jumps with no loss of accuracy or coverage on both samples. It is not applied to the served model: the published metrics and calibration describe the unrepaired network, and validation was already used for checkpoint selection, so this is development evidence, not an independent test. The product flags jumps where they occur instead. Plan and data: <code>docs/evidence/jump_experiment/</code>.</p>
+      <p className="fine-print jump-sample-note" data-testid="jump-sample-note">RMSE in this table is on the {data.validation.n} sampled validation forecasts, not the full evaluation, so it differs from the headline RMSE above.</p>
+      <p className="jump-decision"><strong>Decision, as pre-registered: recorded, not applied.</strong> A fixed 3-point median filter on the learned adjustment (R3, no tuned parameters) removes most jumps, with RMSE and coverage changes within the pre-registered tolerance on both samples. It is not applied to the served model: the published metrics and calibration describe the unrepaired network, and validation was already used for checkpoint selection, so this is development evidence, not an independent test. The product flags jumps where they occur instead. Plan and data: <code>docs/evidence/jump_experiment/</code>.</p>
     </section>
   );
 }

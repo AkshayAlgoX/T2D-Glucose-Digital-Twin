@@ -206,7 +206,7 @@
           <h4>Our Approach: Continuous Forward Visibility</h4>
           <ul>
             <li>Forecast future glucose trajectories across a <strong>120-minute horizon</strong> in 5-minute discretizations.</li>
-            <li>Quantify predictive uncertainty via <strong>calibrated quantile intervals</strong> (p05 to p95).</li>
+            <li>Quantify predictive uncertainty via <strong>quantile intervals</strong> (p05 to p95; the P10–P90 interval is conformal-calibrated, the others are not separately evaluated).</li>
             <li>Estimate cumulative spike hazard and adverse event probability in real-time.</li>
             <li>Decompose contributing factors into mechanistic and behavioral drivers.</li>
           </ul>
@@ -304,7 +304,7 @@
         </div>
       </div>
       <div class="alert-box">
-        <strong>Architectural Finding:</strong> Arm D (PR-TFT + UKF S3) enforces physiological plausibility during data gaps while allowing deep learning to capture complex non-linear habits and wearable interactions.
+        <strong>Architectural Finding:</strong> Arm D (PR-TFT + UKF S3) anchors the forecast to a physiology twin and lets the network learn a residual; the residual can still add isolated one-step jumps (19.8% of sampled validation forecasts), which the product flags.
       </div>
     </div>
     <div class="footer">
@@ -523,7 +523,7 @@
               <li>Observable-input contract enforcement.</li>
               <li>PR-TFT + UKF S3 model architecture.</li>
               <li>Chunk-invariant SSE proxy & recovery hook.</li>
-              <li>44 Jest suites (422 tests) and 134 backend tests pass on the release branch.</li>
+              <li>44 Jest suites (422 tests) and 134 backend tests pass on the submitted candidate.</li>
             </ul>
           </div>
           <div class="card" style="padding: 10px 14px;">
@@ -566,7 +566,7 @@
           </div>
           <ul>
             <li>A gradient-boosted discriminator reliably distinguishes synthetic ODE trajectories from mock-real generator records (top tell: <code>jerk_sd</code>, SHAP 0.8878; <code>roc_max_fall</code>).</li>
-            <li>Controlled factorial experiments confirm AR(1) drift (SD 8–16 mg/dL) accounts for partial curvature divergence, but multivariate ODE dynamics remain distinguishable. Null control: AUROC 0.507.</li>
+            <li>Factorial experiments reported in the validation report (scripts not in this repository) indicate AR(1) drift (SD 8–16 mg/dL) accounts for partial curvature divergence, but multivariate ODE dynamics remain distinguishable. Null control: AUROC 0.507.</li>
             <li><strong>Hazard Calibration (Resubstitution Diagnostic):</strong> Empirical resubstitution diagnostics on 47,629 at-risk anchors show 14.2% anchor alert rate (sensitivity 63.0%, precision 58.7%) at threshold 0.35, and 5.3% anchor alert rate (sensitivity 29.9%, precision 74.5%) at threshold 0.60. Evaluated thresholds are empirical diagnostics on the validation set, not approved clinical operating points; anchor alert fractions do not represent event-level alerts per day.</li>
           </ul>
         </div>
@@ -603,7 +603,7 @@
         <div class="card">
           <h4>Demonstrated & Frozen in this Release</h4>
           <ul>
-            <li><strong>Release branch:</strong> <code>release/candidate-clean</code>; 44 Jest suites (422 tests) and 134 backend tests pass on it.</li>
+            <li><strong>Release branch:</strong> <code>release/candidate-clean</code>; 44 Jest suites (422 tests) and 134 backend tests pass on the submitted candidate.</li>
             <li><strong>End-to-End Pipeline:</strong> Live synthetic backend &rarr; Next.js SSE proxy &rarr; browser patient dashboard verified.</li>
             <li><strong>Framing Resilience:</strong> Chunk-invariant earliest-delimiter parser verified across all split boundaries.</li>
             <li><strong>Strict Validation:</strong> Comprehensive fail-closed error handling and contract enforcement.</li>

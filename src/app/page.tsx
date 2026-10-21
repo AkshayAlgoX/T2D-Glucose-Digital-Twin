@@ -104,7 +104,7 @@ export default async function Home() {
             </div>}
             <dl className="landing-evidence" data-testid="landing-evidence">
               <div><dt>60-min forecast error (RMSE)</dt><dd><span className="num">{evidence.rmse60.hybrid.toFixed(2)}</span> mg/dL<small>vs {evidence.rmse60.twin.toFixed(2)} physiology twin alone · {evidence.rmse60.persistence.toFixed(2)} persistence</small></dd></div>
-              <div><dt>Evaluated on</dt><dd><span className="num">{evidence.patients}</span> synthetic patients<small>Development-validation split; also used for calibration</small></dd></div>
+              <div><dt>Evaluated on</dt><dd><span className="num">{evidence.patients}</span> synthetic patients<small>Development-validation split; also used for checkpoint selection and calibration</small></dd></div>
               <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}. A classifier can still tell our synthetic data from an independent mock-real generator&apos;s, itself synthetic, so realism is not established.</small></dd></div>
             </dl>
           </div>) : (
