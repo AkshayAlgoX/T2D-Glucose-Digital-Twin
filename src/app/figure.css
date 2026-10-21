@@ -966,3 +966,4 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 .pillar-gate3-figure .gate3-figure { margin: 0; display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 8px 28px; align-items: center; max-width: none; }
 .pillar-gate3-figure .fig-caption { font-size: 13.5px; }
 @media (max-width: 900px) { .pillar-gate3-figure .gate3-figure { grid-template-columns: minmax(0, 1fr); } }
+.evidence-pillar-card.pillar-limitations > div.pillar-gate3-figure { display: block !important; grid-column: 1 / -1 !important; grid-row: auto; }
