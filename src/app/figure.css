@@ -1041,3 +1041,32 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 }
 @media (max-width: 720px) { .trajectory-panel .trajectory-header .current-summary { flex-wrap: wrap; row-gap: 4px; } }
 @media (max-width: 720px) { .trajectory-panel .forecast-metadata span, .trajectory-panel .forecast-metadata span:first-child { white-space: normal !important; } .trajectory-panel .forecast-metadata { min-width: 0; max-width: 100%; } }
+.dispersion-boxes { margin: 12px 0 14px; max-width: 600px; }
+.dispersion-boxes svg { display: block; width: 100%; height: auto; }
+.box-whisker { stroke: var(--color-forecast); stroke-width: 1.5; }
+.box-iqr { fill: var(--color-forecast); fill-opacity: .18; stroke: var(--color-forecast); stroke-width: 1.25; }
+.box-median { stroke: var(--color-forecast); stroke-width: 3; }
+/* ---- round-7 review fixes ---- */
+.whatif-baseline { display: none; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--color-line); }
+.whatif-baseline figcaption { font-size: 13.5px; color: var(--color-ink-2); margin-top: 6px; }
+.whatif-baseline figcaption strong { color: var(--color-ink); }
+@media (max-width: 1024px) { .whatif-baseline { display: block; } .whatif-baseline .mini-twin { max-width: 420px; } }
+/* desktop: the what-if and history span the page; the margin column belongs to the forecast */
+@media (min-width: 1101px) {
+  .tw-grid { grid-template-areas: "traj side" "whatif whatif" "details details" !important; grid-template-rows: auto auto auto !important; }
+  .tw-whatif .whatif-panel { max-width: 1100px; }
+}
+/* one callout language in the risk rail: a left rule */
+.risk-alert, .risk-alert.status-watch, .risk-alert.status-warning { border: 0 !important; border-left: 3px solid var(--color-alert-edge) !important; background: transparent !important; border-radius: 0 !important; padding: 2px 0 2px 10px !important; }
+.risk-alert.status-warning { border-left-color: var(--color-danger) !important; }
+.risk-reconcile.disagree { background: transparent; padding: 2px 0 2px 10px; }
+/* unreachable: dashes, not empty fields */
+.is-unreachable .clinical-fields dd::after { content: '—'; color: var(--color-ink-3); }
+/* phone equation: operators inline before the values */
+@media (max-width: 720px) {
+  .hybrid-equation .equation-op, .stage .hybrid-equation .equation-op { display: none !important; }
+  .inspector-metric-card.learned .metric-value::before { content: '+ '; color: var(--color-ink-3); }
+  .inspector-metric-card.final .metric-value::before { content: '= '; color: var(--color-ink-3); }
+}
+.repro-hint { font-size: 13.5px; color: var(--color-ink-2); }
+details[open] > summary .repro-hint { display: none; }

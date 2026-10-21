@@ -450,7 +450,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Exploratory Analysis · n=44 Cohort')).toBeInTheDocument();
+    expect(screen.getByText('Exploratory · n=44 cohort')).toBeInTheDocument();
     expect(screen.getByText(/Type 2 \(Target Clinical Focus\)/i)).toBeInTheDocument();
 
     // Check denominators distinction: eligible vs evaluable rows

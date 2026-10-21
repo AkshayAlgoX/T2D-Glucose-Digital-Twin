@@ -96,9 +96,9 @@ export function Decomposition({ m, twin, p50, x, y, compact = false }: { m: numb
   return (
     <g className="fig-markers" data-testid="decomposition-markers">
       <line x1={cx} x2={cx} y1={y(twin)} y2={y(p50)} className="fig-gap" />
-      <Marker n="1" cx={cx} cy={y(twin)} dx={compact ? 12 : 16} dy={(up ? -1 : 1) * (compact ? 15 : 19)} cls="m-twin" />
-      {gap > 8 && <Marker n="2" cx={cx} cy={(y(twin) + y(p50)) / 2} dx={compact ? 18 : 24} dy={0} cls="m-adj" />}
-      <Marker n="3" cx={cx} cy={y(p50)} dx={compact ? 12 : 16} dy={(up ? 1 : -1) * (compact ? 15 : 19)} cls="m-final" />
+      <Marker n="1" cx={cx} cy={y(twin)} dx={compact ? 10 : 16} dy={(up ? -1 : 1) * (compact ? 22 : 19)} cls="m-twin" />
+      {gap > 8 && <Marker n="2" cx={cx} cy={(y(twin) + y(p50)) / 2} dx={compact ? 22 : 24} dy={0} cls="m-adj" />}
+      <Marker n="3" cx={cx} cy={y(p50)} dx={compact ? 10 : 16} dy={(up ? 1 : -1) * (compact ? 22 : 19)} cls="m-final" />
     </g>
   );
 }
@@ -155,7 +155,7 @@ export function GainBar({ hybrid, twin, persistence, id, unit = 'mg/dL', domainM
   const max = domainMax ?? Math.ceil(Math.max(twin, hybrid, persistence ?? 0) / 10) * 10;
   const x = (v: number) => l + (v / max) * (W - l - r);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="gain-bar" role="img" aria-label={`RMSE ${hybrid.toFixed(2)} ${unit} for the hybrid against ${twin.toFixed(2)} for the physiology twin alone${persistence != null ? ` and ${persistence.toFixed(2)} for persistence` : ''}; the hatched gap is the error the learned adjustment removes.`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="gain-bar" role="img" aria-label={`RMSE ${hybrid.toFixed(1)} ${unit} for the hybrid against ${twin.toFixed(1)} for the physiology twin alone${persistence != null ? ` and ${persistence.toFixed(1)} for persistence` : ''}; the hatched gap is the error the learned adjustment removes.`}>
       <HatchDefs id={id} />
       <line x1={l} x2={W - r} y1={16} y2={16} className="fig-grid" />
       <rect x={x(hybrid)} y={9} width={Math.max(1, x(twin) - x(hybrid))} height={14} fill={`url(#${id})`} className="fig-wedge" />

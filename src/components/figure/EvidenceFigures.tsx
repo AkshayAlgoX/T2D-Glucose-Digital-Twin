@@ -69,3 +69,37 @@ export function Gate3Figure({ historical, ci, compact = false }: { historical: n
     </figure>
   );
 }
+
+type Quantiles = { min: number; p25: number; median: number; p75: number; max: number };
+
+/** Per-patient RMSE spread for the hybrid, as box plots on one scale, from the report's own quantiles. */
+export function DispersionBoxes({ dist }: { dist: { rmse_60?: Quantiles; rmse_120?: Quantiles } }) {
+  const rows: Array<[string, Quantiles]> = [];
+  if (dist.rmse_60) rows.push(['60 min', dist.rmse_60]);
+  if (dist.rmse_120) rows.push(['120 min', dist.rmse_120]);
+  if (!rows.length) return null;
+  const W = 560, rowH = 34, M = { l: 70, r: 16, t: 8, b: 26 };
+  const H = M.t + rows.length * rowH + M.b;
+  const max = Math.ceil(Math.max(...rows.map(([, q]) => q.max)) / 5) * 5;
+  const x = d3Scale.scaleLinear().domain([0, max]).range([M.l, W - M.r]);
+  const ticks = x.ticks(6);
+  return (
+    <figure className="dispersion-boxes">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Per-patient RMSE of the hybrid forecast across the 44 validation patients: ${rows.map(([h, q]) => `${h} median ${q.median.toFixed(1)} mg/dL, interquartile range ${q.p25.toFixed(1)}–${q.p75.toFixed(1)}, range ${q.min.toFixed(1)}–${q.max.toFixed(1)}`).join('; ')}.`}>
+        {ticks.map(t => <g key={t}><line x1={x(t)} x2={x(t)} y1={M.t} y2={H - M.b} className="fig-grid" /><text x={x(t)} y={H - 8} textAnchor="middle" className="fig-axis">{t}</text></g>)}
+        {rows.map(([h, q], i) => {
+          const cy = M.t + i * rowH + rowH / 2;
+          return <g key={h}>
+            <text x={M.l - 10} y={cy + 4} textAnchor="end" className="fig-axis g3-label">{h}</text>
+            <line x1={x(q.min)} x2={x(q.max)} y1={cy} y2={cy} className="box-whisker" />
+            <line x1={x(q.min)} x2={x(q.min)} y1={cy - 6} y2={cy + 6} className="box-whisker" />
+            <line x1={x(q.max)} x2={x(q.max)} y1={cy - 6} y2={cy + 6} className="box-whisker" />
+            <rect x={x(q.p25)} y={cy - 9} width={Math.max(1, x(q.p75) - x(q.p25))} height={18} className="box-iqr" />
+            <line x1={x(q.median)} x2={x(q.median)} y1={cy - 9} y2={cy + 9} className="box-median" />
+          </g>;
+        })}
+      </svg>
+      <figcaption className="fig-caption">Per-patient RMSE of the hybrid forecast, mg/dL: box = middle half of patients, line = median, whiskers = best and worst patient. 44 synthetic validation patients.</figcaption>
+    </figure>
+  );
+}

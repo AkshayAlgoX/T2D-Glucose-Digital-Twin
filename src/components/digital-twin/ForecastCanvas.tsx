@@ -308,7 +308,7 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
               <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
             </g>)}
             {/* The spike level is a reference line, labelled on the line itself rather than as an axis tick. */}
-            <Threshold x0={margin.left} x1={right} y={y} label="180 mg/dL spike level" />
+            <Threshold x0={margin.left} x1={right} y={y} label={narrow ? '180 mg/dL' : '180 mg/dL spike level'} />
             {xTicks.map(m => <text key={m} x={xm(m)} y={bottom + 22} textAnchor={xm(m) < margin.left + 20 ? 'start' : xm(m) > right - 20 ? 'end' : 'middle'} className={m === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{tickLabel(m)}</text>)}
             <text x={margin.left - 9} y={margin.top - 12} textAnchor="end" className="chart-axis">mg/dL</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
@@ -382,9 +382,14 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
 type Lane = { key: string; label: string; unit: string; latest: string; render: () => React.ReactNode };
 
 /** Wearable and log readings the network consumed, on the chart's own time axis (history only). */
-function InputLanes({ wearables, x, start, anchor, width, left, right }: {
+function InputLanes({ wearables, x: chartX, start, anchor, width, left: chartLeft, right }: {
   wearables: WearableView[]; x: d3Scale.ScaleTime<number, number>; start: number; anchor: number; width: number; left: number; right: number;
 }) {
+  // On phones the lanes get the full width for the observed window (labels sit above each strip);
+  // on wider screens they share the chart's own time axis.
+  const phone = width < 520;
+  const left = phone ? 2 : chartLeft;
+  const x = phone ? d3Scale.scaleUtc().domain([start, anchor]).range([left, width - 70]) : chartX;
   const rows = wearables.map(w => ({ ...w, time: Date.parse(w.t) }))
     .filter(w => Number.isFinite(w.time) && w.time >= start && w.time <= anchor)
     .sort((a, b) => a.time - b.time);
@@ -447,7 +452,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
     <section className="input-lanes" aria-label="Wearable and log inputs the model used" data-testid="input-lanes">
       <div className="input-lanes-heading lanes-head">
         <span>Wearable and log inputs the model read</span>
-        <span className="fine-print">Observed only · same time axis as the chart · nothing is observed after now</span>
+        <span className="fine-print">{phone ? 'Observed only · the window shown in the chart · ends at now' : 'Observed only · same time axis as the chart · nothing is observed after now'}</span>
       </div>
       {lanes.map(lane => (
         <div key={lane.key} className="input-lane" data-testid={`lane-${lane.key}`}>
@@ -457,7 +462,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
             <line x1={x(anchor)} x2={x(anchor)} y1={0} y2={h} className="fig-now" />
           </svg>
           <div className="input-lane-label" style={{ width: Math.max(40, left - 10) }}><strong>{lane.label}</strong></div>
-          <span className="input-lane-latest" style={{ left: x(anchor) + 8 }}>{lane.latest} {lane.key === 'meals' || lane.key === 'sleep' ? '' : lane.unit}</span>
+          <span className="input-lane-latest" style={phone ? undefined : { left: x(anchor) + 8 }}>{lane.latest} {lane.key === 'meals' || lane.key === 'sleep' ? '' : lane.unit}</span>
         </div>
       ))}
       <p className="sr-only">{`Latest readings: heart rate ${fmt(last.heartRate)} bpm, HRV ${fmt(last.hrv)} ms, ${fmt(last.steps)} steps in the last 5 minutes, ${last.asleep ? 'asleep' : 'awake'}.`}</p>

@@ -1,7 +1,7 @@
 import { readLandingEvidence } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
-import { SubgroupGains, ReliabilityFigure, Gate3Figure } from '@/components/figure/EvidenceFigures';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -582,7 +582,7 @@ export default async function EvidencePage() {
                   </h2>
                 </div>
                 <span className="status-badge" style={{ background: 'transparent', borderColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
-                  n=44 patients · B=10,000 Cluster Resamples (Primary)
+                  n=44 patients · 10,000 cluster resamples (primary)
                 </span>
               </div>
 
@@ -719,7 +719,7 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: 'var(--color-accent-ink)', color: 'var(--color-accent-ink)' }}>
-                    n=44 patients · Exact Binomial Test
+                    n=44 patients · exact binomial test
                   </span>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
@@ -771,7 +771,7 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: '#8c5b0c', color: '#8c5b0c', background: 'rgba(140, 91, 12, 0.08)' }}>
-                    Exploratory Analysis · n=44 Cohort
+                    Exploratory · n=44 cohort
                   </span>
                 </div>
 
@@ -837,16 +837,17 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
-                    Compact Numeric Summary (n=44)
+                    Compact summary (n=44)
                   </span>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Per-patient RMSE quantiles across the 44 simulated validation subjects, summarizing patient-to-patient error dispersion (median 18.86 mg/dL, IQR 3.42 mg/dL at 60m). <em>Clinical disclosure:</em> These cohort-level summary distributions describe median performance and spread, but do not rule out individual acute forecast errors or outlier trajectory deviations in specific subjects.
                 </p>
+                {dist && <DispersionBoxes dist={dist} />}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                   {dist['rmse_60'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-Minute Horizon Dispersion</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-min horizon dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_60'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_60'].median?.toFixed(2)}</strong></div>
@@ -859,7 +860,7 @@ export default async function EvidencePage() {
                   )}
                   {dist['rmse_120'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-Minute Horizon Dispersion</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-min horizon dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_120'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_120'].median?.toFixed(2)}</strong></div>
@@ -901,7 +902,7 @@ export default async function EvidencePage() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '10px' }}>
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px', background: 'var(--color-surface-2)' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw Model Coverage (Uncalibrated):</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw model coverage (uncalibrated):</div>
                       <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ink)' }}>
                         78.16% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.781553)</span>
                       </div>
@@ -1095,7 +1096,7 @@ export default async function EvidencePage() {
               <div className="reproducibility-summary-title">
                 <span className="eyebrow" style={{ color: 'var(--color-accent)' }}>Technical methodology and reproducibility</span>
                 <h3>Artifact hashes and verification</h3>
-                <p>Click to inspect SHA-256 byte manifests, training checkpoint provenance, data integrity digests, and pipeline parameters.</p>
+                <p className="repro-hint">SHA-256 byte manifests, training checkpoint provenance, data integrity digests and pipeline parameters.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="register-chip neutral">

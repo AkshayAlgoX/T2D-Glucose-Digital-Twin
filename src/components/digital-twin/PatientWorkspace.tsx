@@ -6,6 +6,8 @@ import { ForecastCanvas } from './ForecastCanvas';
 import { ScenarioEditor } from './ScenarioEditor';
 import { RiskPanel } from './RiskPanel';
 import { RiskStrip } from './RiskStrip';
+import { MiniTwin } from '@/components/figure/MiniTwin';
+import type { HeroForecast } from '@/lib/hero';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { formatTime, formatDate, formatPct } from '@/lib/formatters/date';
 import type { ForecastResponse, MedClass } from '@/types/forecast-response';
@@ -215,6 +217,22 @@ export function caseLabel(forecast: ForecastResponse | null): string {
   return `Case · synthetic ${name ? name + ' ' : ''}subject`;
 }
 
+/** The current forecast and its 2 h of received readings, in the thumbnail shape; null until both exist. */
+export function baselineFigure(forecast: ForecastResponse | null, cache: SubjectStore): HeroForecast | null {
+  const asOf = forecast?.as_of;
+  const current = forecast?.current?.value_mg_dl;
+  const pts = forecast?.forecast?.points ?? [];
+  if (!asOf || typeof current !== 'number' || pts.length < 2) return null;
+  const anchor = Date.parse(asOf);
+  const observed = (cache?.cgm ?? []).filter(p => Number.isFinite(p.value) && Date.parse(p.t) <= anchor && Date.parse(p.t) >= anchor - 7200000).map(p => ({ t: p.t, v: p.value }));
+  if (observed.length < 2) return null;
+  return {
+    asOf, patientId: forecast?.subject?.simulator?.param_set_id ?? 'Subject', observed, current,
+    points: pts.map(p => ({ offset_min: p.offset_min, p05: p.p05, p10: p.p10, p25: p.p25, p50: p.p50, p75: p.p75, p90: p.p90, p95: p.p95, twin_p50: p.twin_p50 ?? null })),
+    probability: forecast?.spike_risk?.probability_120m ?? null, calibrated: forecast?.spike_risk?.calibrated === true, modelName: forecast?.model?.name ?? null,
+  };
+}
+
 /** One plain-language line of the EHR record, for the header. */
 export function recordSummary(forecast: ForecastResponse | null): string | null {
   const ehr = forecast?.ehr_context;
@@ -274,6 +292,7 @@ export function PatientWorkspace({
   const isReconnecting = effectiveStatus === 'reconnecting';
   const isConnecting = effectiveStatus === 'connecting';
   const summary = recordSummary(forecast);
+  const baseline = baselineFigure(forecast, cache);
   const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality: OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality: Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Data quality: Insufficient data' : null;
   return (
     <main id="main-content" className={'workspace-page twin-workstation' + (!forecast && isReconnecting ? ' is-unreachable' : '')}>
@@ -405,6 +424,10 @@ export function PatientWorkspace({
             </div>
 
             <div className="tw-whatif panel" id="what-if" data-view="whatif">
+              {baseline && <figure className="whatif-baseline" data-testid="whatif-baseline">
+                <MiniTwin data={baseline} id="whatif-baseline" />
+                <figcaption><strong>Baseline · Figure 1 at {formatTime(baseline.asOf)} UTC.</strong> {(() => { const p = baseline.points.find(q => q.offset_min === 60); return p ? <>At +60 min: {p.twin_p50 != null ? <><span className="t-twin">{p.twin_p50}</span> + <span className="t-learn">({(p.p50 - p.twin_p50).toFixed(1).replace('-', '−')})</span> = </> : null}<span className="t-final">{p.p50}</span> mg/dL.</> : null; })()}</figcaption>
+              </figure>}
               <ScenarioEditor patientId={patientId} currentForecast={forecast} />
             </div>
 

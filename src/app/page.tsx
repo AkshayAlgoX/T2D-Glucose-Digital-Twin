@@ -53,7 +53,7 @@ export default async function Home() {
       <main id="main-content" className="landing fig-home">
         <section className="home-hero" aria-labelledby="landing-title">
           <div className="home-copy">
-            <p className="fig-section-label">Digital twin · type 2 diabetes · research prototype</p>
+            <p className="fig-section-label">Digital twin · type 2 diabetes</p>
             <h1 id="landing-title">A glucose forecast you can take apart.</h1>
             <p className="home-why">Physiology equations set the shape. A neural network corrects what they miss. The bands show how sure it is.</p>
             <p className="home-dek home-dek-short">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose and shows what each forecast is made of: physiology, a learned correction, and uncertainty.</p>
