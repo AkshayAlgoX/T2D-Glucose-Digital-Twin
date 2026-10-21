@@ -11,7 +11,7 @@ const ISOLATED_STEP_NOTE_MG_DL = 20;
 
 function hasPhysicsValue(points: ReadonlyArray<{ twin_p50?: number | null }>) { return points.some(p => p.twin_p50 != null); }
 
-export function ForecastCanvas({ forecast, cache, isStale }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean }) {
+export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }: { forecast: ForecastResponse | null; cache: SubjectStore; isStale?: boolean; unreachable?: boolean }) {
   const plotRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 380 });
   const [selection, setSelection] = useState<{ key: string; source: 'pointer' | 'keyboard' } | null>(null);
@@ -272,7 +272,9 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         pointerDismissed.current = false;
         if (!keyboardFocused.current) setSelection(null);
       }}>
-        {!forecast ? (
+        {!forecast && unreachable ? (
+          <div className="chart-empty chart-unreachable" data-testid="chart-unreachable"><strong>No data received</strong><span>The subject stream cannot be reached. Nothing is drawn until real readings arrive; no values are substituted.</span></div>
+        ) : !forecast ? (
           <div className="skeleton-chart" aria-busy="true" aria-label="Loading forecast trajectory">
             <div className="skeleton skeleton-chart-grid" aria-hidden="true" />
           </div>
@@ -303,7 +305,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
               <text x={margin.left - 9} y={y(tick) + 4} textAnchor="end" className="chart-axis">{tick}</text>
             </g>)}
             {/* The spike level is a reference line, labelled on the line itself rather than as an axis tick. */}
-            <Threshold x0={margin.left} x1={right} y={y} label={narrow ? '180 spike level' : '180 mg/dL spike level'} />
+            <Threshold x0={margin.left} x1={right} y={y} label="180 mg/dL spike level" />
             {xTicks.map(m => <text key={m} x={xm(m)} y={bottom + 22} textAnchor={xm(m) < margin.left + 20 ? 'start' : xm(m) > right - 20 ? 'end' : 'middle'} className={m === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{tickLabel(m)}</text>)}
             <text x={margin.left - 9} y={margin.top - 12} textAnchor="end" className="chart-axis">mg/dL</text>
             <g clipPath={'url(#' + chartId + '-clip)'}>
@@ -351,7 +353,7 @@ export function ForecastCanvas({ forecast, cache, isStale }: { forecast: Forecas
         {hasPhysics && <span><Glyph kind="twin" /><span className="lg-long">Physiology twin</span><span className="lg-short" aria-hidden="true">Twin</span></span>}
         {hasPhysics && <span><Glyph kind="wedge" />Learned adjustment</span>}
         <span><i className="legend-peak fig-glyph" aria-hidden="true" /><span className="lg-long">Forecast peak (median)</span><span className="lg-short" aria-hidden="true">Median peak</span></span>
-        <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">180 mg/dL</span></span>
+        <span><Glyph kind="threshold" /><span className="lg-long">Spike level 180 mg/dL</span><span className="lg-short" aria-hidden="true">Spike level 180 mg/dL</span></span>
       </div>
 
       <div className="chart-readout">
@@ -410,7 +412,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
   const narrow = width < 520;
   const empty = (text: string) => <text x={(left + x(anchor)) / 2} y={h / 2 + 4} textAnchor="middle" className="lane-empty">{text}</text>;
   const lanes: Lane[] = [
-    { key: 'meals', label: narrow ? 'Meals' : 'Meal log', unit: 'g carbohydrate', latest: meals.length ? `${meals.length} in view` : 'none logged',
+    { key: 'meals', label: 'Meal log', unit: 'g carbohydrate', latest: meals.length ? `${Math.round(meals[meals.length - 1].carbs)} g · ${formatTime(meals[meals.length - 1].time)}` : 'none logged',
       render: () => meals.length ? meals.map(w => <g key={w.t}>
         <rect x={x(w.time) - 2} y={3} width={4} height={h - 6} className="lane-meal" />
         <text x={x(w.time) - 7} y={h / 2 + 4} textAnchor="end" className="lane-text">{Math.round(w.carbs)} g</text>
@@ -428,7 +430,7 @@ function InputLanes({ wearables, x, start, anchor, width, left, right }: {
         const before = first - left > 200;
         return [<text key="few" x={before ? first - 8 : lastX + 8} y={h / 2 + 4} textAnchor={before ? 'end' : 'start'} className="lane-empty">{`${total} steps in this window`}</text>];
       })() : []) : empty('0 steps recorded in this window') },
-    { key: 'hr', label: narrow ? 'HR' : 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
+    { key: 'hr', label: 'Heart rate', unit: 'bpm', latest: fmt(last.heartRate),
       render: () => hr ? <path d={hr.path ?? ''} className="lane-line" /> : empty('No heart-rate readings received') },
     { key: 'hrv', label: narrow ? 'HRV' : 'HRV (RMSSD)', unit: 'ms', latest: fmt(last.hrv),
       render: () => hrv ? <path d={hrv.path ?? ''} className="lane-line" /> : empty('No HRV readings received') },

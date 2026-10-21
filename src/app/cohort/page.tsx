@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
+import { MiniTwin } from '@/components/figure/MiniTwin';
+import type { HeroForecast } from '@/lib/hero';
 
 const DEMO_PATIENT_ID = 'P0017';
 
@@ -28,6 +30,7 @@ export default function CohortPage() {
   const [page, setPage] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const pageSize = 12;
+  const [hero, setHero] = useState<HeroForecast | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,6 +62,16 @@ export default function CohortPage() {
   const resetFilters = () => { setQuery(''); setGroup(''); setSplit(''); setPage(0); };
   // Validation-split Type 2 demonstration subject, shown only if the service actually serves it.
   const demo = subjects.find(subject => subject.patient_id === DEMO_PATIENT_ID && subject.split === 'val');
+  // The demonstration case carries a thumbnail of its real 08:00 forecast; absent unless the service returns one.
+  useEffect(() => {
+    if (!demo) return;
+    const controller = new AbortController();
+    fetch('/api/hero', { signal: controller.signal }).then(r => (r.ok === false ? null : r.json())).then((h: unknown) => {
+      const v = h as HeroForecast | null;
+      if (!controller.signal.aborted && v && typeof v.asOf === 'string' && Array.isArray(v.points) && v.points.length > 1 && Array.isArray(v.observed) && typeof v.current === 'number') setHero(v);
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [demo?.subject_id]);
 
   return (
     <div className="app-shell">
@@ -72,6 +85,7 @@ export default function CohortPage() {
             <p>Opens at 08:00 on the first morning: the night, waking and a logged breakfast in CGM, heart rate, HRV, steps, sleep and the meal log; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
             <p className="demo-entry-note">Chosen from the validation split, so the network was not trained on this subject. It was used for tuning and calibration, so it is not an independent test either. Training-split subjects are in-sample.</p>
           </div>
+          {hero && <figure className="demo-entry-figure"><MiniTwin data={hero} id="cohort-mini" /><figcaption>{demo.patient_id} at {new Date(Date.parse(hero.asOf)).toISOString().slice(11, 16)} UTC · twin, adjustment and forecast</figcaption></figure>}
           {demo.ehr && <dl className="demo-entry-facts">
             <div><dt>Age</dt><dd>{demo.ehr.age_years ?? '—'}</dd></div>
             <div><dt>BMI</dt><dd>{num(demo.ehr.bmi)}</dd></div>
@@ -97,7 +111,7 @@ export default function CohortPage() {
           <div className="directory-toolbar"><div><h2 id="directory-heading">Subject directory</h2><p className="fine-print">Partition labels describe the recorded model split. Training subjects are in-sample, and neither partition is independent validation.</p></div><label className="subject-search"><Search size={15} aria-hidden="true" /><span className="sr-only">Search subjects</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} placeholder="Search ID, group or partition" /></label></div>
           <div className="directory-filters">
             <div className="filter-controls"><label>Group<select value={group} onChange={event => { setGroup(event.target.value); setPage(0); }}><option value="">All groups</option>{groups.map(name => <option key={name}>{name}</option>)}</select></label>
-            <label>Partition<select value={split} onChange={event => { setSplit(event.target.value); setPage(0); }}><option value="">All partitions</option>{splits.map(name => <option key={name}>{name}</option>)}</select></label>
+            <label>Partition<select value={split} onChange={event => { setSplit(event.target.value); setPage(0); }}><option value="">All partitions</option>{splits.map(name => <option key={name} value={name}>{name === 'val' ? 'Validation' : name === 'train' ? 'Training (in-sample)' : name}</option>)}</select></label>
             {(query || group || split) && <button className="text-button" onClick={resetFilters}>Clear filters</button>}</div>
             <span className="result-count" role="status">{state === 'ready' ? `${filtered.length} matching ${filtered.length === 1 ? 'subject' : 'subjects'}` : 'Directory pending'}</span>
           </div>

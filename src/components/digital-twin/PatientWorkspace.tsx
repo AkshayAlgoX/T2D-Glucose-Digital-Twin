@@ -278,7 +278,7 @@ export function PatientWorkspace({
           <div className="eyebrow">{caseLabel(forecast)}</div>
           <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : connectionStatus === 'reconnecting' ? 'Subject stream unreachable' : 'Loading subject…')}</h1>
         </div>
-        <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
+        <p className="tw-summary" data-testid="record-summary">{summary ?? (isReconnecting && !forecast ? 'No data has been received for this subject yet.' : 'Personalized forecasting from observable clinical and sensor context.')}</p>
         <div className="workspace-status tw-status" role="status">
           <span
             className={
@@ -380,7 +380,7 @@ export function PatientWorkspace({
                   </div>
                 )}
               </div>
-              <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
+              <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} unreachable={!forecast && isReconnecting} /></ErrorBoundary></div>
               <div className="model-caption"><span>{mode}</span><span>Synthetic subject · not for clinical decisions</span></div>
             </section>
 

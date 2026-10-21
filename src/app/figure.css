@@ -891,3 +891,50 @@ input, select { border-radius: 2px !important; }
   .trajectory-panel .trajectory-header, .trajectory-panel .current-summary, .stage .trajectory-header, .stage .current-summary { padding-left: 0 !important; padding-right: 0 !important; }
   .hybrid-equation, .stage .hybrid-equation { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; overflow: visible !important; }
 }
+/* ---- round-4 review fixes ---- */
+.demo-entry, .demo-entry.panel, .demo-entry.stage { grid-template-columns: minmax(0, 1fr) 320px auto auto; }
+.demo-entry-figure { margin: 0; }
+.mini-twin { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--color-line); }
+.demo-entry-figure figcaption { font-size: 12.5px; color: var(--color-ink-3); margin-top: 4px; }
+@media (max-width: 1180px) { .demo-entry, .demo-entry.panel, .demo-entry.stage { grid-template-columns: minmax(0, 1fr) 300px; } .demo-entry-facts, .demo-entry-link { grid-column: auto; } }
+@media (max-width: 900px) { .demo-entry, .demo-entry.panel, .demo-entry.stage { grid-template-columns: minmax(0, 1fr); } }
+.chart-unreachable { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; border: 1px dashed var(--color-line-control); color: var(--color-ink-2); text-align: center; padding: 24px; }
+.chart-unreachable strong { font-family: var(--font-display); font-size: 20px; color: var(--color-ink); }
+/* evidence Figure 2: the gain sits on its own thin track under the dot and whisker */
+.error-gain { top: 17px !important; height: 5px !important; z-index: 0; }
+.error-ci { z-index: 2; } .error-bar::after { z-index: 3; }
+@media (max-width: 720px) {
+  .error-bar-row { grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name value" "track track"; row-gap: 4px; }
+  .error-bar-name { grid-area: name; } .error-bar-value { grid-area: value; } .error-bar-track { grid-area: track; }
+  .error-horizon { grid-template-columns: minmax(0, 1fr) !important; }
+  .error-axis-row .error-bar-row > span:first-child { display: none; }
+}
+/* wide tables scroll inside their frame, with a visible cue */
+.evidence-table-container { overflow-x: auto; background: linear-gradient(to right, #fff 30%, rgb(255 255 255 / 0)), linear-gradient(to right, rgb(255 255 255 / 0), #fff 70%) 100% 0, radial-gradient(farthest-side at 0 50%, rgb(17 20 24 / .16), transparent), radial-gradient(farthest-side at 100% 50%, rgb(17 20 24 / .16), transparent) 100% 0; background-repeat: no-repeat; background-size: 40px 100%, 40px 100%, 12px 100%, 12px 100%; background-attachment: local, local, scroll, scroll; }
+@media (max-width: 720px) { .evidence-table-container::before { content: 'Scroll sideways for more columns →'; display: block; font-size: 12.5px; color: var(--color-ink-3); padding: 0 0 6px; } }
+/* one style for section-level disclosures: full-width row, title left, chevron right */
+.evidence-disclosure > summary, .methodology-appendix > summary, .twin-workstation .contributions > summary { display: flex !important; justify-content: space-between !important; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
+.evidence-disclosure > summary::-webkit-details-marker, .contributions > summary::-webkit-details-marker { display: none; }
+.evidence-disclosure-hint { font-size: 0; }
+.evidence-disclosure-hint::after, .twin-workstation .contributions > summary .fine-print::after { content: ''; display: inline-block; width: 9px; height: 9px; border-right: 2px solid var(--color-ink); border-bottom: 2px solid var(--color-ink); transform: rotate(45deg); margin: 0 6px 4px 0; }
+details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .contributions[open] > summary .fine-print::after { transform: rotate(-135deg); margin-bottom: -2px; }
+.twin-workstation .contributions > summary .fine-print { font-size: 0; }
+/* phone lanes: full label above each strip */
+@media (max-width: 520px) {
+  .input-lane { padding-top: 16px; }
+  .input-lane .input-lane-label, .stage .input-lane-label { top: 0; height: 16px; width: auto !important; justify-content: flex-start; font-size: 12px; }
+  .input-lane-latest { top: 0; height: 16px; left: auto !important; right: 0; font-size: 12px; }
+}
+/* header: summary directly under the ID */
+.twin-workstation .tw-header { grid-template-columns: minmax(0, 1fr) !important; }
+.twin-workstation .tw-summary { margin-top: 2px; }
+.twin-workstation .tw-side .identity-mark { display: none; }
+.workspace-breadcrumb a { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 2px; }
+.hero-scrub input[type="range"] { height: 24px; }
+.partition-label[data-split="val"] { color: var(--color-ink) !important; font-weight: 500 !important; text-decoration: none !important; }
+@media (max-width: 720px) { .evidence-disclosure > summary, .overview-page h2 { line-height: 1.2; } }
+.risk-alert.status-watch { background: transparent; border: 1px solid var(--color-alert-edge); }
+@media (max-width: 720px) {
+  .chart-legend .lg-long { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; white-space: normal !important; }
+  .chart-legend .lg-short { display: none !important; }
+}

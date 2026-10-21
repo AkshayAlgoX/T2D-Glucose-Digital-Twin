@@ -210,6 +210,15 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
           ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
           return <g aria-hidden="true">{spreadLabels(raw, 18, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
         })()}
+        {(() => {
+          const b = learnedBlip([{ min: 0, final: 0, twin: 0 }, ...changeSeries(result)]);
+          const p = b ? scen.find(q => Math.round(q.min) === b.min) : null;
+          if (!b || !p || (step && step.offset === b.min)) return null;
+          return <g data-testid="whatif-blip-marker" aria-hidden="true">
+            <circle cx={x(p.min)} cy={y(p.p50)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
+            <text x={x(p.min) + 9} y={y(p.p50) + 18} className="chart-axis step-label">5-min blip</text>
+          </g>;
+        })()}
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
           if (!p) return null;

@@ -158,12 +158,11 @@ describe('EvidencePage Responsive & Accessibility Audit', () => {
       expect(th).toHaveAttribute('scope', 'col');
     });
 
-    // Check all images have meaningful alt text
-    const images = container.querySelectorAll('img');
-    expect(images.length).toBe(5);
-    images.forEach((img) => {
-      expect(img).toHaveAttribute('alt');
-      expect(img.getAttribute('alt')?.length).toBeGreaterThan(5);
+    // Figures are inline SVG drawn from the artifacts; every chart carries an accessible description.
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    container.querySelectorAll('svg[role="img"]').forEach((svg) => {
+      const name = svg.getAttribute('aria-label') ?? svg.getAttribute('aria-labelledby') ?? '';
+      expect(name.length).toBeGreaterThan(5);
     });
 
     // Check semantic collapsible disclosure

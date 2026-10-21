@@ -39,7 +39,7 @@ export function HeroForecast({ data }: { data: HeroData }) {
   const values = [...obs.map(o => o.v), ...pts.flatMap(p => [p.p05 ?? p.p10, p.p95 ?? p.p90, p.twin ?? p.p50]).filter((v): v is number => v != null), SPIKE];
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 15) / 40) * 40);
   const yMax = Math.ceil((Math.max(...values) + 10) / 40) * 40;
-  const M = { l: compact ? 62 : 84, r: compact ? 10 : 16, t: 24, b: 26 };
+  const M = { l: compact ? 72 : 84, r: compact ? 10 : 16, t: 24, b: 26 };
   const H = compact ? 240 : 320;
   const x = d3Scale.scaleLinear().domain([-120, 120]).range([M.l, W - M.r]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([H - M.b, M.t]);
@@ -150,12 +150,12 @@ function HeroLanes({ inputs, x, anchor, W, l, r, compact }: { inputs: HeroInput[
   const hrv = line(i => i.hrv);
   const mid = (x(-120) + x(0)) / 2;
   const lanes: Array<[string, string, React.ReactNode]> = [
-    [compact ? 'Meal' : 'Meal log', meals.length ? `${Math.round(meals[meals.length - 1].carbs!)} g` : 'none',
+    ['Meal log', meals.length ? `${Math.round(meals[meals.length - 1].carbs!)} g` : 'none',
       meals.length ? meals.map(i => <g key={i.t}><rect x={x(i.m) - 2} y={2} width={4} height={h - 4} className="lane-meal" />{!compact && <text x={x(i.m) - 6} y={h - 6} textAnchor="end" className="lane-note">{Math.round(i.carbs!)} g carbohydrate, {new Date(Date.parse(i.t)).toISOString().slice(11, 16)}</text>}</g>)
         : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No meal logged in this window</text>],
     ['Steps', last.steps != null ? `${Math.round(last.steps)} per 5 min` : '—', totalSteps > 0 ? rows.filter(i => (i.steps ?? 0) > 0).map(i => { const bh = Math.max(2, ((i.steps ?? 0) / maxSteps) * (h - 3)); const a = x(i.m) - step * 0.35; return <rect key={i.t} x={a} width={Math.max(2, Math.min(step * 0.7, x(0) - 1 - a))} y={h - Math.max(6, bh)} height={Math.max(6, bh)} className="lane-steps" />; }).concat(totalSteps > 0 && totalSteps < 50 ? [<text key="few" x={mid} y={h - 6} textAnchor="middle" className="lane-empty">only {totalSteps} steps in these 2 h</text>] : [])
       : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">0 steps recorded</text>],
-    [compact ? 'HR' : 'Heart rate', last.hr != null ? `${Math.round(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
+    ['Heart rate', last.hr != null ? `${Math.round(last.hr)} bpm` : '—', hr ? <path d={hr} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
     ['HRV', last.hrv != null ? `${Math.round(last.hrv)} ms` : '—', hrv ? <path d={hrv} className="lane-line" /> : <text x={mid} y={h - 6} textAnchor="middle" className="lane-empty">No readings received</text>],
     ['Sleep', last.asleep == null ? '—' : last.asleep ? 'Asleep' : 'Awake', rows.filter(i => i.asleep).map(i => {
       const a = Math.max(l, x(i.m) - step / 2), b = Math.min(x(0) - 1, x(i.m) + step / 2);

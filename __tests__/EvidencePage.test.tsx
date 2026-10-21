@@ -434,7 +434,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Artifact hashes and verification')).toBeInTheDocument();
-    expect(screen.getByText('SHA-256 Verified')).toBeInTheDocument();
+    expect(screen.getByText('Hashes match manifest')).toBeInTheDocument();
     expect(screen.getByText(MANIFEST_SHA)).toBeInTheDocument();
     expect(screen.getByText('b'.repeat(64))).toBeInTheDocument();
     expect(screen.getByText('runs/pr_tft_ablation_arm_d/run_manifest.json')).toBeInTheDocument();
@@ -478,21 +478,23 @@ describe('EvidencePage', () => {
     expect(screen.getByText('High Threshold Diagnostic (0.60)')).toBeInTheDocument();
   });
 
-  it('renders all five evidence SVG visual assets with appropriate accessible alternative text', async () => {
+  it('draws the evidence figures inline from the artifacts, each with an accessible description', async () => {
+    const realFs = jest.requireActual('fs/promises');
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
       if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      if (filePath.endsWith('validation_ceiling_results.json')) return realFs.readFile(filePath, 'utf8');
       throw new Error('Not found');
     });
 
     const Component = await EvidencePage();
-    render(Component);
+    const { container } = render(Component);
 
-    expect(screen.getByAltText('Matched Baselines with 95% Patient-Clustered Bootstrap CIs')).toBeInTheDocument();
-    expect(screen.getByAltText('Forecast Error Trajectory Across Horizons (5 to 120 min)')).toBeInTheDocument();
-    expect(screen.getByAltText('Subgroup robustness across clinical strata')).toBeInTheDocument();
-    expect(screen.getByAltText('Calibration Reliability Diagram with Equal-Width Probability Bins')).toBeInTheDocument();
-    expect(screen.getByAltText('Gate 3 Realism Audit Discriminator Summary')).toBeInTheDocument();
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    expect(screen.getAllByRole('img', { name: /Forecast error \(RMSE, mg\/dL\) at every horizon/ }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('Error the learned adjustment removes, by subgroup and horizon')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /fitted and evaluated on the same validation split \(resubstitution\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Gate 3 discriminator AUROC/ })).toBeInTheDocument();
   });
 
   it('maintains prominent display of negative findings (Gate 3 FAILED, Sealed Test Split, External NO-GO, EW-01 Unexecuted)', async () => {

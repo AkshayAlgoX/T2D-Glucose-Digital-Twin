@@ -1,6 +1,7 @@
 import { readLandingEvidence } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -651,7 +652,7 @@ export default async function EvidencePage() {
                           <td rowSpan={3} style={{ fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid var(--color-line)', background: 'var(--color-surface)' }}>
                             {row.hz}
                           </td>
-                          <td style={{ fontWeight: 600, color: 'var(--color-ok)' }}>PR-TFT (Arm D)</td>
+                          <td style={{ fontWeight: 600 }}>PR-TFT (Arm D)</td>
                           <td style={{ fontWeight: 700 }}>
                             {row.pr?.estimate.toFixed(2)}{' '}
                             <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -660,7 +661,7 @@ export default async function EvidencePage() {
                           </td>
                           <td>{row.maePr?.estimate ? row.maePr.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardPr?.estimate ? `${row.mardPr.estimate.toFixed(2)}%` : '—'}</td>
-                          <td style={{ color: 'var(--color-ok)', fontWeight: 600 }}>
+                          <td style={{ fontWeight: 600 }}>
                             {row.diffPe?.diff ? `${row.diffPe.diff.toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}%)` : '—'}
                           </td>
                           <td style={{ color: 'var(--color-accent-ink)', fontWeight: 600 }}>
@@ -703,14 +704,7 @@ export default async function EvidencePage() {
                 Note: Paired differences (&Delta; = PR-TFT - Comparator) are strictly negative in all 10,000/10,000 bootstrap draws in the primary analysis (and 1,000/1,000 in the secondary cross-check). Negative &Delta; indicates lower prediction error. P-values are not inferred from finite bootstrap draws.
               </p>
 
-              <div className="evidence-chart-grid">
-                <div className="evidence-chart-card">
-                  <img src="/evidence/baseline_comparison.svg" alt="Matched Baselines with 95% Patient-Clustered Bootstrap CIs" />
-                </div>
-                <div className="evidence-chart-card">
-                  <img src="/evidence/horizon_trajectory.svg" alt="Forecast Error Trajectory Across Horizons (5 to 120 min)" />
-                </div>
-              </div>
+              <p className="fine-print">These values are drawn in Figures 1 and 2 above.</p>
             </EvidenceDisclosure>
 
             {/* 2. Patient-Level Pairwise Wins */}
@@ -741,7 +735,7 @@ export default async function EvidencePage() {
                         <div style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)' }}>vs. Persistence:</span>{' '}
-                            <strong style={{ color: 'var(--color-ok)' }}>
+                            <strong>
                               {wRow.pr_vs_persistence.wins_count}/{wRow.pr_vs_persistence.n_patients} ({(wRow.pr_vs_persistence.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -750,7 +744,7 @@ export default async function EvidencePage() {
                           </div>
                           <div>
                             <span style={{ color: 'var(--color-ink-3)' }}>vs. UKF Twin:</span>{' '}
-                            <strong style={{ color: wRow.pr_vs_twin.wins_count === wRow.pr_vs_twin.n_patients ? 'var(--color-ok)' : 'var(--color-accent-ink)' }}>
+                            <strong>
                               {wRow.pr_vs_twin.wins_count}/{wRow.pr_vs_twin.n_patients} ({(wRow.pr_vs_twin.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -827,9 +821,7 @@ export default async function EvidencePage() {
                   })}
                 </div>
 
-                <div className="evidence-chart-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
-                  <img src="/evidence/subgroup_robustness.svg" alt="Subgroup robustness across clinical strata" />
-                </div>
+                {landing?.subgroups && <SubgroupGains rows={landing.subgroups} />}
               </EvidenceDisclosure>
             )}
 
@@ -902,8 +894,8 @@ export default async function EvidencePage() {
                     <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-ink-3)' }}>
                       80% Conformal Interval Coverage Reconciliation
                     </span>
-                    <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
-                      Reconciled Metric Provenance
+                    <span className="register-chip neutral">
+                      Reconciled metric provenance
                     </span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '10px' }}>
@@ -916,9 +908,9 @@ export default async function EvidencePage() {
                         Mean uncalibrated p10–p90 width: <strong>36.02 mg/dL</strong> across 53,849–53,920 evaluable rows. Measures raw PR-TFT quantile heads before post-processing.
                       </p>
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid var(--color-ok)', borderRadius: '6px', background: 'rgba(11, 113, 107, 0.04)' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ok)', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
-                      <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
+                    <div style={{ padding: '12px', borderLeft: '3px solid var(--color-line-control)' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--color-ink-2)', fontWeight: 600 }}>Conformal-adjusted coverage (resubstitution):</div>
+                      <div style={{ fontSize: '20px', fontWeight: 600, margin: '4px 0' }}>
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
@@ -934,7 +926,7 @@ export default async function EvidencePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
                     <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Brier Score (Raw &rarr; Calibrated)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
                       {cal.brier_score_calibrated?.toFixed(4)}
                       <small style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {cal.brier_score_raw?.toFixed(4)})</small>
                     </div>
@@ -962,9 +954,7 @@ export default async function EvidencePage() {
                   )}
                 </div>
 
-                <div className="evidence-chart-card" style={{ marginBottom: '16px' }}>
-                  <img src="/evidence/calibration_reliability.svg" alt="Calibration Reliability Diagram with Equal-Width Probability Bins" />
-                </div>
+                {landing?.reliability && <ReliabilityFigure data={landing.reliability} />}
 
                 <p className="fine-print" style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
                   Conformal coverage ({metrics.coverage_80_conformal.estimate ? (metrics.coverage_80_conformal.estimate * 100).toFixed(2) : '80.00'}%, width {metrics.width_80_conformal_mg_dl?.estimate?.toFixed(2) ?? '37.30'} mg/dL), Expected Calibration Error (ECE 0.000094), and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting. No threshold should be treated as an approved clinical operating recommendation.
@@ -1001,12 +991,7 @@ export default async function EvidencePage() {
                       <div><strong>Acceptance target:</strong> AUROC &le; 0.65</div>
                       <div><strong>Top tells:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
                     </div>
-                    <details className="context-details register-more">
-                      <summary>Show the Gate 3 summary figure</summary>
-                      <div className="evidence-chart-card">
-                        <img src="/evidence/gate3_realism_summary.svg" alt="Gate 3 Realism Audit Discriminator Summary" />
-                      </div>
-                    </details>
+                    {landing?.gate3ci && <Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} />}
                     <p className="fine-print register-foot">
                       Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507). The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository.
                     </p>
@@ -1112,8 +1097,8 @@ export default async function EvidencePage() {
                 <p>Click to inspect SHA-256 byte manifests, training checkpoint provenance, data integrity digests, and pipeline parameters.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
-                  <CheckCircle2 size={12} aria-hidden="true" /> SHA-256 Verified
+                <span className="register-chip neutral">
+                  Hashes match manifest
                 </span>
                 <ChevronDown size={16} aria-hidden="true" style={{ color: 'var(--color-ink-3)' }} />
               </div>
@@ -1121,7 +1106,7 @@ export default async function EvidencePage() {
             <div className="reproducibility-content">
               <div style={{ padding: '16px 0 12px', fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6 }}>
                 <p style={{ margin: '0 0 12px' }}>
-                  Cryptographic verification succeeded. All recorded artifact hashes below match the on-disk byte manifests and checkpoint identities.
+                  The recorded artifact hashes below match the on-disk files and checkpoint identities. This confirms which files were evaluated; it is not evidence of model quality.
                   {manifest.run_kind && manifest.run_kind !== 'full' ? ' Notice: Pipeline-check run, not validation evidence.' : ''}
                 </p>
                 <dl className="provenance-fields" style={{ margin: 0 }}>
