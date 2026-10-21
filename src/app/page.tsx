@@ -58,8 +58,10 @@ export default async function Home() {
             </p>
             <div className="landing-actions">
               <Link href={`/patients/${DEMO_SUBJECT_ID}`} className="landing-cta">Open the demo twin · P0017 <ArrowRight size={16} aria-hidden="true" /></Link>
-              <Link href="/cohort" className="landing-link"><Users size={16} aria-hidden="true" /> Browse the cohort</Link>
-              <Link href="/evidence" className="landing-link"><BookOpenCheck size={16} aria-hidden="true" /> Read the evidence</Link>
+              <span className="landing-secondary">
+                <Link href="/cohort" className="landing-link"><Users size={16} aria-hidden="true" /> Browse the cohort</Link>
+                <Link href="/evidence" className="landing-link"><BookOpenCheck size={16} aria-hidden="true" /> Read the evidence</Link>
+              </span>
             </div>
             <p className="landing-boundary">
               Synthetic data only, and not a medical device. Results are development-validation diagnostics, not clinical validation. The realism gate failed, and we publish that result.

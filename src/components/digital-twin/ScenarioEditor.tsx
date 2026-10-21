@@ -184,12 +184,12 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         </g>)}
         {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
         <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
-        <path d={band(scen) ?? ''} fill="none" stroke="var(--color-projection)" strokeOpacity={0.7} strokeWidth={1} strokeDasharray="3 3" />
+        <path d={band(scen) ?? ''} fill="none" stroke="var(--color-projection)" strokeOpacity={0.4} strokeWidth={1} strokeDasharray="3 3" />
         <path d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
         <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
         <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
-        {baseTwin.length > 0 && <path data-testid="whatif-twin-base-line" d={twinLine([...startTwin, ...baseTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.5} strokeOpacity={0.8} />}
+        {baseTwin.length > 0 && <path data-testid="whatif-twin-base-line" d={twinLine([...startTwin, ...baseTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeOpacity={0.6} />}
         {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={twinFirst ? 2.5 : 1.75} strokeDasharray="6 4" />}
         {change && <g data-testid="whatif-change-marker" aria-hidden="true">
           {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
@@ -375,7 +375,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <figure className="whatif-figure">
-        <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time</span></figcaption>
+        <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time{outOfRange ? ' · green: physiology twin alone, pink dashed: final forecast' : ''}</span></figcaption>
         <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <dl className="whatif-metrics">
