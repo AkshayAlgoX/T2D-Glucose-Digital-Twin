@@ -1040,3 +1040,4 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
   .trajectory-panel .forecast-metadata span:first-child { white-space: nowrap; }
 }
 @media (max-width: 720px) { .trajectory-panel .trajectory-header .current-summary { flex-wrap: wrap; row-gap: 4px; } }
+@media (max-width: 720px) { .trajectory-panel .forecast-metadata span, .trajectory-panel .forecast-metadata span:first-child { white-space: normal !important; } .trajectory-panel .forecast-metadata { min-width: 0; max-width: 100%; } }
