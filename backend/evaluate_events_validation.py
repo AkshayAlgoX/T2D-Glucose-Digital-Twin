@@ -346,6 +346,7 @@ def main() -> None:
         z = np.load(args.from_decisions, allow_pickle=False)
         dec = {k: z[k] for k in z.files}
         meta = json.loads(str(dec.pop("meta_json")))
+        meta["decisions_sha256"] = prov.sha256_file(args.from_decisions)
     else:
         dec, meta = model_decisions(args.run_dir, args.limit)
         meta["limited_to_patients"] = args.limit
@@ -367,8 +368,12 @@ def main() -> None:
             "decision_times": "every 5-min step from 287 to n-1-24 with a current CGM value and enough past coverage",
             "spike_onset": "CGM >= 180 mg/dL after a >= 50 mg/dL rise within 60 min, staying >= 180 for 15 min; "
                            "re-armed after 30 min below 160 (train_pr_tft.detect_spike_onsets)",
-            "missed_onset": "monitored onset with no alert in its 120-min warning window",
-            "false_alert": "alert with no onset within the next 120 min",
+            "matching_rule": "deterministic 1-to-1 alert-to-event matching: chronological by monitored onset, "
+                           "each matched to earliest available alert in [onset - 120 min, onset - 5 min]",
+            "detected_onset": "monitored onset matched 1-to-1 to an alert in its 120-min warning window",
+            "missed_onset": "monitored onset with no unmatched alert in its 120-min warning window",
+            "true_alert": "alert matched 1-to-1 to an eligible monitored onset",
+            "false_alert": "alert not matched 1-to-1 to any monitored onset within the next 120 min",
             "linear_trend_rule": f"least-squares line through the last {TREND_STEPS * STEP_MIN} min of CGM, extended 120 min",
             "crossfit": f"2 patient folds stratified by diabetes status, seed {CROSSFIT_SEED}",
             "operating_curve": "descriptive only; no threshold is selected from it",

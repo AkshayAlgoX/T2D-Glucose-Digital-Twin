@@ -165,19 +165,36 @@ def event_counts(raised: np.ndarray, onset: np.ndarray, first: int, last: int,
 
     monitored onset  k with first + horizon <= k <= last + 1: its whole warning window
                      [k - horizon, k - 1] lies inside the decision period;
-    detected         at least one alert raised in that window; lead = k - earliest such alert;
-    true alert       an onset within (t, t + horizon]."""
+    detected         matched 1-to-1 with an alert raised in [k - horizon, k - 1];
+                     lead = (k - t) * STEP_MIN;
+    true alert       an alert matched 1-to-1 to an eligible monitored onset;
+    false alert      an alert not matched to any monitored onset.
+
+    Deterministic 1-to-1 matching rule:
+      Pairs (alert t, onset k) are eligible if t in [k - horizon, k - 1] (lead in 5..120 min).
+      Matching proceeds chronologically by monitored onset k (earliest onset first).
+      For each onset, the earliest available (unmatched) eligible alert t is assigned.
+      Once matched, neither the alert nor the onset can be reused.
+      Any unmatched alert is a false alert; any unmatched onset is missed.
+    """
     raised = raised.copy()
     raised[:first] = False
     raised[last + 1:] = False
     alerts = np.flatnonzero(raised)
-    true = sum(bool(onset[t + 1:t + 1 + horizon].any()) for t in alerts)
     onsets = [k for k in np.flatnonzero(onset) if first + horizon <= k <= last + 1]
+
+    unmatched_alerts = set(alerts.tolist())
     leads = []
+    matched_alerts = set()
     for k in onsets:
-        hit = np.flatnonzero(raised[k - horizon:k])
-        if hit.size:
-            leads.append(int((horizon - hit[0]) * STEP_MIN))
+        eligible = [t for t in unmatched_alerts if k - horizon <= t <= k - 1]
+        if eligible:
+            earliest_t = min(eligible)
+            matched_alerts.add(earliest_t)
+            unmatched_alerts.remove(earliest_t)
+            leads.append(int((k - earliest_t) * STEP_MIN))
+
+    true = len(matched_alerts)
     return {"monitored_onsets": len(onsets), "detected_onsets": len(leads), "alerts_raised": int(alerts.size),
             "true_alerts": int(true), "false_alerts": int(alerts.size - true),
             "patient_days": (last - first + 1) * STEP_MIN / 1440.0, "lead_times_min": leads}
