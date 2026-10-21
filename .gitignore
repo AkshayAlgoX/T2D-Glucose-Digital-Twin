@@ -16,3 +16,7 @@ node_modules
 
 # Environment config
 .env*
+
+# Licensed real participant records, split assignments and derived individual artifacts.
+data/real/
+runs/real_masked_*/
