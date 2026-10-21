@@ -1,0 +1,1583 @@
+{
+  "schema": "pr_tft_validation_event_evaluation/v1",
+  "split": "validation (44 patients); the test split is never loaded",
+  "independence": "Development evidence. Validation patients chose the checkpoint and fitted the served isotonic calibration; 'pr_tft_crossfit' rows refit the isotonic map on the other patient fold, removing the calibration leak but not the checkpoint-selection one. Synthetic data only.",
+  "locked_policy": {
+    "source": "backend/model_selection_rule.json",
+    "rule_sha256": "0313a9123290aded2d2b2590d48c5d1e2fb6315fe57e37941a1d20556068b6f8",
+    "alerting": {
+      "thresholds": [
+        0.35,
+        0.6
+      ],
+      "primary_threshold": 0.35,
+      "secondary_threshold": 0.6,
+      "probability": "isotonic-calibrated P(onset within 120 min), calibration fitted on validation patients",
+      "policy": "alert when the patient is at risk (causal flag) and the trigger holds; at most one alert per 120 min",
+      "unreachable_threshold": "a threshold above the maximum calibrated probability is unreachable: it is reported as unreachable with no metrics, never replaced by another threshold. If the primary threshold is unreachable, PR-TFT has no alerting operating point and twin_only is selected.",
+      "true_alert": "a spike onset occurs within (t, t + 120 min]",
+      "monitored_onset": "an onset whose whole 120-min warning window lies within the decision period (decision times start at step 287)",
+      "detected_onset": "at least one alert raised within [onset - 120 min, onset - 5 min]"
+    },
+    "uncertainty": {
+      "method": "paired patient-level bootstrap, stratified by diabetes status within the population",
+      "resamples": 2000,
+      "ci": 0.95,
+      "seed": 20260930
+    }
+  },
+  "definitions": {
+    "decision_times": "every 5-min step from 287 to n-1-24 with a current CGM value and enough past coverage",
+    "spike_onset": "CGM >= 180 mg/dL after a >= 50 mg/dL rise within 60 min, staying >= 180 for 15 min; re-armed after 30 min below 160 (train_pr_tft.detect_spike_onsets)",
+    "missed_onset": "monitored onset with no alert in its 120-min warning window",
+    "false_alert": "alert with no onset within the next 120 min",
+    "linear_trend_rule": "least-squares line through the last 30 min of CGM, extended 120 min",
+    "crossfit": "2 patient folds stratified by diabetes status, seed 20261021",
+    "operating_curve": "descriptive only; no threshold is selected from it"
+  },
+  "provenance": {
+    "run_dir": "runs/pr_tft_ablation_arm_d",
+    "checkpoint_sha256": "fb49cadfafdab18bbb582855c8d9814e8dc29b0b09842f0de0a3fe178f09a0c0",
+    "run_manifest_sha256": "0ae8ca75cdbd7986e9c990909656cb671b98e2193887fc2997aba1ac4e859f51",
+    "split_sha256": "950bbdce192f389a9404d91d05b3346537507a3cbdcb9f954774d35b5f882587",
+    "data_sha256": {
+      "patients_ehr.csv": "c9c3d3d3e4d8b0dc77732715cb4f8d90e48920162a4538103377cb4f68ae8254",
+      "patient_cgm_telemetry.csv": "d4585ae39009da43d95f8560409fc1ede5e2e3eeb57eee4fd6519df4c3e3544f"
+    },
+    "calibration_refit_distance": {
+      "conformal_mg_dl": 0.00014650821685791016,
+      "hazard_map": 9.276390012433189e-05
+    },
+    "git": {
+      "git_sha": "6e905818e4206e0891d164943d7c5e394239c943",
+      "dirty": true,
+      "dirty_paths": [
+        "__tests__/NavigationRail.test.tsx",
+        "__tests__/landing.test.tsx",
+        "src/app/cohort/page.tsx",
+        "src/app/evidence/page.tsx",
+        "src/app/figure.css",
+        "src/app/icon.svg",
+        "src/app/page.tsx",
+        "src/components/digital-twin/NavigationRail.tsx",
+        "src/components/digital-twin/PatientWorkspace.tsx",
+        "src/components/figure/EvidenceFigures.tsx",
+        "src/lib/landing.ts",
+        "__tests__/event-warning.test.tsx",
+        "backend/evaluate_events_validation.py",
+        "backend/tests/test_event_validation.py"
+      ],
+      "n_dirty_paths": 14
+    },
+    "limited_to_patients": null,
+    "decisions_sha256": "8e7367bb19145723e668cce8321a22101462ba86847a8e438b6370487be6df13"
+  },
+  "populations": {
+    "primary": {
+      "patients": 29,
+      "groups": {
+        "Prediabetes": 19,
+        "Type 2": 10
+      },
+      "models": {
+        "pr_tft@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.905997,
+            "ci_low": 0.887301,
+            "ci_high": 0.92296
+          },
+          "alert_precision": {
+            "estimate": 0.470935,
+            "ci_low": 0.420998,
+            "ci_high": 0.516171
+          },
+          "alerts_per_patient_day": {
+            "estimate": 3.168003,
+            "ci_low": 2.890369,
+            "ci_high": 3.434894
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.676079,
+            "ci_low": 1.494593,
+            "ci_high": 1.852227
+          },
+          "lead_time_median_min": {
+            "estimate": 75.0,
+            "ci_low": 70.0,
+            "ci_high": 80.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 559,
+            "alerts_raised": 1187,
+            "true_alerts": 559,
+            "false_alerts": 628,
+            "missed_onsets": 58
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 559,
+            "p10": 20.0,
+            "p25": 40.0,
+            "median": 75.0,
+            "p75": 100.0,
+            "p90": 115.0,
+            "share_ge_30_min": 0.8300536672629696,
+            "share_ge_60_min": 0.6153846153846154,
+            "histogram_min": {
+              "5-30": 113,
+              "35-60": 117,
+              "65-90": 153,
+              "95-120": 176
+            }
+          }
+        },
+        "pr_tft_crossfit@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.899514,
+            "ci_low": 0.874133,
+            "ci_high": 0.921653
+          },
+          "alert_precision": {
+            "estimate": 0.455665,
+            "ci_low": 0.405894,
+            "ci_high": 0.501945
+          },
+          "alerts_per_patient_day": {
+            "estimate": 3.250739,
+            "ci_low": 2.973172,
+            "ci_high": 3.525704
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.769491,
+            "ci_low": 1.582533,
+            "ci_high": 1.943037
+          },
+          "lead_time_median_min": {
+            "estimate": 70.0,
+            "ci_low": 70.0,
+            "ci_high": 80.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 555,
+            "alerts_raised": 1218,
+            "true_alerts": 555,
+            "false_alerts": 663,
+            "missed_onsets": 62
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 555,
+            "p10": 20.0,
+            "p25": 40.0,
+            "median": 70.0,
+            "p75": 100.0,
+            "p90": 115.0,
+            "share_ge_30_min": 0.827027027027027,
+            "share_ge_60_min": 0.609009009009009,
+            "histogram_min": {
+              "5-30": 117,
+              "35-60": 116,
+              "65-90": 149,
+              "95-120": 173
+            }
+          }
+        },
+        "pr_tft@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.706645,
+            "ci_low": 0.65886,
+            "ci_high": 0.75
+          },
+          "alert_precision": {
+            "estimate": 0.675969,
+            "ci_low": 0.619344,
+            "ci_high": 0.729409
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.72145,
+            "ci_low": 1.454559,
+            "ci_high": 1.988409
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.557803,
+            "ci_low": 0.432364,
+            "ci_high": 0.672633
+          },
+          "lead_time_median_min": {
+            "estimate": 65.0,
+            "ci_low": 55.0,
+            "ci_high": 70.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 436,
+            "alerts_raised": 645,
+            "true_alerts": 436,
+            "false_alerts": 209,
+            "missed_onsets": 181
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 436,
+            "p10": 25.0,
+            "p25": 35.0,
+            "median": 65.0,
+            "p75": 90.0,
+            "p90": 110.0,
+            "share_ge_30_min": 0.8623853211009175,
+            "share_ge_60_min": 0.5435779816513762,
+            "histogram_min": {
+              "5-30": 84,
+              "35-60": 130,
+              "65-90": 122,
+              "95-120": 100
+            }
+          }
+        },
+        "pr_tft_crossfit@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.708266,
+            "ci_low": 0.660583,
+            "ci_high": 0.753807
+          },
+          "alert_precision": {
+            "estimate": 0.676471,
+            "ci_low": 0.614963,
+            "ci_high": 0.731033
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.724119,
+            "ci_low": 1.451823,
+            "ci_high": 1.99368
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.557803,
+            "ci_low": 0.435033,
+            "ci_high": 0.68064
+          },
+          "lead_time_median_min": {
+            "estimate": 65.0,
+            "ci_low": 55.0,
+            "ci_high": 70.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 437,
+            "alerts_raised": 646,
+            "true_alerts": 437,
+            "false_alerts": 209,
+            "missed_onsets": 180
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 437,
+            "p10": 25.0,
+            "p25": 40.0,
+            "median": 65.0,
+            "p75": 90.0,
+            "p90": 110.0,
+            "share_ge_30_min": 0.8741418764302059,
+            "share_ge_60_min": 0.5423340961098398,
+            "histogram_min": {
+              "5-30": 79,
+              "35-60": 134,
+              "65-90": 115,
+              "95-120": 109
+            }
+          }
+        },
+        "pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": 0.990276,
+            "ci_low": 0.980738,
+            "ci_high": 0.997184
+          },
+          "alert_precision": {
+            "estimate": 0.615307,
+            "ci_low": 0.566751,
+            "ci_high": 0.660449
+          },
+          "alerts_per_patient_day": {
+            "estimate": 2.650233,
+            "ci_low": 2.378004,
+            "ci_high": 2.903847
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.019526,
+            "ci_low": 0.896756,
+            "ci_high": 1.134289
+          },
+          "lead_time_median_min": {
+            "estimate": 50.0,
+            "ci_low": 45.0,
+            "ci_high": 55.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 611,
+            "alerts_raised": 993,
+            "true_alerts": 611,
+            "false_alerts": 382,
+            "missed_onsets": 6
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 611,
+            "p10": 15.0,
+            "p25": 30.0,
+            "median": 50.0,
+            "p75": 85.0,
+            "p90": 105.0,
+            "share_ge_30_min": 0.7528641571194763,
+            "share_ge_60_min": 0.44680851063829785,
+            "histogram_min": {
+              "5-30": 190,
+              "35-60": 170,
+              "65-90": 125,
+              "95-120": 126
+            }
+          }
+        },
+        "twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.837925,
+            "ci_low": 0.797362,
+            "ci_high": 0.876208
+          },
+          "alert_precision": {
+            "estimate": 0.764793,
+            "ci_low": 0.718288,
+            "ci_high": 0.81023
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.804187,
+            "ci_low": 1.569322,
+            "ci_high": 2.020436
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.424358,
+            "ci_low": 0.349561,
+            "ci_high": 0.496418
+          },
+          "lead_time_median_min": {
+            "estimate": 35.0,
+            "ci_low": 35.0,
+            "ci_high": 40.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 517,
+            "alerts_raised": 676,
+            "true_alerts": 517,
+            "false_alerts": 159,
+            "missed_onsets": 100
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 517,
+            "p10": 10.0,
+            "p25": 20.0,
+            "median": 35.0,
+            "p75": 55.0,
+            "p90": 70.0,
+            "share_ge_30_min": 0.6402321083172147,
+            "share_ge_60_min": 0.20696324951644102,
+            "histogram_min": {
+              "5-30": 225,
+              "35-60": 207,
+              "65-90": 63,
+              "95-120": 22
+            }
+          }
+        },
+        "linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": 0.993517,
+            "ci_low": 0.984373,
+            "ci_high": 1.0
+          },
+          "alert_precision": {
+            "estimate": 0.519052,
+            "ci_low": 0.446858,
+            "ci_high": 0.592515
+          },
+          "alerts_per_patient_day": {
+            "estimate": 3.151989,
+            "ci_low": 3.047901,
+            "ci_high": 3.261481
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.515944,
+            "ci_low": 1.289019,
+            "ci_high": 1.737464
+          },
+          "lead_time_median_min": {
+            "estimate": 20.0,
+            "ci_low": 20.0,
+            "ci_high": 20.0
+          },
+          "counts": {
+            "monitored_onsets": 617,
+            "detected_onsets": 613,
+            "alerts_raised": 1181,
+            "true_alerts": 613,
+            "false_alerts": 568,
+            "missed_onsets": 4
+          },
+          "patient_days": 374.68,
+          "lead_time_distribution_min": {
+            "n": 613,
+            "p10": 10.0,
+            "p25": 10.0,
+            "median": 20.0,
+            "p75": 30.0,
+            "p90": 45.0,
+            "share_ge_30_min": 0.2903752039151713,
+            "share_ge_60_min": 0.05872756933115824,
+            "histogram_min": {
+              "5-30": 487,
+              "35-60": 95,
+              "65-90": 14,
+              "95-120": 17
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "pr_tft_crossfit@0.35_minus_twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.061588,
+            "ci_low": 0.01393,
+            "ci_high": 0.111524
+          },
+          "alert_precision": {
+            "estimate": -0.309128,
+            "ci_low": -0.347106,
+            "ci_high": -0.269653
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.446552,
+            "ci_low": 1.214357,
+            "ci_high": 1.668072
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.345133,
+            "ci_low": 1.142296,
+            "ci_high": 1.539964
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": -0.094003,
+            "ci_low": -0.121864,
+            "ci_high": -0.069443
+          },
+          "alert_precision": {
+            "estimate": -0.063387,
+            "ci_low": -0.11001,
+            "ci_high": -0.02096
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.09875,
+            "ci_low": -0.141453,
+            "ci_high": 0.354966
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.253547,
+            "ci_low": -0.013345,
+            "ci_high": 0.531114
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": -0.090762,
+            "ci_low": -0.118244,
+            "ci_high": -0.065811
+          },
+          "alert_precision": {
+            "estimate": -0.159642,
+            "ci_low": -0.191821,
+            "ci_high": -0.127056
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.600506,
+            "ci_low": 0.429695,
+            "ci_high": 0.771383
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.749965,
+            "ci_low": 0.573817,
+            "ci_high": 0.923445
+          }
+        }
+      }
+    },
+    "secondary": {
+      "patients": 15,
+      "groups": {
+        "Healthy": 15
+      },
+      "models": {
+        "pr_tft@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.864865,
+            "ci_low": 0.814417,
+            "ci_high": 0.908213
+          },
+          "alert_precision": {
+            "estimate": 0.431267,
+            "ci_low": 0.337061,
+            "ci_high": 0.533357
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.914324,
+            "ci_low": 1.418844,
+            "ci_high": 2.445794
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.08874,
+            "ci_low": 0.727546,
+            "ci_high": 1.480892
+          },
+          "lead_time_median_min": {
+            "estimate": 50.0,
+            "ci_low": 35.0,
+            "ci_high": 65.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 160,
+            "alerts_raised": 371,
+            "true_alerts": 160,
+            "false_alerts": 211,
+            "missed_onsets": 25
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 160,
+            "p10": 15.0,
+            "p25": 25.0,
+            "median": 50.0,
+            "p75": 90.0,
+            "p90": 110.0,
+            "share_ge_30_min": 0.74375,
+            "share_ge_60_min": 0.45,
+            "histogram_min": {
+              "5-30": 48,
+              "35-60": 45,
+              "65-90": 31,
+              "95-120": 36
+            }
+          }
+        },
+        "pr_tft_crossfit@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.87027,
+            "ci_low": 0.823073,
+            "ci_high": 0.909091
+          },
+          "alert_precision": {
+            "estimate": 0.421466,
+            "ci_low": 0.330818,
+            "ci_high": 0.522133
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.971083,
+            "ci_low": 1.465284,
+            "ci_high": 2.502811
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.140339,
+            "ci_low": 0.768826,
+            "ci_high": 1.532491
+          },
+          "lead_time_median_min": {
+            "estimate": 50.0,
+            "ci_low": 35.0,
+            "ci_high": 65.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 161,
+            "alerts_raised": 382,
+            "true_alerts": 161,
+            "false_alerts": 221,
+            "missed_onsets": 24
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 161,
+            "p10": 20.0,
+            "p25": 25.0,
+            "median": 50.0,
+            "p75": 90.0,
+            "p90": 115.0,
+            "share_ge_30_min": 0.7391304347826086,
+            "share_ge_60_min": 0.45962732919254656,
+            "histogram_min": {
+              "5-30": 50,
+              "35-60": 43,
+              "65-90": 29,
+              "95-120": 39
+            }
+          }
+        },
+        "pr_tft@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.340541,
+            "ci_low": 0.203252,
+            "ci_high": 0.44828
+          },
+          "alert_precision": {
+            "estimate": 0.552632,
+            "ci_low": 0.428571,
+            "ci_high": 0.693718
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.588229,
+            "ci_low": 0.294114,
+            "ci_high": 0.897823
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.263155,
+            "ci_low": 0.118678,
+            "ci_high": 0.428272
+          },
+          "lead_time_median_min": {
+            "estimate": 60.0,
+            "ci_low": 30.0,
+            "ci_high": 80.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 63,
+            "alerts_raised": 114,
+            "true_alerts": 63,
+            "false_alerts": 51,
+            "missed_onsets": 122
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 63,
+            "p10": 16.0,
+            "p25": 25.0,
+            "median": 60.0,
+            "p75": 87.5,
+            "p90": 104.00000000000003,
+            "share_ge_30_min": 0.7142857142857143,
+            "share_ge_60_min": 0.5079365079365079,
+            "histogram_min": {
+              "5-30": 25,
+              "35-60": 8,
+              "65-90": 16,
+              "95-120": 14
+            }
+          }
+        },
+        "pr_tft_crossfit@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.340541,
+            "ci_low": 0.207537,
+            "ci_high": 0.435897
+          },
+          "alert_precision": {
+            "estimate": 0.552632,
+            "ci_low": 0.437487,
+            "ci_high": 0.687035
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.588229,
+            "ci_low": 0.304305,
+            "ci_high": 0.892663
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.263155,
+            "ci_low": 0.123838,
+            "ci_high": 0.423112
+          },
+          "lead_time_median_min": {
+            "estimate": 65.0,
+            "ci_low": 30.0,
+            "ci_high": 75.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 63,
+            "alerts_raised": 114,
+            "true_alerts": 63,
+            "false_alerts": 51,
+            "missed_onsets": 122
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 63,
+            "p10": 15.0,
+            "p25": 25.0,
+            "median": 65.0,
+            "p75": 90.0,
+            "p90": 109.00000000000003,
+            "share_ge_30_min": 0.7301587301587301,
+            "share_ge_60_min": 0.5238095238095238,
+            "histogram_min": {
+              "5-30": 24,
+              "35-60": 7,
+              "65-90": 17,
+              "95-120": 15
+            }
+          }
+        },
+        "pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": 0.967568,
+            "ci_low": 0.940119,
+            "ci_high": 0.99015
+          },
+          "alert_precision": {
+            "estimate": 0.561129,
+            "ci_low": 0.476562,
+            "ci_high": 0.629239
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.646009,
+            "ci_low": 1.326095,
+            "ci_high": 1.971083
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.722386,
+            "ci_low": 0.613899,
+            "ci_high": 0.825585
+          },
+          "lead_time_median_min": {
+            "estimate": 35.0,
+            "ci_low": 30.0,
+            "ci_high": 40.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 179,
+            "alerts_raised": 319,
+            "true_alerts": 179,
+            "false_alerts": 140,
+            "missed_onsets": 6
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 179,
+            "p10": 15.0,
+            "p25": 22.5,
+            "median": 35.0,
+            "p75": 45.0,
+            "p90": 70.0,
+            "share_ge_30_min": 0.6312849162011173,
+            "share_ge_60_min": 0.1787709497206704,
+            "histogram_min": {
+              "5-30": 80,
+              "35-60": 73,
+              "65-90": 17,
+              "95-120": 9
+            }
+          }
+        },
+        "twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.794595,
+            "ci_low": 0.737083,
+            "ci_high": 0.864418
+          },
+          "alert_precision": {
+            "estimate": 0.633621,
+            "ci_low": 0.545896,
+            "ci_high": 0.704357
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.197098,
+            "ci_low": 0.990701,
+            "ci_high": 1.408654
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.438592,
+            "ci_low": 0.371513,
+            "ci_high": 0.51083
+          },
+          "lead_time_median_min": {
+            "estimate": 30.0,
+            "ci_low": 20.0,
+            "ci_high": 35.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 147,
+            "alerts_raised": 232,
+            "true_alerts": 147,
+            "false_alerts": 85,
+            "missed_onsets": 38
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 147,
+            "p10": 5.0,
+            "p25": 10.0,
+            "median": 30.0,
+            "p75": 45.0,
+            "p90": 50.0,
+            "share_ge_30_min": 0.5170068027210885,
+            "share_ge_60_min": 0.07482993197278912,
+            "histogram_min": {
+              "5-30": 87,
+              "35-60": 55,
+              "65-90": 5,
+              "95-120": 0
+            }
+          }
+        },
+        "linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": 0.994595,
+            "ci_low": 0.980516,
+            "ci_high": 1.0
+          },
+          "alert_precision": {
+            "estimate": 0.297735,
+            "ci_low": 0.214985,
+            "ci_high": 0.383152
+          },
+          "alerts_per_patient_day": {
+            "estimate": 3.18882,
+            "ci_low": 3.070142,
+            "ci_high": 3.312658
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 2.239398,
+            "ci_low": 1.976243,
+            "ci_high": 2.492233
+          },
+          "lead_time_median_min": {
+            "estimate": 25.0,
+            "ci_low": 20.0,
+            "ci_high": 25.0
+          },
+          "counts": {
+            "monitored_onsets": 185,
+            "detected_onsets": 184,
+            "alerts_raised": 618,
+            "true_alerts": 184,
+            "false_alerts": 434,
+            "missed_onsets": 1
+          },
+          "patient_days": 193.8,
+          "lead_time_distribution_min": {
+            "n": 184,
+            "p10": 15.0,
+            "p25": 20.0,
+            "median": 25.0,
+            "p75": 35.0,
+            "p90": 45.0,
+            "share_ge_30_min": 0.41304347826086957,
+            "share_ge_60_min": 0.06521739130434782,
+            "histogram_min": {
+              "5-30": 131,
+              "35-60": 44,
+              "65-90": 3,
+              "95-120": 6
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "pr_tft_crossfit@0.35_minus_twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.075676,
+            "ci_low": -0.006176,
+            "ci_high": 0.131868
+          },
+          "alert_precision": {
+            "estimate": -0.212155,
+            "ci_low": -0.284209,
+            "ci_high": -0.116778
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.773985,
+            "ci_low": 0.350873,
+            "ci_high": 1.217866
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.701747,
+            "ci_low": 0.319914,
+            "ci_high": 1.104219
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": -0.124324,
+            "ci_low": -0.172414,
+            "ci_high": -0.084211
+          },
+          "alert_precision": {
+            "estimate": 0.123731,
+            "ci_low": 0.048942,
+            "ci_high": 0.217023
+          },
+          "alerts_per_patient_day": {
+            "estimate": -1.217737,
+            "ci_low": -1.723408,
+            "ci_high": -0.665628
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": -1.099059,
+            "ci_low": -1.60473,
+            "ci_high": -0.55211
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": -0.097297,
+            "ci_low": -0.135716,
+            "ci_high": -0.0625
+          },
+          "alert_precision": {
+            "estimate": -0.139663,
+            "ci_low": -0.18589,
+            "ci_high": -0.070629
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.325074,
+            "ci_low": 0.015351,
+            "ci_high": 0.650148
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.417952,
+            "ci_low": 0.118549,
+            "ci_high": 0.732706
+          }
+        }
+      }
+    },
+    "all": {
+      "patients": 44,
+      "groups": {
+        "Healthy": 15,
+        "Prediabetes": 19,
+        "Type 2": 10
+      },
+      "models": {
+        "pr_tft@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.896509,
+            "ci_low": 0.878112,
+            "ci_high": 0.914252
+          },
+          "alert_precision": {
+            "estimate": 0.461489,
+            "ci_low": 0.41736,
+            "ci_high": 0.503117
+          },
+          "alerts_per_patient_day": {
+            "estimate": 2.740612,
+            "ci_low": 2.478513,
+            "ci_high": 2.990398
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.47585,
+            "ci_low": 1.30698,
+            "ci_high": 1.648237
+          },
+          "lead_time_median_min": {
+            "estimate": 70.0,
+            "ci_low": 65.0,
+            "ci_high": 75.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 719,
+            "alerts_raised": 1558,
+            "true_alerts": 719,
+            "false_alerts": 839,
+            "missed_onsets": 83
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 719,
+            "p10": 20.0,
+            "p25": 35.0,
+            "median": 70.0,
+            "p75": 95.0,
+            "p90": 115.0,
+            "share_ge_30_min": 0.8108484005563282,
+            "share_ge_60_min": 0.5785813630041725,
+            "histogram_min": {
+              "5-30": 161,
+              "35-60": 162,
+              "65-90": 184,
+              "95-120": 212
+            }
+          }
+        },
+        "pr_tft_crossfit@0.35": {
+          "event_sensitivity": {
+            "estimate": 0.892768,
+            "ci_low": 0.871372,
+            "ci_high": 0.913101
+          },
+          "alert_precision": {
+            "estimate": 0.4475,
+            "ci_low": 0.403542,
+            "ci_high": 0.488941
+          },
+          "alerts_per_patient_day": {
+            "estimate": 2.814493,
+            "ci_low": 2.54351,
+            "ci_high": 3.066038
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.555007,
+            "ci_low": 1.380816,
+            "ci_high": 1.72568
+          },
+          "lead_time_median_min": {
+            "estimate": 70.0,
+            "ci_low": 65.0,
+            "ci_high": 75.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 716,
+            "alerts_raised": 1600,
+            "true_alerts": 716,
+            "false_alerts": 884,
+            "missed_onsets": 86
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 716,
+            "p10": 20.0,
+            "p25": 35.0,
+            "median": 70.0,
+            "p75": 96.25,
+            "p90": 115.0,
+            "share_ge_30_min": 0.8072625698324022,
+            "share_ge_60_min": 0.5754189944134078,
+            "histogram_min": {
+              "5-30": 167,
+              "35-60": 159,
+              "65-90": 178,
+              "95-120": 212
+            }
+          }
+        },
+        "pr_tft@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.622195,
+            "ci_low": 0.574016,
+            "ci_high": 0.667415
+          },
+          "alert_precision": {
+            "estimate": 0.657444,
+            "ci_low": 0.605628,
+            "ci_high": 0.709756
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.335125,
+            "ci_low": 1.127556,
+            "ci_high": 1.532139
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.457355,
+            "ci_low": 0.360563,
+            "ci_high": 0.554103
+          },
+          "lead_time_median_min": {
+            "estimate": 65.0,
+            "ci_low": 55.0,
+            "ci_high": 70.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 499,
+            "alerts_raised": 759,
+            "true_alerts": 499,
+            "false_alerts": 260,
+            "missed_onsets": 303
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 499,
+            "p10": 20.0,
+            "p25": 35.0,
+            "median": 65.0,
+            "p75": 90.0,
+            "p90": 110.0,
+            "share_ge_30_min": 0.843687374749499,
+            "share_ge_60_min": 0.5390781563126252,
+            "histogram_min": {
+              "5-30": 109,
+              "35-60": 138,
+              "65-90": 138,
+              "95-120": 114
+            }
+          }
+        },
+        "pr_tft_crossfit@0.6": {
+          "event_sensitivity": {
+            "estimate": 0.623441,
+            "ci_low": 0.575835,
+            "ci_high": 0.666312
+          },
+          "alert_precision": {
+            "estimate": 0.657895,
+            "ci_low": 0.605629,
+            "ci_high": 0.708986
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.336884,
+            "ci_low": 1.122279,
+            "ci_high": 1.530424
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.457355,
+            "ci_low": 0.362322,
+            "ci_high": 0.555862
+          },
+          "lead_time_median_min": {
+            "estimate": 65.0,
+            "ci_low": 55.0,
+            "ci_high": 70.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 500,
+            "alerts_raised": 760,
+            "true_alerts": 500,
+            "false_alerts": 260,
+            "missed_onsets": 302
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 500,
+            "p10": 25.0,
+            "p25": 35.0,
+            "median": 65.0,
+            "p75": 90.0,
+            "p90": 110.0,
+            "share_ge_30_min": 0.856,
+            "share_ge_60_min": 0.54,
+            "histogram_min": {
+              "5-30": 103,
+              "35-60": 141,
+              "65-90": 132,
+              "95-120": 124
+            }
+          }
+        },
+        "pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": 0.985037,
+            "ci_low": 0.975131,
+            "ci_high": 0.993271
+          },
+          "alert_precision": {
+            "estimate": 0.602134,
+            "ci_low": 0.559332,
+            "ci_high": 0.639605
+          },
+          "alerts_per_patient_day": {
+            "estimate": 2.307884,
+            "ci_low": 2.094994,
+            "ci_high": 2.51022
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.918228,
+            "ci_low": 0.835553,
+            "ci_high": 1.00451
+          },
+          "lead_time_median_min": {
+            "estimate": 45.0,
+            "ci_low": 40.0,
+            "ci_high": 50.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 790,
+            "alerts_raised": 1312,
+            "true_alerts": 790,
+            "false_alerts": 522,
+            "missed_onsets": 12
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 790,
+            "p10": 15.0,
+            "p25": 25.0,
+            "median": 45.0,
+            "p75": 80.0,
+            "p90": 105.0,
+            "share_ge_30_min": 0.7253164556962025,
+            "share_ge_60_min": 0.3860759493670886,
+            "histogram_min": {
+              "5-30": 270,
+              "35-60": 243,
+              "65-90": 142,
+              "95-120": 135
+            }
+          }
+        },
+        "twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.82793,
+            "ci_low": 0.792893,
+            "ci_high": 0.862501
+          },
+          "alert_precision": {
+            "estimate": 0.731278,
+            "ci_low": 0.689531,
+            "ci_high": 0.770613
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.597225,
+            "ci_low": 1.431829,
+            "ci_high": 1.75554
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.42921,
+            "ci_low": 0.374679,
+            "ci_high": 0.483741
+          },
+          "lead_time_median_min": {
+            "estimate": 35.0,
+            "ci_low": 30.0,
+            "ci_high": 35.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 664,
+            "alerts_raised": 908,
+            "true_alerts": 664,
+            "false_alerts": 244,
+            "missed_onsets": 138
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 664,
+            "p10": 5.0,
+            "p25": 20.0,
+            "median": 35.0,
+            "p75": 50.0,
+            "p90": 70.0,
+            "share_ge_30_min": 0.6129518072289156,
+            "share_ge_60_min": 0.17771084337349397,
+            "histogram_min": {
+              "5-30": 312,
+              "35-60": 262,
+              "65-90": 68,
+              "95-120": 22
+            }
+          }
+        },
+        "linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": 0.993766,
+            "ci_low": 0.986205,
+            "ci_high": 0.99886
+          },
+          "alert_precision": {
+            "estimate": 0.443024,
+            "ci_low": 0.384432,
+            "ci_high": 0.498339
+          },
+          "alerts_per_patient_day": {
+            "estimate": 3.164545,
+            "ci_low": 3.085388,
+            "ci_high": 3.250739
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.762576,
+            "ci_low": 1.593706,
+            "ci_high": 1.927927
+          },
+          "lead_time_median_min": {
+            "estimate": 20.0,
+            "ci_low": 20.0,
+            "ci_high": 25.0
+          },
+          "counts": {
+            "monitored_onsets": 802,
+            "detected_onsets": 797,
+            "alerts_raised": 1799,
+            "true_alerts": 797,
+            "false_alerts": 1002,
+            "missed_onsets": 5
+          },
+          "patient_days": 568.49,
+          "lead_time_distribution_min": {
+            "n": 797,
+            "p10": 10.0,
+            "p25": 15.0,
+            "median": 20.0,
+            "p75": 30.0,
+            "p90": 45.0,
+            "share_ge_30_min": 0.3186951066499373,
+            "share_ge_60_min": 0.060225846925972396,
+            "histogram_min": {
+              "5-30": 618,
+              "35-60": 139,
+              "65-90": 17,
+              "95-120": 23
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "pr_tft_crossfit@0.35_minus_twin_only": {
+          "event_sensitivity": {
+            "estimate": 0.064838,
+            "ci_low": 0.024388,
+            "ci_high": 0.106703
+          },
+          "alert_precision": {
+            "estimate": -0.283778,
+            "ci_low": -0.320245,
+            "ci_high": -0.246237
+          },
+          "alerts_per_patient_day": {
+            "estimate": 1.217268,
+            "ci_low": 1.009655,
+            "ci_high": 1.438953
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 1.125797,
+            "ci_low": 0.935819,
+            "ci_high": 1.315775
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_linear_trend_rule": {
+          "event_sensitivity": {
+            "estimate": -0.100998,
+            "ci_low": -0.123968,
+            "ci_high": -0.079586
+          },
+          "alert_precision": {
+            "estimate": 0.004476,
+            "ci_low": -0.031162,
+            "ci_high": 0.04321
+          },
+          "alerts_per_patient_day": {
+            "estimate": -0.350053,
+            "ci_low": -0.601598,
+            "ci_high": -0.105543
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": -0.207569,
+            "ci_low": -0.464391,
+            "ci_high": 0.038699
+          }
+        },
+        "pr_tft_crossfit@0.35_minus_pr_tft_median_rule": {
+          "event_sensitivity": {
+            "estimate": -0.092269,
+            "ci_low": -0.115176,
+            "ci_high": -0.070727
+          },
+          "alert_precision": {
+            "estimate": -0.154634,
+            "ci_low": -0.18116,
+            "ci_high": -0.125127
+          },
+          "alerts_per_patient_day": {
+            "estimate": 0.506609,
+            "ci_low": 0.355286,
+            "ci_high": 0.663165
+          },
+          "false_alerts_per_patient_day": {
+            "estimate": 0.636779,
+            "ci_low": 0.480223,
+            "ci_high": 0.795094
+          }
+        }
+      }
+    }
+  },
+  "operating_curve_primary_crossfit": [
+    {
+      "threshold": 0.05,
+      "event_sensitivity": 0.9984,
+      "alert_precision": 0.2761,
+      "false_alerts_per_patient_day": 4.3103,
+      "lead_time_median_min": 55.0
+    },
+    {
+      "threshold": 0.1,
+      "event_sensitivity": 0.9968,
+      "alert_precision": 0.3001,
+      "false_alerts_per_patient_day": 3.8272,
+      "lead_time_median_min": 55.0
+    },
+    {
+      "threshold": 0.15,
+      "event_sensitivity": 0.9887,
+      "alert_precision": 0.3262,
+      "false_alerts_per_patient_day": 3.3628,
+      "lead_time_median_min": 55.0
+    },
+    {
+      "threshold": 0.2,
+      "event_sensitivity": 0.9595,
+      "alert_precision": 0.3759,
+      "false_alerts_per_patient_day": 2.6235,
+      "lead_time_median_min": 60.0
+    },
+    {
+      "threshold": 0.25,
+      "event_sensitivity": 0.9514,
+      "alert_precision": 0.3765,
+      "false_alerts_per_patient_day": 2.5942,
+      "lead_time_median_min": 60.0
+    },
+    {
+      "threshold": 0.3,
+      "event_sensitivity": 0.9465,
+      "alert_precision": 0.4008,
+      "false_alerts_per_patient_day": 2.33,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.35,
+      "event_sensitivity": 0.8995,
+      "alert_precision": 0.4557,
+      "false_alerts_per_patient_day": 1.7695,
+      "lead_time_median_min": 70.0
+    },
+    {
+      "threshold": 0.4,
+      "event_sensitivity": 0.8979,
+      "alert_precision": 0.4843,
+      "false_alerts_per_patient_day": 1.5747,
+      "lead_time_median_min": 70.0
+    },
+    {
+      "threshold": 0.45,
+      "event_sensitivity": 0.8509,
+      "alert_precision": 0.5005,
+      "false_alerts_per_patient_day": 1.3985,
+      "lead_time_median_min": 70.0
+    },
+    {
+      "threshold": 0.5,
+      "event_sensitivity": 0.8071,
+      "alert_precision": 0.5431,
+      "false_alerts_per_patient_day": 1.1183,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.55,
+      "event_sensitivity": 0.7925,
+      "alert_precision": 0.5884,
+      "false_alerts_per_patient_day": 0.9128,
+      "lead_time_median_min": 70.0
+    },
+    {
+      "threshold": 0.6,
+      "event_sensitivity": 0.7083,
+      "alert_precision": 0.6765,
+      "false_alerts_per_patient_day": 0.5578,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.65,
+      "event_sensitivity": 0.6256,
+      "alert_precision": 0.7242,
+      "false_alerts_per_patient_day": 0.3923,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.7,
+      "event_sensitivity": 0.5705,
+      "alert_precision": 0.7411,
+      "false_alerts_per_patient_day": 0.3283,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.75,
+      "event_sensitivity": 0.5429,
+      "alert_precision": 0.7528,
+      "false_alerts_per_patient_day": 0.2936,
+      "lead_time_median_min": 65.0
+    },
+    {
+      "threshold": 0.8,
+      "event_sensitivity": 0.363,
+      "alert_precision": 0.8716,
+      "false_alerts_per_patient_day": 0.0881,
+      "lead_time_median_min": 50.0
+    },
+    {
+      "threshold": 0.85,
+      "event_sensitivity": 0.2723,
+      "alert_precision": 0.8842,
+      "false_alerts_per_patient_day": 0.0587,
+      "lead_time_median_min": 50.0
+    },
+    {
+      "threshold": 0.9,
+      "event_sensitivity": 0.1556,
+      "alert_precision": 0.932,
+      "false_alerts_per_patient_day": 0.0187,
+      "lead_time_median_min": 45.0
+    },
+    {
+      "threshold": 0.95,
+      "event_sensitivity": 0.1248,
+      "alert_precision": 0.9277,
+      "false_alerts_per_patient_day": 0.016,
+      "lead_time_median_min": 40.0
+    }
+  ],
+  "crossfit_folds": {
+    "P0014": 1,
+    "P0017": 0,
+    "P0019": 1,
+    "P0020": 0,
+    "P0026": 1,
+    "P0032": 0,
+    "P0036": 0,
+    "P0037": 0,
+    "P0051": 1,
+    "P0056": 0,
+    "P0057": 0,
+    "P0061": 0,
+    "P0062": 0,
+    "P0065": 1,
+    "P0070": 0,
+    "P0071": 0,
+    "P0076": 1,
+    "P0078": 1,
+    "P0081": 0,
+    "P0084": 0,
+    "P0100": 0,
+    "P0111": 1,
+    "P0116": 0,
+    "P0125": 0,
+    "P0130": 1,
+    "P0133": 1,
+    "P0139": 1,
+    "P0155": 1,
+    "P0156": 1,
+    "P0190": 1,
+    "P0194": 1,
+    "P0195": 1,
+    "P0197": 0,
+    "P0199": 1,
+    "P0208": 0,
+    "P0214": 1,
+    "P0223": 0,
+    "P0230": 1,
+    "P0232": 0,
+    "P0239": 0,
+    "P0244": 1,
+    "P0283": 1,
+    "P0288": 0,
+    "P0297": 0
+  },
+  "max_served_calibrated_probability": 1.0,
+  "runtime_s": 1280.3
+}

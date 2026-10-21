@@ -2,8 +2,8 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-44%20suites%20%7C%20422%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-45%20suites%20%7C%20424%20tests-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-140%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -146,10 +146,10 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 44 Jest test suites (422 tests: unit, integration, contracts, safety invariants):
+# Run all 45 Jest test suites (424 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
+# Run all 140 backend tests (provenance, contracts, causality, safety, sealed-split access):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
@@ -190,6 +190,7 @@ In accordance with scientific integrity guidelines, all reported metrics and lim
 - **Boundary**: These are synthetic-model outputs. Neither their direction nor their size has been validated against a reference counterfactual. Activity is modelled as immediate insulin-independent uptake only (the service attaches `SCENARIO_APPROXIMATION`). Medication changes are refused with `SCENARIO_UNSUPPORTED` because the served twin has no drug terms.
 
 ### 5. Validation Trajectory Benchmark & Matched Baseline Audit
+- **Early warning, scored like an alarm** ([`docs/evidence/event_eval/RESULTS.md`](docs/evidence/event_eval/RESULTS.md), `backend/evaluate_events_validation.py`): on the validation patients (Prediabetes + Type 2, 617 spike onsets, 375 patient-days) under the locked alert policy, the hybrid's onset risk at 0.35 catches **90.0%** of spikes (95% CI 87.4–92.2) with a median **70 min** warning and **1.77 false alerts per patient-day**; at 0.60, 70.8% with 0.56 false alerts per day. A straight-line CGM trend catches 99.4% but with a median 20 min warning. Calibration is cross-fitted across patient folds; the validation patients still chose the checkpoint, so this is development evidence. Every number recomputes from the committed per-decision file.
 - **Scope**: Evaluated on the **44 validation patients** (54,281 eligible anchors; 53,920 / 53,906 / 53,849 evaluable rows at 30 / 60 / 120 min) from the pre-registered split (`split_293.json`). (Note: 47,629 was the at-risk hazard calibration subset).
 - **Report provenance**: `runs/pr_tft_ablation_arm_d/evaluation_report.json` is hash-linked to the run manifest, checkpoint and data, which the Evidence page verifies. The script that produced its validation-ceiling bootstrap (`evaluate_validation_ceiling.py`, named in `docs/evidence/validation_ceiling_results.json`) is not in this repository, so those intervals can be checked against the artifacts but not regenerated from committed code.
 - **Matched Trajectory Benchmark (95% Patient-Clustered Bootstrap CI, B=10,000 draws)**:
