@@ -405,7 +405,7 @@ export function PatientWorkspace({
                 )}
               </div>
               <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} unreachable={!forecast && isReconnecting} /></ErrorBoundary></div>
-              <div className="model-caption"><span>{mode.replace(' (PR-TFT)', '')}</span><span>Synthetic subject · not for clinical decisions</span></div>
+              <div className="model-caption"><span>{mode.replace(' (PR-TFT)', '')}</span></div>
             </section>
 
             <div className="tw-side">

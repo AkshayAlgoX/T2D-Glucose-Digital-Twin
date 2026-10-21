@@ -84,6 +84,39 @@ export async function readJumpExperiment(file = path.join(process.cwd(), 'docs/e
   }
 }
 
+export interface Ci { estimate: number | null; ci_low: number | null; ci_high: number | null }
+export interface EventRow {
+  key: string; sensitivity: Ci; precision: Ci; falsePerDay: Ci; leadMedian: Ci;
+  counts: { monitored: number; detected: number; missed: number; alerts: number; falseAlerts: number };
+  leadShare30: number | null;
+}
+export interface EventEvaluation { patients: number; groups: Record<string, number>; patientDays: number; rows: EventRow[] }
+
+/** Event-level early warning on the validation patients (backend/evaluate_events_validation.py); null unless complete. */
+export const EVENT_ROWS = ['pr_tft_crossfit@0.35', 'pr_tft_crossfit@0.6', 'pr_tft_median_rule', 'twin_only', 'linear_trend_rule'] as const;
+export async function readEventEvaluation(file = path.join(process.cwd(), 'docs/evidence/event_eval/validation_event_report.json')): Promise<EventEvaluation | null> {
+  try {
+    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    if (d.schema !== 'pr_tft_validation_event_evaluation/v1' || d.provenance?.limited_to_patients != null) return null;
+    const p = d.populations?.primary;
+    const ci = (v: any): v is Ci => v && 'estimate' in v && 'ci_low' in v && 'ci_high' in v;
+    const rows = EVENT_ROWS.map(key => {
+      const m = p?.models?.[key];
+      const c = m?.counts;
+      if (!m || !ci(m.event_sensitivity) || !ci(m.alert_precision) || !ci(m.false_alerts_per_patient_day) || !ci(m.lead_time_median_min)
+        || ![c?.monitored_onsets, c?.detected_onsets, c?.missed_onsets, c?.alerts_raised, c?.false_alerts].every(Number.isFinite)) return null;
+      return { key, sensitivity: m.event_sensitivity, precision: m.alert_precision, falsePerDay: m.false_alerts_per_patient_day, leadMedian: m.lead_time_median_min,
+        counts: { monitored: c.monitored_onsets, detected: c.detected_onsets, missed: c.missed_onsets, alerts: c.alerts_raised, falseAlerts: c.false_alerts },
+        leadShare30: Number.isFinite(m.lead_time_distribution_min?.share_ge_30_min) ? m.lead_time_distribution_min.share_ge_30_min : null };
+    });
+    const days = p?.models?.[EVENT_ROWS[0]]?.patient_days;
+    if (rows.some(r => !r) || !Number.isFinite(p.patients) || !Number.isFinite(days)) return null;
+    return { patients: p.patients, groups: p.groups ?? {}, patientDays: days, rows: rows as EventRow[] };
+  } catch {
+    return null;
+  }
+}
+
 export interface Gate3Checks {
   windows: { synthetic: number; mockReal: number }; patients: { synthetic: number; mockReal: number };
   windowHours: number; features: number; folds: number; gridMin: number; acceptance: string;

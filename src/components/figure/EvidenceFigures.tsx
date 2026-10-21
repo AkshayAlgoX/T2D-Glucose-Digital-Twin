@@ -104,6 +104,42 @@ export function DispersionBoxes({ dist, compact = false }: { dist: { rmse_60?: Q
   );
 }
 
+const EVENT_LABEL: Record<string, string> = {
+  'pr_tft_crossfit@0.35': 'Hybrid onset risk ≥ 0.35',
+  'pr_tft_crossfit@0.6': 'Hybrid onset risk ≥ 0.60',
+  pr_tft_median_rule: 'Hybrid forecast crosses the spike rule',
+  twin_only: 'Physiology twin alone crosses the spike rule',
+  linear_trend_rule: 'Straight-line CGM trend (baseline)',
+};
+
+/** Early warning scored like an alarm: onsets caught, false alerts per day, warning time. */
+export function EventWarning({ data }: { data: import('@/lib/landing').EventEvaluation }) {
+  const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(0)}%`);
+  const num = (v: number | null, d = 2) => (v == null ? '—' : v.toFixed(d));
+  const ci = (c: import('@/lib/landing').Ci, f: (v: number | null) => string) => (c.ci_low == null || c.ci_high == null ? '' : ` (${f(c.ci_low)}–${f(c.ci_high)})`);
+  const g = Object.entries(data.groups).map(([k, v]) => `${v} ${k}`).join(', ');
+  return (
+    <section className="jump-finding event-warning" aria-labelledby="event-heading" data-testid="event-warning">
+      <span className="eyebrow">Headline task · spike warning up to 2 hours ahead</span>
+      <h2 id="event-heading">Early warning, scored like an alarm</h2>
+      <p className="jump-lede">Every 5-minute decision time on {data.patients} validation patients ({g}; {Math.round(data.patientDays)} patient-days), under the alert policy locked before evaluation: an alert when the patient is at risk and the trigger holds, at most one per 2 hours. A spike is caught when an alert comes 5–120 minutes before it starts. The risk thresholds use a calibration refitted on the other half of the patients, so no patient is scored with a calibration fitted on itself.</p>
+      <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Early-warning results">
+        <table className="jump-table">
+          <caption className="sr-only">Spikes caught, false alerts per patient-day, median warning time and alert precision with 95% patient-bootstrap intervals, for the hybrid model and two baselines</caption>
+          <thead><tr><th scope="col">Trigger</th><th scope="col">Spikes caught</th><th scope="col">Missed</th><th scope="col">False alerts / day</th><th scope="col">Median warning</th><th scope="col">Alerts that were right</th></tr></thead>
+          <tbody>{data.rows.map(r => <tr key={r.key}><th scope="row">{EVENT_LABEL[r.key]}</th>
+            <td>{pct(r.sensitivity.estimate)}<small>{ci(r.sensitivity, pct)}</small></td>
+            <td>{r.counts.missed} of {r.counts.monitored}</td>
+            <td>{num(r.falsePerDay.estimate)}<small>{ci(r.falsePerDay, v => num(v))}</small></td>
+            <td>{r.leadMedian.estimate == null ? '—' : `${r.leadMedian.estimate} min`}<small>{ci(r.leadMedian, v => (v == null ? '—' : `${v}`))}</small></td>
+            <td>{pct(r.precision.estimate)}<small>{ci(r.precision, pct)}</small></td></tr>)}</tbody>
+        </table>
+      </div>
+      <p className="fine-print">Development evidence on synthetic data: the validation patients also chose the checkpoint. The test split was not opened. Source: <code>docs/evidence/event_eval/validation_event_report.json</code>, recomputable from <code>validation_decisions.npz</code> with <code>backend/evaluate_events_validation.py</code>.</p>
+    </section>
+  );
+}
+
 /** The isolated-step artefact and the pre-registered repair: measured, recorded, not applied. */
 export function JumpFinding({ data }: { data: import('@/lib/landing').JumpExperiment }) {
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`;

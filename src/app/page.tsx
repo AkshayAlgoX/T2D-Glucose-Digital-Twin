@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
-import { DEMO_SUBJECT_ID, readLandingEvidence } from '@/lib/landing';
+import { DEMO_SUBJECT_ID, readLandingEvidence, readEventEvaluation } from '@/lib/landing';
 import { readHeroForecast } from '@/lib/hero';
 import { HeroForecast } from '@/components/landing/HeroForecast';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
@@ -23,9 +23,16 @@ function PipelineSchematic() {
       </g>
     );
   };
-  const arrow = (x1: number, y1: number, x2: number, y2: number) => (
-    <g stroke="#565d66" strokeWidth={1.25} fill="none"><path d={`M${x1} ${y1} L${x2 - 6} ${y2}`} /><path d={`M${x2 - 8} ${y2 - 4} L${x2} ${y2} L${x2 - 8} ${y2 + 4}`} /></g>
-  );
+  // Right-angle connectors: a line through the given points, with an arrowhead on the last segment.
+  const wire = (pts: Array<[number, number]>, head = true) => {
+    const [x2, y2] = pts[pts.length - 1];
+    return (
+      <g stroke="#565d66" strokeWidth={1.25} fill="none">
+        <path d={'M' + pts.map(([x, y]) => `${x} ${y}`).join(' L')} />
+        {head && <path d={`M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`} />}
+      </g>
+    );
+  };
   return (
     <svg viewBox="0 0 640 300" role="img" aria-labelledby="pipeline-title pipeline-desc">
       <title id="pipeline-title">How the twin turns a patient record and wearable streams into a forecast</title>
@@ -35,18 +42,19 @@ function PipelineSchematic() {
       {box(226, 20, 182, 122, 'Physiology twin', ['Glucose–insulin equations', 'fitted to this patient', '(Bergman model + UKF)'], 'twin', '1')}
       {box(226, 160, 182, 122, 'Learned adjustment', ['A neural network adds', 'what the equations', 'miss (PR-TFT)'], 'net', '2')}
       {box(458, 70, 178, 160, '2-hour forecast', ['Median with 50, 80 and', '90% bands', 'Calibrated onset risk', 'Backend what-if for', 'meals and activity'], 'out', '3')}
-      {arrow(176, 72, 226, 80)}
-      {arrow(176, 216, 226, 222)}
-      {arrow(176, 92, 226, 206)}
-      {arrow(317, 142, 317, 160)}
-      {arrow(408, 80, 458, 130)}
-      {arrow(408, 222, 458, 176)}
+      {wire([[176, 72], [201, 72], [201, 216], [176, 216]], false)}
+      {wire([[201, 81], [226, 81]])}
+      {wire([[201, 221], [226, 221]])}
+      <g stroke="#565d66" strokeWidth={1.25} fill="none"><path d="M317 142 L317 159" /><path d="M313 152 L317 159 L321 152" /></g>
+      {wire([[408, 81], [433, 81], [433, 221], [408, 221]], false)}
+      {wire([[433, 150], [458, 150]])}
     </svg>
   );
 }
 
 export default async function Home() {
-  const [evidence, hero] = await Promise.all([readLandingEvidence(), readHeroForecast()]);
+  const [evidence, hero, events] = await Promise.all([readLandingEvidence(), readHeroForecast(), readEventEvaluation()]);
+  const warn = events?.rows.find(r => r.key === 'pr_tft_crossfit@0.35');
   return (
     <div className="app-shell">
       <NavigationRail />
@@ -56,8 +64,6 @@ export default async function Home() {
             <p className="fig-section-label">Digital twin · type 2 diabetes</p>
             <h1 id="landing-title">A glucose forecast you can take apart.</h1>
             <p className="home-why">Physiology equations set the shape. A neural network corrects what they miss. The bands show how sure it is.</p>
-            <p className="home-dek home-dek-short">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose and shows what each forecast is made of: physiology, a learned correction, and uncertainty.</p>
-            <p className="home-dek home-dek-long">Glucose Twin forecasts a synthetic patient&apos;s next two hours of glucose from their EHR record and wearable streams. It shows how much of each forecast comes from a physiology model fitted to the patient, how much from a learned correction, how uncertain it is, and how a meal or some activity would change it.</p>
             <div className="landing-actions">
               <Link href={`/patients/${DEMO_SUBJECT_ID}`} className="landing-cta">Open the demo twin · P0017 <ArrowRight size={16} aria-hidden="true" /></Link>
               <span className="landing-secondary">
@@ -65,7 +71,7 @@ export default async function Home() {
                 <Link href="/evidence" className="landing-link">Read the evidence</Link>
               </span>
             </div>
-            <p className="landing-boundary">Synthetic data only, and not a medical device. Results are development-validation diagnostics, not clinical validation. The realism gate failed, and we publish that result.</p>
+            <p className="landing-boundary">Synthetic patients only. Results are development-validation diagnostics, not clinical validation; the realism gate failed, and we publish that result.</p>
           </div>
           {hero ? <HeroForecast data={hero} /> : (
             <figure className="landing-diagram" data-testid="hero-unavailable">
@@ -104,6 +110,7 @@ export default async function Home() {
             </div>}
             <dl className="landing-evidence" data-testid="landing-evidence">
               <div><dt>60-min forecast error (RMSE)</dt><dd><span className="num">{evidence.rmse60.hybrid.toFixed(2)}</span> mg/dL<small>vs {evidence.rmse60.twin.toFixed(2)} physiology twin alone · {evidence.rmse60.persistence.toFixed(2)} persistence</small></dd></div>
+              {warn && warn.sensitivity.estimate != null && warn.leadMedian.estimate != null && warn.falsePerDay.estimate != null && <div data-testid="landing-warning"><dt>Spike warning, up to 2 h ahead</dt><dd><span className="num">{Math.round(warn.sensitivity.estimate * 100)}%</span> of spikes caught<small>Median {warn.leadMedian.estimate} min ahead · {warn.falsePerDay.estimate.toFixed(2)} false alerts per patient-day · {events!.patients} validation patients</small></dd></div>}
               <div><dt>Evaluated on</dt><dd><span className="num">{evidence.patients}</span> synthetic patients<small>Development-validation split; also used for checkpoint selection and calibration</small></dd></div>
               <div className="failed"><dt>Realism gate (Gate 3)</dt><dd>{evidence.gate3.status}<small>Discriminator AUROC {evidence.gate3.auroc.toFixed(3)}; target {evidence.gate3.threshold.replace('<=', '≤')}. A classifier can still tell our synthetic data from an independent mock-real generator&apos;s, itself synthetic, so realism is not established.</small></dd></div>
             </dl>

@@ -136,7 +136,7 @@ export default function CohortPage() {
           </>}
 
         </section>
-        <footer className="research-footer">Research Only (Not for clinical decisions)<span>Synthetic cohort · existing model artifacts</span></footer>
+        <footer className="research-footer"><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
       </main>
     </div>
   );

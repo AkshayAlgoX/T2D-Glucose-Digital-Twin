@@ -1157,3 +1157,20 @@ details[open] > summary .repro-hint { display: none; }
 .preset-refused-link small { font-size: 12px; font-weight: 400; font-style: italic; color: var(--color-ink-3); text-decoration: none; }
 .preset-refused-link:disabled { color: var(--color-ink-3); cursor: default; }
 .preset-refused-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* Red marks the one failed result, not whole regions: neutral panels, a red rule and the FAILED label. */
+.evidence-pillar-card.pillar-limitations { background: var(--color-surface, #fff) !important; border: 1px solid var(--color-line) !important; border-top: 3px solid var(--color-danger) !important; }
+.evidence-pillar-card.pillar-limitations .pillar-limits-list li { border-top-color: var(--color-line); }
+.evidence-read-first { background: var(--color-surface-2, #f4f5f6) !important; }
+.event-warning .jump-table td small { display: block; font-size: 12px; color: var(--color-ink-3); }
+.event-warning .jump-table th[scope="row"] { font-weight: 500; }
+/* Reproducibility disclosure: full-width row, status chip and chevron at the right edge. */
+.reproducibility-details { display: block; width: 100%; box-sizing: border-box; }
+.reproducibility-summary { width: 100%; box-sizing: border-box; display: flex !important; justify-content: space-between !important; }
+.reproducibility-summary > div:last-child { margin-left: auto; flex-shrink: 0; }
+/* Report each negative result once, at reading weight: one red chip per failure, not red headlines. */
+.evidence-pillar-card.pillar-limitations .pillar-stat.stat-danger { color: var(--color-ink); font-size: 28px; }
+.register-card:has(.register-chip.nogo) { border-top-color: var(--color-line-control) !important; }
+.g3-implication { font-size: 15px; line-height: 1.5; color: var(--color-ink-2); margin: 8px 0 4px; max-width: 70ch; }
+.g3-more > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--color-accent); padding: 6px 0; }
+.fig-home .landing-evidence .failed dd { color: var(--color-ink); }

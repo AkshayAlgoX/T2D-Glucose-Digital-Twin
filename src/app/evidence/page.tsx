@@ -1,7 +1,7 @@
-import { readLandingEvidence, readJumpExperiment, readGate3Checks } from '@/lib/landing';
+import { readLandingEvidence, readJumpExperiment, readGate3Checks, readEventEvaluation } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
-import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding } from '@/components/figure/EvidenceFigures';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding, EventWarning } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -292,7 +292,7 @@ export default async function EvidencePage() {
     }
   }
 
-  const [landing, jumps, g3c] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks()]);
+  const [landing, jumps, g3c, events] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks(), readEventEvaluation()]);
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -500,6 +500,9 @@ export default async function EvidencePage() {
                 </div>
                 <div className="g3-body">
                   {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} intervals={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
+                  <p className="g3-implication">A classifier can still tell our synthetic glucose from an independent generator&apos;s, so realism is not established: every result on this page describes this synthetic cohort only.</p>
+                  <details className="g3-more">
+                    <summary>How it was tested, controls and what it means</summary>
                   <p className="g3-method"><strong>How it was tested:</strong> {g3c
                     ? <>an XGBoost classifier, {g3c.folds}-fold cross-validated with each patient kept within one fold, tries to tell {g3c.windowHours}-hour glucose windows ({g3c.features} features on a {g3c.gridMin}-minute grid) from our generator apart from an HbA1c-matched mock-real cohort made by an independent generator, itself synthetic. It compared {g3c.windows.synthetic.toLocaleString('en-US')} synthetic windows with {g3c.windows.mockReal.toLocaleString('en-US')} mock-real windows from {g3c.patients.synthetic} and {g3c.patients.mockReal} patients. An AUROC of 0.5 would mean the two are indistinguishable; the gate passes only if the upper bound of the AUROC&apos;s 90% interval is at or below 0.65.</>
                     : <>an XGBoost classifier tries to tell glucose windows from our generator apart from an independent mock-real generator&apos;s, itself synthetic. The recorded check details could not be read, so no counts are shown.</>}</p>
@@ -530,6 +533,7 @@ export default async function EvidencePage() {
                     </div>
                   </div>
                   <p className="fine-print g3-source"><strong>Historical</strong> is the recorded discriminator run (30 Sep 2026). <strong>Duration-corrected</strong> is a later re-estimate taken from the recorded summary; its definition and the script that computed it are not in the repository. Sources: status and both AUROCs from <code>runs/<wbr />pr_tft_ablation_arm_d/<wbr />evaluation_report.json</code>; their 90% intervals and the mechanism from <code>docs/<wbr />evidence/<wbr />validation_ceiling_results.json</code> → <code>gate3_realism_status</code>; method, counts, null and power controls and SHAP tells from <code>backend/<wbr />synthetic_v2/<wbr />validation/<wbr />validation_report.json</code> (checks G3.1–G3.3). The recorded note there says the mock-real comparison is not evidence of realism and should be rerun with CGMacros or ShanghaiT2DM before relying on this gate.</p>
+                  </details>
                   <a className="register-link g3-back" href="#status-register">Back to the status register</a>
                 </div>
               </div>
@@ -538,6 +542,7 @@ export default async function EvidencePage() {
         )}
 
         {hasBenchmarks && landing?.progression && (
+          <EvidenceDisclosure labelledBy="error-curve-heading" label="Error at every 5-minute step · Figure 1">
           <section className="panel evidence-figure" aria-labelledby="error-curve-heading">
             <div className="evidence-figure-head">
               <span className="eyebrow">Figure 1</span>
@@ -547,6 +552,7 @@ export default async function EvidencePage() {
             <div className="ec-wide"><ErrorCurve data={landing.progression} id="ev-ec" /></div>
             <div className="ec-narrow"><ErrorCurve data={landing.progression} id="ev-ec-n" compact /></div>
           </section>
+          </EvidenceDisclosure>
         )}
 
         {/* Always-visible figure: forecast error by horizon, from the same validated report as the tables below. */}
@@ -590,7 +596,8 @@ export default async function EvidencePage() {
           </section>
         )}
 
-        {hasBenchmarks && jumps && <JumpFinding data={jumps} />}
+        {hasBenchmarks && events && <EventWarning data={events} />}
+        {hasBenchmarks && jumps && <EvidenceDisclosure labelledBy="jump-heading" label="Known model artefact · isolated one-step jumps"><JumpFinding data={jumps} /></EvidenceDisclosure>}
 
         {/* Verified Benchmark Tables rendered ONLY when validated artifact benchmarks are present */}
         {hasBenchmarks && models && paired && (
@@ -1190,10 +1197,7 @@ export default async function EvidencePage() {
         </div>
         </details>
 
-        <footer className="research-footer">
-          Research Only (Not for clinical decisions)
-          <span>Evidence availability is separate from prototype functionality</span>
-        </footer>
+        <footer className="research-footer"><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
       </main>
     </div>
   );
