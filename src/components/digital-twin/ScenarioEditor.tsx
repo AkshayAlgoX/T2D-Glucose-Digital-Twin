@@ -162,7 +162,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat([...base, ...scen].flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: labelled ? 100 : 12, top: 14, bottom: 24 };
+  const m = { left: 40, right: labelled ? 118 : 12, top: 14, bottom: 24 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
