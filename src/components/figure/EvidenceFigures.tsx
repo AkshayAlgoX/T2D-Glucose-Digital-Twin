@@ -45,7 +45,7 @@ export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence[
 }
 
 /** Gate 3: can a classifier tell our synthetic traces from a mock-real generator's? AUROC with 90% intervals against the ≤ 0.65 target. */
-export function Gate3Figure({ historical, ci, compact = false, caption = true }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean; caption?: boolean }) {
+export function Gate3Figure({ historical, ci, compact = false, caption = true, intervals = true }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean; caption?: boolean; intervals?: boolean }) {
   const W = compact ? 340 : 520, H = 120, M = { l: compact ? 128 : 150, r: compact ? 12 : 20, t: 18, b: 30 };
   const x = d3Scale.scaleLinear().domain([0.5, 1]).range([M.l, W - M.r]);
   const rows: Array<[string, number, [number, number]]> = [['Historical', historical, ci.historical], ['Duration-corrected', ci.corrected, ci.correctedCi]];
@@ -61,7 +61,7 @@ export function Gate3Figure({ historical, ci, compact = false, caption = true }:
             <text x={M.l - 10} y={yy + 4} textAnchor="end" className="fig-axis g3-label">{label}</text>
             <line x1={x(lo)} x2={x(hi)} y1={yy} y2={yy} className="g3-ci" />
             <circle cx={x(v)} cy={yy} r={5} className="g3-dot" />
-            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}{compact ? '' : ` [${lo.toFixed(3)}–${hi.toFixed(3)}]`}</text>
+            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}{compact || !intervals ? '' : ` [${lo.toFixed(3)}–${hi.toFixed(3)}]`}</text>
           </g>;
         })}
       </svg>

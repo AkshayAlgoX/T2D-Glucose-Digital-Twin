@@ -1148,3 +1148,14 @@ details[open] > summary .repro-hint { display: none; }
 #status-register { scroll-margin-top: 84px; }
 #status-register:focus { outline: none; }
 @media (max-width: 720px) { #status-register { scroll-margin-top: 16px; } }
+/* register: Gate 3 chip solid so FAILED outweighs the outlined statuses; feet aligned */
+.register-chip.failed { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+.register-card.failed .register-foot { margin-top: auto !important; }
+.register-card.failed .register-link { margin-top: 10px; }
+/* link arrows are visual only: empty alternative text so they are not read */
+.register-link::after { content: ' ↑' / ''; }
+.g3-back::after { content: ' ↓' / '' !important; }
+#status-register:target, #status-register:focus-visible { box-shadow: inset 0 3px 0 var(--color-accent); }
+.g3-source code { overflow-wrap: normal; }
+.g3-tells { font-size: 14px !important; font-weight: 500 !important; }
+.g3-tells code { font-size: 13px; }

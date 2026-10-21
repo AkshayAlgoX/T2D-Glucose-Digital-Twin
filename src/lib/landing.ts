@@ -83,3 +83,33 @@ export async function readJumpExperiment(file = path.join(process.cwd(), 'docs/e
     return null;
   }
 }
+
+export interface Gate3Checks {
+  windows: { synthetic: number; mockReal: number }; patients: { synthetic: number; mockReal: number };
+  windowHours: number; features: number; folds: number; gridMin: number; acceptance: string;
+  tells: Array<{ name: string; shap: number }>;
+  nullControl: { estimate: number; ci: [number, number] }; powerControl: { estimate: number };
+}
+
+/** Gate 3 checks G3.1–G3.3 as recorded by validation_gates.py; null unless every value shown is present. */
+export async function readGate3Checks(file = path.join(process.cwd(), 'backend/synthetic_v2/validation/validation_report.json')): Promise<Gate3Checks | null> {
+  try {
+    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const g = (d.gates ?? []).find((x: any) => x?.gate_id === 'GATE 3');
+    const c = (id: string) => (g?.checks ?? []).find((x: any) => x?.check_id === id);
+    const g1 = c('G3.1'), g2 = c('G3.2'), g3 = c('G3.3');
+    const m = /on (\d+) synthetic vs\. (\d+) mock_real windows from (\d+) and (\d+) patients/.exec(g1?.message ?? '');
+    const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+    const det = g1?.details ?? {};
+    const tells = Object.entries(det.top_tells_mean_abs_shap ?? {}).slice(0, 2).map(([name, shap]) => ({ name, shap: Number(shap) }));
+    if (!m || !fin(det.window_hours) || !fin(det.n_features) || !Array.isArray(det.fold_aurocs) || !fin(det.grid_min) || typeof g1.acceptance !== 'string'
+      || tells.length < 2 || !tells.every(t => fin(t.shap)) || !fin(g2?.estimate) || !Array.isArray(g2?.ci) || !fin(g3?.estimate)) return null;
+    return {
+      windows: { synthetic: +m[1], mockReal: +m[2] }, patients: { synthetic: +m[3], mockReal: +m[4] },
+      windowHours: det.window_hours, features: det.n_features, folds: det.fold_aurocs.length, gridMin: det.grid_min, acceptance: g1.acceptance,
+      tells, nullControl: { estimate: g2.estimate, ci: [g2.ci[0], g2.ci[1]] }, powerControl: { estimate: g3.estimate },
+    };
+  } catch {
+    return null;
+  }
+}

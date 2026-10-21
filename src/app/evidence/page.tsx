@@ -1,4 +1,4 @@
-import { readLandingEvidence, readJumpExperiment } from '@/lib/landing';
+import { readLandingEvidence, readJumpExperiment, readGate3Checks } from '@/lib/landing';
 import { ErrorCurve } from '@/components/figure/ErrorCurve';
 import { GainBar } from '@/components/figure/marks';
 import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding } from '@/components/figure/EvidenceFigures';
@@ -288,7 +288,7 @@ export default async function EvidencePage() {
     }
   }
 
-  const [landing, jumps] = await Promise.all([readLandingEvidence(), readJumpExperiment()]);
+  const [landing, jumps, g3c] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks()]);
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -479,7 +479,7 @@ export default async function EvidencePage() {
               </div>
 
               {/* Finding 4: the single, authoritative Gate 3 analysis (the register below links here). */}
-              <div className="evidence-pillar-card pillar-limitations" id="gate3-analysis" tabIndex={-1} role="region" aria-labelledby="gate3-analysis-heading">
+              <div className="evidence-pillar-card pillar-limitations" id="gate3-analysis" tabIndex={-1} role="region" aria-label="Gate 3 analysis: is the synthetic data realistic?">
                 <div className="g3-summary">
                   <div className="pillar-label">
                     <span>4. Realism · Gate 3 analysis</span>
@@ -489,19 +489,21 @@ export default async function EvidencePage() {
                     {gate3 ? `Gate 3 ${gate3.status}` : 'Gate 3 status unavailable'}
                   </div>
                   <div className="pillar-substat">
-                    {gate3 ? `AUROC ${gate3.historical_auroc.toFixed(3)} (Target ≤ 0.65)` : 'The realism artifact could not be read; no value is shown.'}
+                    {gate3 ? `AUROC ${gate3.historical_auroc.toFixed(3)}; passing needs the upper 90% bound ≤ 0.65` : 'The realism artifact could not be read; no value is shown.'}
                   </div>
                 </div>
                 <div className="g3-body">
-                  {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
-                  <p className="g3-method"><strong>How it was tested:</strong> an XGBoost classifier, 5-fold cross-validated with each patient kept within one fold, tries to tell 6-hour glucose windows (40 features on a 5-minute grid) from our generator apart from an HbA1c-matched mock-real cohort made by an independent generator, itself synthetic. It compared 16,719 synthetic windows with 16,443 mock-real windows from 300 and 300 patients. An AUROC of 0.5 would mean the two are indistinguishable; the gate requires the 90% interval of the AUROC to sit at or below the target.</p>
+                  {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} intervals={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
+                  <p className="g3-method"><strong>How it was tested:</strong> {g3c
+                    ? <>an XGBoost classifier, {g3c.folds}-fold cross-validated with each patient kept within one fold, tries to tell {g3c.windowHours}-hour glucose windows ({g3c.features} features on a {g3c.gridMin}-minute grid) from our generator apart from an HbA1c-matched mock-real cohort made by an independent generator, itself synthetic. It compared {g3c.windows.synthetic.toLocaleString('en-US')} synthetic windows with {g3c.windows.mockReal.toLocaleString('en-US')} mock-real windows from {g3c.patients.synthetic} and {g3c.patients.mockReal} patients. An AUROC of 0.5 would mean the two are indistinguishable; the gate passes only if the upper bound of the AUROC&apos;s 90% interval is at or below 0.65.</>
+                    : <>an XGBoost classifier tries to tell glucose windows from our generator apart from an independent mock-real generator&apos;s, itself synthetic. The recorded check details could not be read, so no counts are shown.</>}</p>
                   <dl className="g3-metrics">
                     <div><dt>Historical AUROC</dt><dd>{gate3 ? gate3.historical_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.historical[0].toFixed(3)}–{landing.gate3ci.historical[1].toFixed(3)}</small> : null}</dd></div>
                     <div><dt>Duration-corrected AUROC</dt><dd>{gate3?.duration_corrected_auroc != null ? gate3.duration_corrected_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.correctedCi[0].toFixed(3)}–{landing.gate3ci.correctedCi[1].toFixed(3)}</small> : null}</dd></div>
-                    <div><dt>Acceptance target</dt><dd>AUROC &le; 0.65</dd></div>
-                    <div><dt>Null control</dt><dd>0.507<small> 90% interval 0.481–0.533; two random halves of the synthetic cohort, so the pipeline does not invent differences</small></dd></div>
-                    <div><dt>Power control</dt><dd>1.000<small> +5 mg/dL sensor noise on one half is detected, so the classifier can see real distortions</small></dd></div>
-                    <div><dt>Strongest tells</dt><dd><code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></dd></div>
+                    <div><dt>Pass rule</dt><dd>upper 90% bound &le; 0.65</dd></div>
+                    <div><dt>Null control</dt><dd>{g3c ? g3c.nullControl.estimate.toFixed(3) : '—'}{g3c ? <small> 90% interval {g3c.nullControl.ci[0].toFixed(3)}–{g3c.nullControl.ci[1].toFixed(3)}; two random halves of the synthetic cohort, so the pipeline does not invent differences</small> : null}</dd></div>
+                    <div><dt>Power control</dt><dd>{g3c ? g3c.powerControl.estimate.toFixed(3) : '—'}{g3c ? <small> +5 mg/dL sensor noise on one half is detected, so the classifier can see real distortions</small> : null}</dd></div>
+                    <div><dt>Strongest tells (mean |SHAP|)</dt><dd className="g3-tells">{g3c ? g3c.tells.map((t, i) => <span key={t.name}><code>{t.name}</code> {t.shap.toFixed(3)}{i < g3c.tells.length - 1 ? ', ' : ''}</span>) : '—'}</dd></div>
                   </dl>
                   {landing?.gate3ci?.mechanism && <p className="g3-mechanism"><strong>Recorded mechanism:</strong> {landing.gate3ci.mechanism}</p>}
                   <div className="g3-scope">
@@ -509,7 +511,7 @@ export default async function EvidencePage() {
                       <h4>What the failure establishes</h4>
                       <ul>
                         <li>Synthetic ODE dynamics remain distinguishable from the comparison generator&apos;s, mainly in glucose curvature and fall rates.</li>
-                        <li>Real-world physiological realism of this cohort is therefore unestablished.</li>
+                        <li>Real-world physiological realism of this cohort remains unestablished; this test cannot address it, because the comparison data are synthetic.</li>
                       </ul>
                     </div>
                     <div>
@@ -521,7 +523,7 @@ export default async function EvidencePage() {
                       </ul>
                     </div>
                   </div>
-                  <p className="fine-print g3-source"><strong>Historical</strong> is the recorded discriminator run (30 Sep 2026). <strong>Duration-corrected</strong> is a later re-estimate taken from the recorded summary; its definition and the script that computed it are not in the repository. Sources: status, AUROCs, intervals and mechanism from <code>docs/evidence/validation_ceiling_results.json</code> → <code>gate3_realism_status</code>; window and patient counts, features, folds, null and power controls and SHAP tells from <code>backend/synthetic_v2/validation/validation_report.json</code> (check G3.1–G3.3).</p>
+                  <p className="fine-print g3-source"><strong>Historical</strong> is the recorded discriminator run (30 Sep 2026). <strong>Duration-corrected</strong> is a later re-estimate taken from the recorded summary; its definition and the script that computed it are not in the repository. Sources: status and both AUROCs from <code>runs/<wbr />pr_tft_ablation_arm_d/<wbr />evaluation_report.json</code>; their 90% intervals and the mechanism from <code>docs/<wbr />evidence/<wbr />validation_ceiling_results.json</code> → <code>gate3_realism_status</code>; method, counts, null and power controls and SHAP tells from <code>backend/<wbr />synthetic_v2/<wbr />validation/<wbr />validation_report.json</code> (checks G3.1–G3.3). The recorded note there says the mock-real comparison is not evidence of realism and should be rerun with CGMacros or ShanghaiT2DM before relying on this gate.</p>
                   <a className="register-link g3-back" href="#status-register">Back to the status register</a>
                 </div>
               </div>
@@ -1009,6 +1011,7 @@ export default async function EvidencePage() {
                     <h3 className="register-title">Synthetic-data realism check</h3>
                     <p className="register-text">Our synthetic glucose traces remain distinguishable from the comparison generator&apos;s, so realism is not established.</p>
                     <a className="register-link" href="#gate3-analysis">View Gate 3 analysis</a>
+                    <p className="fine-print register-foot">No realism claim is made.</p>
                   </div>
                 )}
 
