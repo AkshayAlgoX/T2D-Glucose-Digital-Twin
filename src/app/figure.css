@@ -839,3 +839,4 @@ input, select { border-radius: 2px !important; }
 .twin-workstation .tw-side .identity-section, .twin-workstation .clinical-panel .identity-section { background: transparent !important; border: 0 !important; padding-left: 0 !important; }
 .identity-mark svg { display: none; }
 .identity-mark strong { font-family: var(--font-display); font-size: 22px; }
+.error-curve .fig-axis, .error-curve-labels text { font-size: 12.5px; }

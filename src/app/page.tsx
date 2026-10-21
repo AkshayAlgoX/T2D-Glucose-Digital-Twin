@@ -17,7 +17,7 @@ function PipelineSchematic() {
       <g>
         <rect x={x} y={y} width={w} height={h} rx={2} fill="#ffffff" stroke={stroke} strokeWidth={tone === 'in' ? 1 : 1.5} />
         <rect x={x} y={y} width={w} height={3} fill={stroke} />
-        {n && <><circle cx={x + 22} cy={y + 26} r={9} fill={stroke} /><text x={x + 22} y={y + 30} textAnchor="middle" fill="#fff" fontSize={11.5} fontWeight={600}>{n}</text></>}
+        {n && <><circle cx={x + 22} cy={y + 26} r={9} fill={stroke} /><text x={x + 22} y={y + 30} textAnchor="middle" fill="#fff" fontSize={12.5} fontWeight={600}>{n}</text></>}
         <text x={x + (n ? 38 : 14)} y={y + 30} fill="#111418" fontSize={14} fontWeight={600}>{title}</text>
         {lines.map((l, i) => <text key={l} x={x + 14} y={y + 54 + i * 18} fill="#3a4048" fontSize={13}>{l}</text>)}
       </g>
