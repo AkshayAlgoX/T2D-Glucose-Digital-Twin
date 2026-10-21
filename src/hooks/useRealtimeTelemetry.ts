@@ -24,6 +24,31 @@ const DEFAULT_STABLE_DURATION_MS = 10000;
 const DEFAULT_STALENESS_THRESHOLD_MS = 15000;
 const DEFAULT_STALENESS_INTERVAL_MS = 5000;
 
+/** Fourteen days of 5-minute readings; older entries are dropped first. */
+export const SERIES_CAP = 4032;
+
+/**
+ * Adds a timestamped entry, keeping the series in time order without scanning it.
+ * The common case (newer than the last entry) appends; an older or repeated one is
+ * placed by binary search, and an entry already present at that time is not added again.
+ * Pure, so it is safe inside a state updater.
+ */
+export function insertByTime<T extends { t: string }>(series: T[], entry: T, same: (a: T, b: T) => boolean = (a, b) => a.t === b.t, cap = SERIES_CAP): T[] {
+  const time = Date.parse(entry.t);
+  const last = series[series.length - 1];
+  let next: T[];
+  if (!last || !Number.isFinite(time) || time > Date.parse(last.t)) {
+    next = [...series, entry];
+  } else {
+    let lo = 0, hi = series.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (Date.parse(series[mid].t) < time) lo = mid + 1; else hi = mid; }
+    let at = lo;
+    for (; at < series.length && Date.parse(series[at].t) === time; at++) if (same(series[at], entry)) return series;
+    next = [...series.slice(0, at), entry, ...series.slice(at)];
+  }
+  return next.length > cap ? next.slice(next.length - cap) : next;
+}
+
 export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTelemetryOptions) {
   const { asOf } = useTime() || {}; 
   const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
@@ -332,39 +357,27 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                       const newCache = { ...prev };
 
                       if (forecastPayload.current?.measured_at && forecastPayload.current.value_mg_dl != null) {
-                        const t = forecastPayload.current.measured_at;
-                        if (!newCache.cgm.some(c => c.t === t)) {
-                          newCache.cgm = [...prev.cgm, { t, value: forecastPayload.current.value_mg_dl, trend: forecastPayload.current.trend_arrow || '' }];
-                        }
+                        newCache.cgm = insertByTime(prev.cgm, { t: forecastPayload.current.measured_at, value: forecastPayload.current.value_mg_dl, trend: forecastPayload.current.trend_arrow || '' });
                       }
 
                       const observed = forecastPayload.observed_inputs;
                       if (observed && forecastPayload.as_of) {
-                        const wearables = prev.wearables ?? [];
-                        if (!wearables.some(w => w.t === forecastPayload.as_of)) {
-                          newCache.wearables = [...wearables, {
-                            t: forecastPayload.as_of, heartRate: observed.heart_rate_bpm ?? null, hrv: observed.hrv_rmssd_ms ?? null,
-                            steps: observed.steps_5min, asleep: observed.asleep, carbs: observed.carbs_logged_g,
-                          }];
-                        }
+                        newCache.wearables = insertByTime(prev.wearables ?? [], {
+                          t: forecastPayload.as_of, heartRate: observed.heart_rate_bpm ?? null, hrv: observed.hrv_rmssd_ms ?? null,
+                          steps: observed.steps_5min, asleep: observed.asleep, carbs: observed.carbs_logged_g,
+                        });
                       }
 
                       if (forecastPayload.spike_risk?.probability_120m !== undefined && forecastPayload.as_of) {
-                        if (!newCache.risk.some(r => r.t === forecastPayload.as_of)) {
-                          newCache.risk = [...prev.risk, { t: forecastPayload.as_of, p: forecastPayload.spike_risk.probability_120m }];
-                        }
+                        newCache.risk = insertByTime(prev.risk, { t: forecastPayload.as_of, p: forecastPayload.spike_risk.probability_120m });
                       }
 
                       if (forecastPayload.alert?.state && forecastPayload.as_of) {
-                        if (!newCache.alerts.some(a => a.t === forecastPayload.as_of)) {
-                          newCache.alerts = [...prev.alerts, { t: forecastPayload.as_of, state: forecastPayload.alert.state }];
-                        }
+                        newCache.alerts = insertByTime(prev.alerts, { t: forecastPayload.as_of, state: forecastPayload.alert.state });
                       }
 
                       if (forecastPayload.data_quality?.status && forecastPayload.as_of) {
-                        if (!newCache.dataQuality.some(q => q.t === forecastPayload.as_of)) {
-                          newCache.dataQuality = [...prev.dataQuality, { t: forecastPayload.as_of, status: forecastPayload.data_quality.status }];
-                        }
+                        newCache.dataQuality = insertByTime(prev.dataQuality, { t: forecastPayload.as_of, status: forecastPayload.data_quality.status });
                       }
 
                       return newCache;
@@ -380,13 +393,8 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                     setCache(prev => {
                       if (prev.patientId !== patientId) return prev;
                       const t = alertPayload.since || parsedEvent.emitted_at;
-                      if (!prev.alerts.some(a => a.t === t && a.state === alertPayload.state)) {
-                        return {
-                          ...prev,
-                          alerts: [...prev.alerts, { t, state: alertPayload.state }],
-                        };
-                      }
-                      return prev;
+                      const alerts = insertByTime(prev.alerts, { t, state: alertPayload.state }, (a, b) => a.state === b.state);
+                      return alerts === prev.alerts ? prev : { ...prev, alerts };
                     });
                     break;
                   }
@@ -398,13 +406,8 @@ export function useRealtimeTelemetry(patientId: string, options?: UseRealtimeTel
                     setCache(prev => {
                       if (prev.patientId !== patientId) return prev;
                       const t = dqPayload.last_cgm_at || parsedEvent.emitted_at;
-                      if (!prev.dataQuality.some(q => q.t === t && q.status === dqPayload.status)) {
-                        return {
-                          ...prev,
-                          dataQuality: [...prev.dataQuality, { t, status: dqPayload.status }],
-                        };
-                      }
-                      return prev;
+                      const dataQuality = insertByTime(prev.dataQuality, { t, status: dqPayload.status }, (a, b) => a.status === b.status);
+                      return dataQuality === prev.dataQuality ? prev : { ...prev, dataQuality };
                     });
                     break;
                   }
