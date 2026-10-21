@@ -67,9 +67,10 @@ export default function CohortPage() {
         <header className="workspace-heading cohort-heading"><div><span className="eyebrow">Synthetic cohort</span><h1>Patient cohort</h1><p>Each synthetic subject has an EHR record plus CGM and wearable streams, and opens as its own digital twin. The cohort spans healthy, prediabetes and Type 2 so the model learns the full range; the demonstration focuses on Type 2. The sealed test partition is not served.</p></div><span className="status-badge"><Users size={14} aria-hidden="true" />{state === 'ready' ? subjects.length + ' subjects' : 'Subject directory'}</span></header>
         {state === 'ready' && demo && <section className="demo-entry panel" aria-labelledby="demo-entry-heading">
           <div className="demo-entry-copy">
-            <span className="eyebrow">Start here · demonstration subject</span>
-            <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · {demo.split} split</h2>
+            <span className="eyebrow">Start here · designated demonstration subject</span>
+            <h2 id="demo-entry-heading">{demo.patient_id} · {demo.group} · validation split</h2>
             <p>Opens at 08:00 on the first morning: the night, waking and a logged breakfast in CGM, heart rate, HRV, steps, sleep and the meal log; a 2-hour forecast built from a physiology model plus a learned adjustment; and a live What-If for meals and activity.</p>
+            <p className="demo-entry-note">Chosen from the validation split, so the network was not trained on this subject. It was used for tuning and calibration, so it is not an independent test either. Training-split subjects are in-sample.</p>
           </div>
           {demo.ehr && <dl className="demo-entry-facts">
             <div><dt>Age</dt><dd>{demo.ehr.age_years ?? '—'}</dd></div>
@@ -113,7 +114,7 @@ export default function CohortPage() {
                 <td className="numeric" data-label="Age">{subject.ehr?.age_years ?? '—'}{subject.ehr?.sex ? ` · ${subject.ehr.sex === 'male' ? 'M' : subject.ehr.sex === 'female' ? 'F' : subject.ehr.sex}` : ''}</td>
                 <td className="numeric" data-label="BMI">{num(subject.ehr?.bmi)}</td>
                 <td className="numeric" data-label="HbA1c">{subject.ehr?.hba1c_pct != null ? `${num(subject.ehr.hba1c_pct)}%` : '—'}</td>
-                <td><span className="partition-label" data-split={subject.split}>{subject.split === 'val' ? 'Validation' : subject.split === 'train' ? 'Training' : subject.split ?? 'Unspecified'}</span></td>
+                <td><span className="partition-label" data-split={subject.split}>{subject.split === 'val' ? 'Validation' : subject.split === 'train' ? 'Training · in-sample' : subject.split ?? 'Unspecified'}</span></td>
                 <td><Link prefetch={false} href={'/patients/' + encodeURIComponent(subject.subject_id)} className="subject-open" aria-label={'Open subject ' + (subject.patient_id ?? subject.subject_id)}>Open<ArrowRight size={14} aria-hidden="true" /></Link></td>
               </tr>)}</tbody>
             </table></div>

@@ -503,8 +503,9 @@ export default async function EvidencePage() {
         {hasBenchmarks && models && (
           <section className="panel evidence-figure" aria-labelledby="error-figure-heading" data-testid="error-by-horizon">
             <div className="evidence-figure-head">
+              <span className="eyebrow">Figure 1</span>
               <h2 id="error-figure-heading">Forecast error by horizon</h2>
-              <p className="fine-print">RMSE in mg/dL, lower is better · bars show the estimate, whiskers the patient-clustered 95% CI · 44 synthetic validation patients</p>
+              <p className="fine-print">RMSE in mg/dL, lower is better · the dot is the estimate, the whisker its patient-clustered 95% CI · 44 synthetic validation patients</p>
             </div>
             {(['30', '60', '120'] as const).map(h => {
               const rows = [
@@ -521,7 +522,7 @@ export default async function EvidencePage() {
                     {rows.map(r => (
                       <div key={r.key} className={`error-bar-row ${r.key}`}>
                         <span className="error-bar-name">{r.label}</span>
-                        <span className="error-bar-track" aria-hidden="true">
+                        <span className="error-bar-track" aria-hidden="true"><span className="error-scale">{[0, 10, 20, 30, 40, 50].map(t => <i key={t} style={{ left: pct(t) }} />)}</span>
                           <i className="error-bar" style={{ width: pct(r.m!.estimate) }} />
                           {r.m!.ci_95 && <b className="error-ci" style={{ left: pct(r.m!.ci_95[0]), width: `calc(${pct(r.m!.ci_95[1])} - ${pct(r.m!.ci_95[0])})` }} />}
                         </span>
@@ -532,6 +533,7 @@ export default async function EvidencePage() {
                 </div>
               );
             })}
+            <div className="error-horizon error-axis-row" aria-hidden="true"><div /><div className="error-bars"><div className="error-bar-row"><span /><span className="error-bar-track">{[0, 10, 20, 30, 40, 50].map(t => <b key={t} style={{ left: `${(t / 55) * 100}%` }}>{t}</b>)}</span><span className="error-bar-value">mg/dL</span></div></div></div>
             <p className="fine-print evidence-figure-foot">Development-validation partition, also used for checkpoint selection and calibration; not held-out or human evidence. Source: <code>runs/pr_tft_ablation_arm_d/evaluation_report.json</code>.</p>
           </section>
         )}
