@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Search, Users, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
 import { MiniTwin } from '@/components/figure/MiniTwin';
+import { WardTriage } from '@/components/digital-twin/WardTriage';
 import type { HeroForecast } from '@/lib/hero';
 
 const DEMO_PATIENT_ID = 'P0017';
@@ -93,6 +94,7 @@ export default function CohortPage() {
           </dl>}
           <Link prefetch={false} href={'/patients/' + encodeURIComponent(demo.subject_id)} className="demo-entry-link">Open {demo.patient_id}<ArrowRight size={15} aria-hidden="true" /></Link>
         </section>}
+        <WardTriage />
         {state === 'loading' && <div className="cohort-summary summary-loading" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div key={index}><span className="skeleton skeleton-label" /><span className="skeleton skeleton-number" /><span className="skeleton skeleton-label" /></div>)}</div>}
         {state === 'ready' && subjects.length > 0 && <section className="cohort-composition panel" aria-label="Cohort composition">
           <div className="composition-head"><span className="composition-total">{subjects.length}</span><span>served subjects by glycaemic status</span></div>

@@ -1174,3 +1174,29 @@ details[open] > summary .repro-hint { display: none; }
 .g3-implication { font-size: 15px; line-height: 1.5; color: var(--color-ink-2); margin: 8px 0 4px; max-width: 70ch; }
 .g3-more > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--color-accent); padding: 6px 0; }
 .fig-home .landing-evidence .failed dd { color: var(--color-ink); }
+
+/* Ward view: who needs attention, ranked by the served 2-hour onset risk. */
+.ward-triage { margin: 0 0 24px; padding: 16px 0 12px; border: 0; border-top: 2px solid var(--color-rule, var(--color-ink)); border-radius: 0; background: transparent; box-shadow: none; }
+.ward-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 32px; flex-wrap: wrap; margin-bottom: 10px; }
+.ward-head h2 { font-family: var(--font-display); font-size: 24px; margin: 4px 0 4px; }
+.ward-head .fine-print { max-width: 70ch; margin: 0; }
+.ward-count { margin: 0; font-size: 14.5px; color: var(--color-ink-2); }
+.ward-count b { font-family: var(--font-display); font-size: 26px; color: var(--color-ink); margin-right: 4px; }
+.ward-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.ward-table thead th { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink-3); text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--color-ink); }
+.ward-table tbody th, .ward-table tbody td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--color-line); font-size: 14.5px; text-align: left; vertical-align: middle; font-weight: 400; }
+.ward-table small { display: block; font-size: 12px; color: var(--color-ink-3); }
+.ward-table td.numeric small { display: inline; }
+.ward-table .numeric { font-variant-numeric: tabular-nums; }
+.ward-patient { font-weight: 600; color: var(--color-accent); }
+.ward-risk { display: inline-block; width: 72px; height: 6px; margin-right: 8px; background: var(--color-surface-2, #eef0f2); vertical-align: middle; }
+.ward-risk i { display: block; height: 100%; background: var(--color-ink-3); }
+.tier-watch .ward-risk i { background: var(--color-amber); }
+.tier-high .ward-risk i { background: var(--color-danger); }
+.ward-alert { display: inline-block; padding: 1px 7px; border: 1px solid; border-radius: 2px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ward-alert.watch { color: var(--color-amber); }
+.ward-alert.warning { color: var(--color-danger); }
+.ward-foot { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-top: 10px; }
+.ward-loading { display: grid; gap: 8px; }
+.ward-skeleton { display: block; height: 28px; }
+.ward-error { margin: 6px 0; font-size: 14.5px; color: var(--color-ink-2); }
