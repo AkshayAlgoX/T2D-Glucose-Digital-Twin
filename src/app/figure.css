@@ -1088,3 +1088,58 @@ details[open] > summary .repro-hint { display: none; }
 .jump-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .jump-table th, .jump-table td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--color-line); white-space: nowrap; }
 .jump-table thead th { font-size: 12.5px; color: var(--color-ink-3); border-bottom: 1px solid var(--color-ink); font-weight: 600; }
+/* ---- Evidence: one authoritative Gate 3 analysis; a compact, aligned status register ---- */
+.evidence-pillar-card.pillar-limitations { display: grid !important; grid-template-columns: 260px minmax(0, 1fr) !important; gap: 12px 36px !important; align-items: start; scroll-margin-top: 84px; }
+.evidence-pillar-card.pillar-limitations > div { display: block !important; }
+.evidence-pillar-card.pillar-limitations:focus { outline: none; }
+.evidence-pillar-card.pillar-limitations:focus-visible, .evidence-pillar-card.pillar-limitations:target { box-shadow: inset 0 0 0 2px var(--color-danger); }
+.g3-summary .pillar-label { margin-bottom: 4px; }
+.g3-summary .pillar-question { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--color-ink); margin: 6px 0 8px; }
+.g3-summary .g3-tag { display: inline-block; margin-top: 14px; border-color: var(--color-danger) !important; color: var(--color-danger) !important; }
+.g3-body { min-width: 0; }
+.g3-body .pillar-gate3-figure { border-top: 0; padding-top: 0; }
+.g3-method { margin: 6px 0 12px; font-size: 14.5px; line-height: 1.55; color: var(--color-ink); max-width: 900px; }
+.g3-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin: 0 0 12px; border-top: 1px solid #e8c4bd; border-bottom: 1px solid #e8c4bd; }
+.g3-metrics > div { padding: 8px 14px 8px 0; }
+.g3-metrics dt { font-size: 12.5px; color: var(--color-ink-3); }
+.g3-metrics dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.g3-metrics dd small { display: block; font-size: 12.5px; font-weight: 400; color: var(--color-ink-2); }
+.g3-metrics code { font-size: 13.5px; font-weight: 500; }
+.g3-mechanism { font-size: 13.5px; line-height: 1.5; color: var(--color-ink-2); margin: 0 0 12px; max-width: 900px; }
+.g3-scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
+.g3-scope h4 { font-size: 13.5px; font-weight: 600; color: var(--color-ink); margin: 0 0 6px; }
+.g3-scope ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; color: var(--color-ink-2); display: grid; gap: 4px; }
+.g3-source { margin: 12px 0 0 !important; font-size: 13px !important; color: var(--color-ink-3) !important; }
+/* register: four cards on one structure, feet aligned; Gate 3 marked by a red rule and chip, not a red panel */
+.register-grid { align-items: stretch; }
+.register-card { display: flex; flex-direction: column; border-top: 3px solid var(--color-line-control); background: transparent !important; }
+.register-card + .register-card { border-left: 1px solid var(--color-line); }
+.register-card.failed { border-top-color: var(--color-danger); padding-left: 0; }
+.register-card:has(.register-chip.nogo) { border-top-color: var(--color-amber); }
+.register-card .register-foot { margin-top: auto !important; padding-top: 10px; }
+.register-card-head { min-height: 26px; }
+.register-title { min-height: 1.3em; }
+.register-link { align-self: flex-start; margin-top: auto; padding-top: 10px; font-size: 14px; font-weight: 600; color: var(--color-accent); text-decoration: underline; text-underline-offset: 4px; }
+.register-link::after { content: ' ↑'; }
+.register-link:hover { color: var(--color-accent-ink); text-decoration-thickness: 2px; }
+.evidence-read-first a { color: var(--color-danger); font-weight: 600; }
+@media (max-width: 900px) {
+  .evidence-pillar-card.pillar-limitations { grid-template-columns: minmax(0, 1fr) !important; }
+  .g3-scope { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media (max-width: 720px) {
+  .register-card, .register-card + .register-card { border-left: 0 !important; border-top: 3px solid var(--color-line-control); padding: 14px 0 !important; }
+  .register-card.failed { border-top-color: var(--color-danger) !important; }
+  .register-card:has(.register-chip.nogo) { border-top-color: var(--color-amber) !important; }
+  .g3-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evidence-pillar-card.pillar-limitations { scroll-margin-top: 16px; }
+}
+.g3-figure-note { font-size: 12.5px; color: var(--color-ink-3); margin: 2px 0 8px; }
+.pillar-limitations .pillar-gate3-figure .gate3-figure { display: block !important; max-width: 560px; }
+.g3-scope ul { list-style: disc outside; }
+.g3-metrics dd code { font-size: 13px; }
+.g3-source code { overflow-wrap: anywhere; }
+.register-card.failed .register-link { margin-top: 0; }
+.register-details { margin-top: 6px; }
+.register-more > summary { font-size: 13.5px; color: var(--color-accent); }
+.evidence-page .register .register-head h2 { font-family: var(--font-display); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }

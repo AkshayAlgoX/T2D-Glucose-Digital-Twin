@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import EvidencePage from '../src/app/evidence/page';
 import fs from 'fs/promises';
 import crypto from 'crypto';
@@ -417,7 +417,7 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Exploratory · 10 patients')).toBeInTheDocument();
 
     // Pillar 4: Realism & Limitations
-    expect(screen.getByText('4. Governance and realism')).toBeInTheDocument();
+    expect(screen.getByText('4. Realism · Gate 3 analysis')).toBeInTheDocument();
     expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
     expect(screen.getByText('AUROC 0.932 (Target ≤ 0.65)')).toBeInTheDocument();
     expect(screen.getByText('No clinical generalization')).toBeInTheDocument();
@@ -517,6 +517,37 @@ describe('EvidencePage', () => {
     expect(screen.getByText('UNEXECUTED')).toBeInTheDocument();
   });
 
+  it('keeps one authoritative Gate 3 analysis; the register shows a compact FAILED status that links to it', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+    const Component = await EvidencePage();
+    const { container } = render(Component);
+
+    const analysis = container.querySelector('#gate3-analysis')!;
+    expect(analysis).not.toBeNull();
+    expect(analysis.closest('details')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Is the synthetic data realistic?' })).toBe(analysis);
+    expect(analysis).toHaveTextContent('Gate 3 FAILED');
+    expect(analysis).toHaveTextContent('Historical AUROC');
+    expect(analysis).toHaveTextContent('16,719 synthetic windows with 16,443 mock-real windows');
+    expect(analysis).toHaveTextContent('Null control');
+    expect(analysis).toHaveTextContent('jerk_sd (SHAP 0.8878)');
+    expect(analysis).toHaveTextContent('What it does not establish');
+
+    const register = screen.getByRole('region', { name: 'Validation status and provenance register' });
+    const link = within(register).getByRole('link', { name: 'View Gate 3 analysis' });
+    expect(link).toHaveAttribute('href', '#gate3-analysis');
+    expect(within(register).getByText('FAILED')).toBeInTheDocument();
+    // The register does not repeat the metrics or the explanation.
+    expect(register).not.toHaveTextContent('Historical AUROC');
+    expect(register).not.toHaveTextContent('jerk_sd');
+    // Limitations formerly listed in the summary keep a home in their register cards.
+    expect(register).toHaveTextContent("18-subject ‘test’ record is kept separately and excluded from claims");
+  });
+
   it('keeps audit detail in one collapsed methodology appendix, out of the reading path', async () => {
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
@@ -559,8 +590,8 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Δ −4.49 mg/dL')).toBeInTheDocument();
     expect(screen.getByText(/Exploratory evidence from only 10 simulated T2D subjects/i)).toBeInTheDocument();
 
-    // Question 4: What remains unproven?
-    expect(screen.getByText('What remains unproven?')).toBeInTheDocument();
+    // Question 4: the authoritative Gate 3 analysis
+    expect(screen.getByText('Is the synthetic data realistic?')).toBeInTheDocument();
     expect(screen.getByText(/Realism gate \(Gate 3\) FAILED/i)).toBeInTheDocument();
     expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });

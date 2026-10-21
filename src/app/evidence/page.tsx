@@ -325,7 +325,7 @@ export default async function EvidencePage() {
             <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
-            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> Gate 3, the realism check, failed · no real-human validation · the held-out test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator.</p>
+            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> Gate 3, the realism check, failed (<a href="#gate3-analysis">analysis</a>) · no real-human validation · the held-out test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator.</p>
             <p className="evidence-glossary" data-testid="evidence-glossary"><strong>Terms:</strong> <em>PR-TFT</em> is the neural network that makes the learned adjustment; <em>UKF</em> is the filter that keeps the physiology twin in step with the readings; <em>Arm D</em> is the trained configuration evaluated here; <em>persistence</em> assumes glucose stays where it is.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -478,31 +478,51 @@ export default async function EvidencePage() {
                 <span className="pillar-tag">Exploratory · 10 patients</span>
               </div>
 
-              {/* Question 4: What remains unproven? */}
-              <div className="evidence-pillar-card pillar-limitations">
-                <div>
+              {/* Finding 4: the single, authoritative Gate 3 analysis (the register below links here). */}
+              <div className="evidence-pillar-card pillar-limitations" id="gate3-analysis" tabIndex={-1} role="region" aria-labelledby="gate3-analysis-heading">
+                <div className="g3-summary">
                   <div className="pillar-label">
-                    <span>4. Governance and realism</span>
-                    <XCircle size={14} color="var(--color-danger)" aria-hidden="true" />
+                    <span>4. Realism · Gate 3 analysis</span>
                   </div>
-                  <h3 className="pillar-question">What remains unproven?</h3>
+                  <h3 className="pillar-question" id="gate3-analysis-heading">Is the synthetic data realistic?</h3>
                   <div className="pillar-stat stat-danger">
                     Gate 3 {gate3?.status ?? 'FAILED'}
                   </div>
                   <div className="pillar-substat">
                     AUROC {gate3?.historical_auroc.toFixed(3) ?? '0.932'} (Target &le; 0.65)
                   </div>
-                  <ul className="pillar-limits-list">
-                    <li><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells our synthetic glucose traces apart from an independent mock-real generator&apos;s data, itself synthetic (AUROC 0.932 historical, 0.929 duration-corrected; target ≤ 0.65).</li>
-                    <li><strong>Held-out test not run:</strong> the 44 sealed test patients of this split have not been scored by this model, so no test result is claimed. An earlier demo run&apos;s 18-subject &lsquo;test&rsquo; record is kept separately and excluded from claims.</li>
-                    <li><strong>Early-warning alerts not validated:</strong> the pre-registered alert study (EW-01) has not been run.</li>
-                    <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
-                  </ul>
+                  <span className="pillar-tag g3-tag">No clinical generalization</span>
                 </div>
-                {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact /></div></div>}
-                <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
-                  No clinical generalization
-                </span>
+                <div className="g3-body">
+                  {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
+                  <p className="g3-method"><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells our synthetic glucose traces apart from an independent mock-real generator&apos;s data, itself synthetic. It compared 16,719 synthetic windows with 16,443 mock-real windows; an AUROC of 0.5 would mean the two are indistinguishable, and the gate passes at 0.65 or below.</p>
+                  <dl className="g3-metrics">
+                    <div><dt>Historical AUROC</dt><dd>{gate3?.historical_auroc.toFixed(3) ?? '0.932'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.historical[0].toFixed(3)}–{landing.gate3ci.historical[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Duration-corrected AUROC</dt><dd>{gate3?.duration_corrected_auroc?.toFixed(3) ?? '0.929'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.correctedCi[0].toFixed(3)}–{landing.gate3ci.correctedCi[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Acceptance target</dt><dd>AUROC &le; 0.65</dd></div>
+                    <div><dt>Null control</dt><dd>0.507<small> pipeline check: indistinguishable data score near 0.5</small></dd></div>
+                    <div><dt>Strongest tells</dt><dd><code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></dd></div>
+                  </dl>
+                  {landing?.gate3ci?.mechanism && <p className="g3-mechanism"><strong>Recorded mechanism:</strong> {landing.gate3ci.mechanism}</p>}
+                  <div className="g3-scope">
+                    <div>
+                      <h4>What the failure establishes</h4>
+                      <ul>
+                        <li>Synthetic ODE dynamics remain distinguishable from the comparison generator&apos;s, mainly in glucose curvature and fall rates.</li>
+                        <li>Real-world physiological realism of this cohort is therefore unestablished.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>What it does not establish</h4>
+                      <ul>
+                        <li>Anything about people: the comparison data are themselves synthetic, so passing would not show realism against real patients either.</li>
+                        <li>Forecast accuracy on this synthetic data, which is measured separately in Figures 1 and 2.</li>
+                        <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="fine-print g3-source">The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository. Source: <code>docs/evidence/validation_ceiling_results.json</code> → <code>gate3_realism_status</code>.</p>
+                </div>
               </div>
             </div>
           </section>
@@ -976,7 +996,7 @@ export default async function EvidencePage() {
               </div>
 
               <div className="register-grid">
-                {/* Gate 3 Realism */}
+                {/* Gate 3 Realism: compact status; the full analysis is in finding 4 above */}
                 {gate3 && (
                   <div className="register-card failed">
                     <div className="register-card-head">
@@ -986,19 +1006,8 @@ export default async function EvidencePage() {
                       </span>
                     </div>
                     <h3 className="register-title">Synthetic-data indistinguishability</h3>
-                    <p className="register-text">
-                      A classifier can tell our synthetic glucose windows from those of an independent mock-real generator (16,719 synthetic vs 16,443 mock-real windows). The comparison data are also synthetic, so this says nothing about realism against people.
-                    </p>
-                    <div className="register-facts">
-                      <div><strong>Historical AUROC:</strong> {gate3.historical_auroc?.toFixed(3)}</div>
-                      <div><strong>Duration-corrected:</strong> {gate3.duration_corrected_auroc?.toFixed(3)}</div>
-                      <div><strong>Acceptance target:</strong> AUROC &le; 0.65</div>
-                      <div><strong>Top tells:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
-                    </div>
-
-                    <p className="fine-print register-foot">
-                      Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507). The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository.
-                    </p>
+                    <p className="register-text">Our synthetic glucose traces remain distinguishable from the comparison generator&apos;s, so realism is not established.</p>
+                    <a className="register-link" href="#gate3-analysis">View Gate 3 analysis</a>
                   </div>
                 )}
 
@@ -1016,9 +1025,14 @@ export default async function EvidencePage() {
                   </p>
                   <div className="register-facts">
                     <div><strong>Why it is not run:</strong> the model was trained from code that had not been committed, and two training source files have changed since, so a test result could not be tied to exactly reproducible code.</div>
-                    <div><strong>What this does not affect:</strong> the check that the evaluation report, checkpoint and data match the recorded run.</div>
-                    <details className="context-details"><summary>Technical detail</summary><p style={{ margin: '6px 0 0' }}>The run manifest (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>) records uncommitted changes in 11 files; <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</p></details>
-                    <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
+                    <details className="context-details register-more"><summary>Details</summary>
+                      <div className="register-facts register-details">
+                        <div><strong>What this does not affect:</strong> the check that the evaluation report, checkpoint and data match the recorded run.</div>
+                        <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
+                        <div><strong>Earlier record:</strong> an earlier demo run&apos;s 18-subject &lsquo;test&rsquo; record is kept separately and excluded from claims.</div>
+                        <div><strong>Technical detail:</strong> The run manifest (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>) records uncommitted changes in 11 files; <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</div>
+                      </div>
+                    </details>
                   </div>
                   <p className="fine-print register-foot">
                     No performance claim is made for unexecuted test evaluation.

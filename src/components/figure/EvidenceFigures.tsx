@@ -45,13 +45,13 @@ export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence[
 }
 
 /** Gate 3: can a classifier tell our synthetic traces from a mock-real generator's? AUROC with 90% intervals against the ≤ 0.65 target. */
-export function Gate3Figure({ historical, ci, compact = false }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean }) {
+export function Gate3Figure({ historical, ci, compact = false, caption = true }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean; caption?: boolean }) {
   const W = compact ? 340 : 520, H = 120, M = { l: compact ? 128 : 150, r: compact ? 12 : 20, t: 18, b: 30 };
   const x = d3Scale.scaleLinear().domain([0.5, 1]).range([M.l, W - M.r]);
   const rows: Array<[string, number, [number, number]]> = [['Historical', historical, ci.historical], ['Duration-corrected', ci.corrected, ci.correctedCi]];
   return (
     <figure className="gate3-figure">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Gate 3 discriminator AUROC: historical ${historical.toFixed(3)} (90% interval ${ci.historical[0]}–${ci.historical[1]}), duration-corrected ${ci.corrected.toFixed(3)} (${ci.correctedCi[0]}–${ci.correctedCi[1]}). The pass target is at most 0.65; 0.5 would mean indistinguishable. Both are far above the target, so the gate failed.`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Gate 3 discriminator AUROC: historical ${historical.toFixed(3)} (90% interval ${ci.historical[0].toFixed(3)}–${ci.historical[1].toFixed(3)}), duration-corrected ${ci.corrected.toFixed(3)} (${ci.correctedCi[0].toFixed(3)}–${ci.correctedCi[1].toFixed(3)}). The pass target is at most 0.65; 0.5 would mean indistinguishable. Both are far above the target, so the gate failed.`}>
         <rect x={x(0.5)} y={M.t - 6} width={x(0.65) - x(0.5)} height={H - M.b - M.t + 12} className="g3-pass" />
         <text x={x(0.5) + 6} y={M.t + 6} className="fig-axis g3-pass-label">pass zone ≤ 0.65</text>
         {(compact ? [0.5, 0.75, 1] : [0.5, 0.6, 0.7, 0.8, 0.9, 1]).map(t => <text key={t} x={x(t)} y={H - 8} textAnchor="middle" className="fig-axis">{t.toFixed(1)}</text>)}
@@ -61,11 +61,11 @@ export function Gate3Figure({ historical, ci, compact = false }: { historical: n
             <text x={M.l - 10} y={yy + 4} textAnchor="end" className="fig-axis g3-label">{label}</text>
             <line x1={x(lo)} x2={x(hi)} y1={yy} y2={yy} className="g3-ci" />
             <circle cx={x(v)} cy={yy} r={5} className="g3-dot" />
-            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}{compact ? '' : ` [${lo}–${hi}]`}</text>
+            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}{compact ? '' : ` [${lo.toFixed(3)}–${hi.toFixed(3)}]`}</text>
           </g>;
         })}
       </svg>
-      <figcaption className="fig-caption">Discriminator AUROC (dot) and its 90% interval, which is narrower than the dot. 0.5 would mean the synthetic traces are indistinguishable from the comparison generator&apos;s; the gate passes at 0.65 or below. The comparison data are themselves synthetic.</figcaption>
+      {caption && <figcaption className="fig-caption">Discriminator AUROC (dot) and its 90% interval, which is narrower than the dot. 0.5 would mean the synthetic traces are indistinguishable from the comparison generator&apos;s; the gate passes at 0.65 or below. The comparison data are themselves synthetic.</figcaption>}
     </figure>
   );
 }

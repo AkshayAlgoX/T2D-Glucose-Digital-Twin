@@ -15,7 +15,7 @@ export interface LandingEvidence {
   /** Reliability bins of the calibrated onset classifier, fitted and evaluated on the same split. */
   reliability?: { predicted: number[]; observed: number[]; counts: number[]; status: string };
   /** Gate 3 discriminator AUROCs with their 90% intervals. */
-  gate3ci?: { historical: [number, number]; corrected: number; correctedCi: [number, number] };
+  gate3ci?: { historical: [number, number]; corrected: number; correctedCi: [number, number]; mechanism: string | null };
 }
 
 /** Headline numbers, read from the committed evidence artifact at request time; null if it is absent or malformed. */
@@ -51,7 +51,7 @@ export async function readLandingEvidence(file = path.join(process.cwd(), 'docs/
     }
     const g3 = d.gate3_realism_status;
     if (g3 && nums3(g3.historical_ci90) && fin(g3.duration_corrected_auroc) && nums3(g3.duration_corrected_ci90)) {
-      out.gate3ci = { historical: [g3.historical_ci90[0], g3.historical_ci90[1]], corrected: g3.duration_corrected_auroc, correctedCi: [g3.duration_corrected_ci90[0], g3.duration_corrected_ci90[1]] };
+      out.gate3ci = { historical: [g3.historical_ci90[0], g3.historical_ci90[1]], corrected: g3.duration_corrected_auroc, correctedCi: [g3.duration_corrected_ci90[0], g3.duration_corrected_ci90[1]], mechanism: typeof g3.mechanism === 'string' ? g3.mechanism : null };
     }
     const nums = [out.rmse60.hybrid, out.rmse60.twin, out.rmse60.persistence, out.patients, out.gate3.auroc];
     return nums.every(n => typeof n === 'number' && Number.isFinite(n)) && typeof out.gate3.status === 'string' ? out : null;
