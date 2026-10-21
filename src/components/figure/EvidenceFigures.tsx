@@ -23,7 +23,7 @@ export function SubgroupGains({ rows }: { rows: NonNullable<LandingEvidence['sub
 
 /** Reliability of the calibrated onset classifier. Fitted and evaluated on the same split: agreement is expected by construction. */
 export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence['reliability']> }) {
-  const W = 360, H = 300, M = { l: 44, r: 12, t: 12, b: 40 };
+  const W = 360, H = 300, M = { l: 62, r: 12, t: 12, b: 40 };
   const x = d3Scale.scaleLinear().domain([0, 1]).range([M.l, W - M.r]);
   const y = d3Scale.scaleLinear().domain([0, 1]).range([H - M.b, M.t]);
   const r = d3Scale.scaleSqrt().domain([0, Math.max(...data.counts)]).range([2.5, 9]);
@@ -35,7 +35,7 @@ export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence[
         <line x1={x(0)} y1={y(0)} x2={x(1)} y2={y(1)} className="rel-diagonal" />
         {data.predicted.map((p, i) => <circle key={i} cx={x(p)} cy={y(data.observed[i])} r={r(data.counts[i])} className="rel-dot"><title>{`Predicted ${p.toFixed(3)}, observed ${data.observed[i].toFixed(3)}, ${data.counts[i].toLocaleString()} anchors`}</title></circle>)}
         <text x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle" className="fig-axis">mean predicted probability</text>
-        <text x={12} y={(M.t + H - M.b) / 2} transform={`rotate(-90 12 ${(M.t + H - M.b) / 2})`} textAnchor="middle" className="fig-axis">observed onset fraction</text>
+        <text x={14} y={(M.t + H - M.b) / 2} transform={`rotate(-90 14 ${(M.t + H - M.b) / 2})`} textAnchor="middle" className="fig-axis">observed onset fraction</text>
       </svg>
       <figcaption className="fig-caption"><b>Resubstitution, not validation.</b> The isotonic calibrator was fitted on these same anchors, so the dots sit on the diagonal by construction. Dot area shows how many anchors fall in each bin.</figcaption>
     </figure>
@@ -43,8 +43,8 @@ export function ReliabilityFigure({ data }: { data: NonNullable<LandingEvidence[
 }
 
 /** Gate 3: can a classifier tell our synthetic traces from a mock-real generator's? AUROC with 90% intervals against the ≤ 0.65 target. */
-export function Gate3Figure({ historical, ci }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']> }) {
-  const W = 520, H = 120, M = { l: 150, r: 20, t: 18, b: 30 };
+export function Gate3Figure({ historical, ci, compact = false }: { historical: number; ci: NonNullable<LandingEvidence['gate3ci']>; compact?: boolean }) {
+  const W = compact ? 340 : 520, H = 120, M = { l: compact ? 112 : 150, r: compact ? 12 : 20, t: 18, b: 30 };
   const x = d3Scale.scaleLinear().domain([0.5, 1]).range([M.l, W - M.r]);
   const rows: Array<[string, number, [number, number]]> = [['Historical', historical, ci.historical], ['Duration-corrected', ci.corrected, ci.correctedCi]];
   return (
@@ -52,18 +52,18 @@ export function Gate3Figure({ historical, ci }: { historical: number; ci: NonNul
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Gate 3 discriminator AUROC: historical ${historical.toFixed(3)} (90% interval ${ci.historical[0]}–${ci.historical[1]}), duration-corrected ${ci.corrected.toFixed(3)} (${ci.correctedCi[0]}–${ci.correctedCi[1]}). The pass target is at most 0.65; 0.5 would mean indistinguishable. Both are far above the target, so the gate failed.`}>
         <rect x={x(0.5)} y={M.t - 6} width={x(0.65) - x(0.5)} height={H - M.b - M.t + 12} className="g3-pass" />
         <text x={x(0.5) + 6} y={M.t + 6} className="fig-axis g3-pass-label">pass zone ≤ 0.65</text>
-        {[0.5, 0.6, 0.7, 0.8, 0.9, 1].map(t => <text key={t} x={x(t)} y={H - 8} textAnchor="middle" className="fig-axis">{t.toFixed(1)}</text>)}
+        {(compact ? [0.5, 0.75, 1] : [0.5, 0.6, 0.7, 0.8, 0.9, 1]).map(t => <text key={t} x={x(t)} y={H - 8} textAnchor="middle" className="fig-axis">{t.toFixed(1)}</text>)}
         {rows.map(([label, v, [lo, hi]], i) => {
           const yy = M.t + 26 + i * 30;
           return <g key={label}>
             <text x={M.l - 10} y={yy + 4} textAnchor="end" className="fig-axis g3-label">{label}</text>
             <line x1={x(lo)} x2={x(hi)} y1={yy} y2={yy} className="g3-ci" />
             <circle cx={x(v)} cy={yy} r={5} className="g3-dot" />
-            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}</text>
+            <text x={x(v) - 10} y={yy + 4} textAnchor="end" className="fig-axis">{v.toFixed(3)}{compact ? '' : ` [${lo}–${hi}]`}</text>
           </g>;
         })}
       </svg>
-      <figcaption className="fig-caption">Discriminator AUROC (dot) with its 90% interval. 0.5 would mean the synthetic traces are indistinguishable from the comparison generator&apos;s; the gate passes at 0.65 or below. The comparison data are themselves synthetic.</figcaption>
+      <figcaption className="fig-caption">Discriminator AUROC (dot) and its 90% interval, which is narrower than the dot. 0.5 would mean the synthetic traces are indistinguishable from the comparison generator&apos;s; the gate passes at 0.65 or below. The comparison data are themselves synthetic.</figcaption>
     </figure>
   );
 }

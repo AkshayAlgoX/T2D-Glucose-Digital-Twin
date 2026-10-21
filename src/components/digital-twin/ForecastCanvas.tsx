@@ -360,8 +360,8 @@ export function ForecastCanvas({ forecast, cache, isStale, unreachable = false }
         <span aria-hidden="true">{isStale ? 'Stale stream · ' : ''}{history.length} received CGM observations · times in UTC · hover or focus the chart to inspect points</span>
         <span className="sr-only" aria-live={selection?.source === 'keyboard' ? 'polite' : 'off'} aria-atomic="true">
           {selected && (selected.point
-            ? `${selectedTimestamp} · Median ${selected.value} mg/dL · P10–P90 ${quantile(selected.point.p10)}–${quantile(selected.point.p90)} mg/dL · P05–P95 ${quantile(selected.point.p05)}–${quantile(selected.point.p95)} mg/dL · +${selected.point.offset_min} min of ${forecast?.forecast?.horizon_min ?? 'unavailable'} min forecast horizon`
-            : `${selectedTimestamp} · Observed CGM ${selected.value} mg/dL`)}
+            ? `${formatTime(selectedTimestamp)} UTC · Median ${selected.value} mg/dL · P10–P90 ${quantile(selected.point.p10)}–${quantile(selected.point.p90)} mg/dL · P05–P95 ${quantile(selected.point.p05)}–${quantile(selected.point.p95)} mg/dL · +${selected.point.offset_min} min of ${forecast?.forecast?.horizon_min ?? 'unavailable'} min forecast horizon`
+            : `${formatTime(selectedTimestamp)} UTC · Observed CGM ${selected.value} mg/dL`)}
         </span>
       </div>
 

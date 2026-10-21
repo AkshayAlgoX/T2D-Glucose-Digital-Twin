@@ -220,7 +220,7 @@ export function recordSummary(forecast: ForecastResponse | null): string | null 
   const ehr = forecast?.ehr_context;
   if (!ehr) return null;
   const meds = ehr.med_classes?.length ? `on ${ehr.med_classes.map(m => medicationClassLabels[m]).join(', ')}` : 'no diabetes medication listed';
-  const duration = typeof ehr.t2d_duration_years === 'number' && ehr.t2d_duration_years > 0 ? ` · diagnosed ${ehr.t2d_duration_years} y ago` : '';
+  const duration = typeof ehr.t2d_duration_years === 'number' && ehr.t2d_duration_years > 0 ? ` · diagnosed ${ehr.t2d_duration_years}\u00a0y\u00a0ago` : '';
   return `${ehr.age_years}-year-old ${ehr.sex} · BMI ${ehr.bmi} · HbA1c ${ehr.hba1c_pct}%${duration} · ${meds}`;
 }
 
@@ -252,8 +252,13 @@ export function PatientWorkspace({
     const fromHash = sectionFromHash(window.location.hash);
     if (fromHash) setSection(fromHash);
   }, []);
-  function selectSection(next: WorkspaceSection) {
+  function selectSection(next: WorkspaceSection, reveal = false) {
     setSection(next);
+    if (reveal && typeof window !== 'undefined') {
+      // From the in-page call to action: show the start of the new view, not wherever the old one ended.
+      const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      requestAnimationFrame(() => { const el = document.getElementById(SECTION_TARGET[next]); if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); });
+    }
     if (next === 'record') setContextExpanded(true);
     const bar = tabsRef.current;
     // Bring the start of the newly shown view into sight when the bar has scrolled up and stuck.
@@ -338,7 +343,7 @@ export function PatientWorkspace({
         </div>
       )}
       {!forecast && !error && isReconnecting && <div role="status" className="workspace-reconnect" data-testid="workspace-reconnect">
-        <strong>Can&apos;t reach the subject stream.</strong> Retrying{retryCount ? ` (attempt ${retryCount})` : ''}… Nothing is shown until real data arrives.
+        <strong>Can&apos;t reach the subject stream.</strong> Retrying{retryCount ? ` (attempt ${retryCount})` : ''}… Nothing is shown until real data arrives. <Link href="/cohort">Back to the cohort</Link>
       </div>}
       {!(error && !forecast) && <div ref={tabsRef} className="tw-section-tabs" role="group" aria-label="Workspace view">
         {SECTIONS.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={SECTION_TARGET[id]} onClick={() => selectSection(id)}>{label}</button>)}
@@ -381,14 +386,14 @@ export function PatientWorkspace({
                 )}
               </div>
               <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} unreachable={!forecast && isReconnecting} /></ErrorBoundary></div>
-              <div className="model-caption"><span>{mode}</span><span>Synthetic subject · not for clinical decisions</span></div>
+              <div className="model-caption"><span>{mode.replace(' (PR-TFT)', '')}</span><span>Synthetic subject · not for clinical decisions</span></div>
             </section>
 
             <div className="tw-side">
               <section data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
-                <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
+                <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} unreachable={!forecast && isReconnecting} /></ErrorBoundary>
               </section>
-              <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif')}>
+              <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif', true)}>
                 <span><strong>Test a change to the plan</strong><small>Add a meal or some activity, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
               </button>
               <details id="record" data-view="record" className="patient-context" open={!compact || contextExpanded}>

@@ -153,7 +153,7 @@ function spreadLabels<T extends { y: number }>(labels: T[], gap: number, top: nu
 
 export function ScenarioComparisonChart({ result, step = null, change = null, twinFirst = false }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null; twinFirst?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
-  const height = width < 420 ? 240 : 270;
+  const height = width < 420 ? 280 : 270;
   const labelled = width >= 520;
   const anchor = Date.parse(result.pinned_as_of);
   const toPoint = (p: ScenarioCurvePoint) => ({ ...p, min: (Date.parse(p.timestamp) - anchor) / 60000 });
@@ -186,7 +186,6 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         </g>)}
         {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className={t === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{t === 0 ? formatTime(result.pinned_as_of) : `+${t / 60} h`}</text>)}
         <HatchDefs id="whatif-hatch" />
-        <path d={band(base) ?? ''} className="wf-band-base" />
         <path d={band(scen) ?? ''} className="wf-band-scen" />
         {baseTwin.length > 0 && <path data-testid="whatif-twin-base-line" d={twinLine([...startTwin, ...baseTwin]) ?? ''} className="fig-ghost-twin" />}
         <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} className="fig-ghost" />
@@ -232,7 +231,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
         })()}
       </svg>
       <div className="whatif-legend fig-legend" aria-hidden="true">
-        <span><Glyph kind="ghost" />Forecast, unchanged plan (grey dotted edges: its P10–P90)</span>
+        <span><Glyph kind="ghost" />Forecast, unchanged plan (median)</span>
         <span><Glyph kind="median" />Forecast with this change (blue shading: its P10–P90)</span>
         {baseTwin.length > 0 && <span><Glyph kind="ghost-twin" />Physiology twin, unchanged plan</span>}
         {scenTwin.length > 0 && <span><Glyph kind="twin" />Physiology twin with this change</span>}
@@ -387,7 +386,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <p>{state.input.kind === 'skip_habitual_meal' ? `No usual ${state.input.meal_slot} is expected between ${formatTime(state.asOf)} and ${formatTime(new Date(Date.parse(state.asOf) + 7200000).toISOString())} UTC, so skipping it leaves the forecast as it is.` : 'The backend returned the same forecast for this change at every time point.'} Try a meal or some activity instead.</p>
       </div> : <>
       <figure className="whatif-figure">
-        <figcaption><strong>Figure 2. Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC. Grey: unchanged plan. Colour: with this change.</span></figcaption>
+        <figcaption><strong>Figure 2. Glucose under each plan</strong><span>Next 2 h from {formatTime(state.asOf)} UTC. Grey: unchanged plan (median). Colour: with this change, with its 80% band.</span></figcaption>
         <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <figure className="whatif-figure">

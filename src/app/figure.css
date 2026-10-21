@@ -967,3 +967,40 @@ details[open] > summary .evidence-disclosure-hint::after, .twin-workstation .con
 .pillar-gate3-figure .fig-caption { font-size: 13.5px; }
 @media (max-width: 900px) { .pillar-gate3-figure .gate3-figure { grid-template-columns: minmax(0, 1fr); } }
 .evidence-pillar-card.pillar-limitations > div.pillar-gate3-figure { display: block !important; grid-column: 1 / -1 !important; grid-row: auto; }
+/* disclosure chevrons drawn on the row; no zero-size text */
+.evidence-disclosure-hint, .twin-workstation .contributions > summary .fine-print { display: none !important; }
+.evidence-disclosure > summary::after, .methodology-appendix > summary::after, .twin-workstation .contributions > summary::after { content: ''; flex: none; width: 9px; height: 9px; border-right: 2px solid var(--color-ink); border-bottom: 2px solid var(--color-ink); transform: rotate(45deg); margin: 0 6px 4px 0; }
+.evidence-disclosure[open] > summary::after, .methodology-appendix[open] > summary::after, .twin-workstation .contributions[open] > summary::after { transform: rotate(-135deg); margin-bottom: -2px; }
+@media (max-width: 640px) { .ec-narrow .error-curve .fig-axis, .ec-narrow .error-curve-labels text { font-size: 13px; } }
+/* ---- round-5 review fixes ---- */
+@media (max-width: 720px) {
+  .twin-workstation .chart-legend .lg-long, .chart-legend .lg-long { display: inline !important; position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
+  .chart-legend.fig-legend { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; }
+  .hybrid-equation .equation-op, .stage .hybrid-equation .equation-op { display: block !important; font-size: 15px; line-height: 1; padding-left: 13px; color: var(--color-ink-3); }
+  .trajectory-panel .forecast-metadata { align-items: flex-start; }
+  .tw-whatif, .tw-whatif.panel { margin-top: 0 !important; }
+}
+/* the start of each workspace view clears the sticky masthead and tabs */
+#forecast, #what-if, #record { scroll-margin-top: 120px; }
+@media (max-width: 640px) { #forecast, #what-if, #record { scroll-margin-top: 56px; } }
+/* one hover language for buttons and segments */
+.replay-toggle:hover, .landing-cta:hover, .primary-button:hover:not(:disabled), .demo-entry-link:hover { background: #2f3640 !important; }
+.horizon-pill:hover:not(.active):not(:disabled), .chart-window button:hover:not([aria-pressed="true"]):not(:disabled), .tw-section-tabs button:hover:not([aria-pressed="true"]) { background: var(--color-surface-2); color: var(--color-ink); }
+.horizon-pill.active:hover, .chart-window button[aria-pressed="true"]:hover { background: #2f3640; }
+.secondary-button:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: var(--color-surface-2); border-color: var(--color-ink); }
+/* disclosures: section rows keep the title and chevron on one line; small disclosures use the same chevron */
+.evidence-disclosure > summary, .methodology-appendix > summary, .twin-workstation .contributions > summary { flex-wrap: nowrap !important; }
+.evidence-disclosure > summary > span:first-child, .twin-workstation .contributions > summary > h2 { flex: 1 1 auto; min-width: 0; text-wrap: balance; }
+.context-details > summary, .pillar-more > summary, .whatif-more > summary, .whatif-table > summary, .whatif-tech > summary, .spike-definition > summary, .register-more > summary, .snapshot-details > summary, .reproducibility-details > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.context-details > summary::-webkit-details-marker, .pillar-more > summary::-webkit-details-marker, .whatif-more > summary::-webkit-details-marker, .whatif-table > summary::-webkit-details-marker, .whatif-tech > summary::-webkit-details-marker, .spike-definition > summary::-webkit-details-marker, .snapshot-details > summary::-webkit-details-marker, .reproducibility-details > summary::-webkit-details-marker { display: none; }
+.context-details > summary::after, .pillar-more > summary::after, .whatif-more > summary::after, .whatif-table > summary::after, .whatif-tech > summary::after, .spike-definition > summary::after, .snapshot-details > summary::after, .reproducibility-details > summary::after { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin-top: -3px; }
+.context-details[open] > summary::after, .pillar-more[open] > summary::after, .whatif-more[open] > summary::after, .whatif-table[open] > summary::after, .whatif-tech[open] > summary::after, .spike-definition[open] > summary::after, .snapshot-details[open] > summary::after, .reproducibility-details[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; }
+.fig-section-label, .eyebrow, .overview-page h1, .fig-home h1, .home-section-head h2 { text-wrap: balance; }
+.risk-unreachable { font-size: 14px; color: var(--color-ink-2); border: 1px dashed var(--color-line-control); padding: 12px; margin: 10px 0; }
+.workspace-reconnect a { color: var(--color-accent); margin-left: 6px; }
+.model-role { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .02em; padding: 0 6px; border-radius: 2px; color: #fff; }
+.model-role.hybrid { background: var(--color-forecast); } .model-role.twin { background: var(--color-physics); }
+.brand-mark { width: 32px !important; height: 32px !important; }
+.brand-mark svg { width: 32px; height: 32px; }
+.bm-twin { stroke-width: 2; } .bm-fc { stroke-width: 2.4; } .bm-wedge { fill-opacity: .75; }
+@media (max-width: 640px) { .cohort-page .directory-table tbody tr > th, .cohort-page .directory-table tbody tr > td:nth-child(7) { align-self: center; } .cohort-page .directory-identity { display: flex; align-items: center; gap: 8px; min-height: 40px; } }

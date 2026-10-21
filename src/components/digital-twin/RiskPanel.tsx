@@ -40,7 +40,7 @@ function HighGlucoseWindow({ points }: { points: NonNullable<ForecastResponse['f
   );
 }
 
-export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
+export function RiskPanel({ forecast, unreachable = false }: { forecast: ForecastResponse | null; unreachable?: boolean }) {
   const risk = forecast?.spike_risk;
   const prob = risk?.probability_120m ?? null;
   const alert = forecast?.alert;
@@ -66,7 +66,9 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
     <div className="risk-panel">
       <section className="risk-summary" aria-labelledby="risk-heading">
         <div className="section-heading"><h2 id="risk-heading"><Gauge size={16} aria-hidden="true" /> Risk · next 2 hours</h2></div>
-        {!forecast ? (
+        {!forecast && unreachable ? (
+          <p className="risk-unreachable" data-testid="risk-unreachable">No risk is shown until data arrives. Nothing has been estimated without readings.</p>
+        ) : !forecast ? (
           <>
             <div className="risk-estimate" aria-busy="true"><span className="skeleton skeleton-risk-value" aria-hidden="true" /><span>onset probability</span></div>
             <div className="risk-alert" aria-busy="true"><span className="skeleton skeleton-risk-alert" aria-hidden="true" /></div>

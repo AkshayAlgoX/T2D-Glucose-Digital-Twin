@@ -474,7 +474,7 @@ describe('EvidencePage', () => {
     expect(screen.getByText(/Brier Score \(Raw → Calibrated\)/i)).toBeInTheDocument();
     expect(screen.getByText('0.0703')).toBeInTheDocument();
     expect(screen.getByText(/47,629 at-risk anchors/i)).toBeInTheDocument();
-    expect(screen.getByText('Evaluated Threshold 0.35')).toBeInTheDocument();
+    expect(screen.getByText('Evaluated threshold 0.35 (resubstitution)')).toBeInTheDocument();
     expect(screen.getByText('High Threshold Diagnostic (0.60)')).toBeInTheDocument();
   });
 
@@ -494,7 +494,7 @@ describe('EvidencePage', () => {
     expect(screen.getAllByRole('img', { name: /Forecast error \(RMSE, mg\/dL\) at every horizon/ }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText('Error the learned adjustment removes, by subgroup and horizon')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /fitted and evaluated on the same validation split \(resubstitution\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /Gate 3 discriminator AUROC/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /Gate 3 discriminator AUROC/ }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('maintains prominent display of negative findings (Gate 3 FAILED, Sealed Test Split, External NO-GO, EW-01 Unexecuted)', async () => {

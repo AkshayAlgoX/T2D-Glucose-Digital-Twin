@@ -499,7 +499,7 @@ export default async function EvidencePage() {
                     <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
                   </ul>
                 </div>
-                {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} /></div>}
+                {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact /></div></div>}
                 <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
                   No clinical generalization
                 </span>
@@ -599,8 +599,8 @@ export default async function EvidencePage() {
                       <th scope="col">RMSE (mg/dL) [95% CI]</th>
                       <th scope="col">MAE (mg/dL)</th>
                       <th scope="col">MARD (%)</th>
-                      <th scope="col">&Delta; vs. Persistence</th>
-                      <th scope="col">&Delta; vs. UKF Twin</th>
+                      <th scope="col">&Delta; vs. persistence</th>
+                      <th scope="col">&Delta; vs. physiology twin</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -653,7 +653,7 @@ export default async function EvidencePage() {
                           <td rowSpan={3} style={{ fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid var(--color-line)', background: 'var(--color-surface)' }}>
                             {row.hz}
                           </td>
-                          <td style={{ fontWeight: 600 }}>PR-TFT (Arm D)</td>
+                          <td style={{ fontWeight: 600 }}><span className="model-role hybrid">Hybrid</span> <span>PR-TFT (Arm D)</span></td>
                           <td style={{ fontWeight: 700 }}>
                             {row.pr?.estimate.toFixed(2)}{' '}
                             <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -670,7 +670,7 @@ export default async function EvidencePage() {
                           </td>
                         </tr>
                         <tr>
-                          <td className="model-twin">UKF Twin</td>
+                          <td className="model-twin"><span className="model-role twin">Physiology twin</span> <span>UKF</span></td>
                           <td>
                             {row.tw?.estimate ? row.tw.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -732,10 +732,10 @@ export default async function EvidencePage() {
                     if (!wRow) return null;
                     return (
                       <div key={hKey} style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--color-ink)' }}>{hKey} Horizon Wins</div>
+                        <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--color-ink)' }}>{hKey.replace('min', '-min')} horizon wins</div>
                         <div style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)' }}>vs. Persistence:</span>{' '}
+                            <span style={{ color: 'var(--color-ink-3)' }}>vs. persistence:</span>{' '}
                             <strong>
                               {wRow.pr_vs_persistence.wins_count}/{wRow.pr_vs_persistence.n_patients} ({(wRow.pr_vs_persistence.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
@@ -744,7 +744,7 @@ export default async function EvidencePage() {
                             </small>
                           </div>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)' }}>vs. UKF Twin:</span>{' '}
+                            <span style={{ color: 'var(--color-ink-3)' }}>vs. physiology twin:</span>{' '}
                             <strong>
                               {wRow.pr_vs_twin.wins_count}/{wRow.pr_vs_twin.n_patients} ({(wRow.pr_vs_twin.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
@@ -936,8 +936,8 @@ export default async function EvidencePage() {
 
                   {cal.threshold_evaluations?.['0.35'] && (
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Evaluated Threshold 0.35</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-accent-ink)' }}>
+                      <div style={{ fontSize: '12.5px', color: 'var(--color-ink-3)' }}>Evaluated threshold 0.35 (resubstitution)</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0', color: 'var(--color-ink-2)' }}>
                         Sens {(cal.threshold_evaluations['0.35'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.35'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Anchor-level alert fraction: {cal.threshold_evaluations['0.35'].alert_rate_pct?.toFixed(1)}% of decision anchors (diagnostic only; does not represent event-level alerts per day).</div>
@@ -945,9 +945,9 @@ export default async function EvidencePage() {
                   )}
 
                   {cal.threshold_evaluations?.['0.60'] && (
-                    <div style={{ padding: '12px', border: '1px solid #78350f', borderRadius: '6px', background: 'rgba(120, 53, 15, 0.05)' }}>
-                      <div style={{ fontSize: '12px', color: '#8c5b0c', textTransform: 'uppercase' }}>High Threshold Diagnostic (0.60)</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-danger)' }}>
+                    <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
+                      <div style={{ fontSize: '12.5px', color: 'var(--color-ink-3)' }}>High Threshold Diagnostic (0.60)</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0', color: 'var(--color-ink-2)' }}>
                         Sens {(cal.threshold_evaluations['0.60'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.60'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '12px', color: '#8c5b0c' }}>High threshold empirical diagnostic (29.9% sensitivity, 74.5% precision, 5.3% anchor-level alert rate). Evaluated on the 44-patient validation partition; does not prove an underlying plateau or collapse mechanism.</div>
