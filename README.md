@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-40%20suites%20%7C%20396%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-41%20suites%20%7C%20411%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
@@ -146,7 +146,7 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 
 ### 4. Running Verification Test Suites
 ```bash
-# Run all 40 Jest test suites (396 tests: unit, integration, contracts, safety invariants):
+# Run all 41 Jest test suites (411 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
 # Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
