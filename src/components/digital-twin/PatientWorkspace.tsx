@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
@@ -208,6 +208,13 @@ function DataAvailability({ forecast, cache }: Pick<PatientWorkspaceProps, 'fore
   );
 }
 
+/** "Case · synthetic validation subject", from the served cohort partition. */
+export function caseLabel(forecast: ForecastResponse | null): string {
+  const split = getCohortDetails(forecast?.subject?.cohort)?.split?.toLowerCase();
+  const name = split === 'val' ? 'validation' : split === 'train' ? 'training' : split === 'test' ? 'test' : null;
+  return `Case · synthetic ${name ? name + ' ' : ''}subject`;
+}
+
 /** One plain-language line of the EHR record, for the header. */
 export function recordSummary(forecast: ForecastResponse | null): string | null {
   const ehr = forecast?.ehr_context;
@@ -268,11 +275,10 @@ export function PatientWorkspace({
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
       <header className="workspace-heading tw-header">
         <div className="tw-identity">
-          <div className="eyebrow">Digital twin · synthetic subject</div>
+          <div className="eyebrow">{caseLabel(forecast)}</div>
           <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
-          <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
-          <p className="tw-story">Will glucose go above 180 mg/dL in the next 2 hours, and which change to the plan could matter? EHR record + replayed synthetic CGM and wearables → 2-hour forecast with uncertainty → test a change.</p>
         </div>
+        <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
         <div className="workspace-status tw-status" role="status">
           <span
             className={
@@ -361,20 +367,19 @@ export function PatientWorkspace({
           <div className="tw-grid" data-section={section}>
             <section id="forecast" data-view="forecast" className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
-                <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
-                <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
+                <div><span className="eyebrow">Figure 1</span><h2 id="trajectory-heading">Glucose trajectory</h2><p className="fig-caption tw-story">Will glucose go above 180 mg/dL in the next {forecast?.forecast?.horizon_min ? forecast.forecast.horizon_min / 60 : 2} hours? Dots are observed CGM readings; the line and bands are the forecast; the dashed line is the physiology twin and the hatched wedge is the learned adjustment.</p></div>
+                {!forecast ? (
+                  <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
+                    <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
+                    <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
+                  </div>
+                ) : (
+                  <div className="current-summary">
+                    <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
+                    <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
+                  </div>
+                )}
               </div>
-              {!forecast ? (
-                <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
-                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
-                  <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
-                </div>
-              ) : (
-                <div className="current-summary">
-                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
-                  <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
-                </div>
-              )}
               <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
               <div className="model-caption"><span>{mode}</span><span>Synthetic subject · not for clinical decisions</span></div>
             </section>

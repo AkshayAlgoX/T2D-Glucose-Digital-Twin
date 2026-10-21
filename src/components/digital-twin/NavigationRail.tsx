@@ -27,7 +27,7 @@ export function NavigationRail({ active, selectedSubjectId }: { active?: 'cohort
       <a href="#main-content" className="skip-navigation">Skip to main content</a>
       <Link href="/" className="app-brand" aria-label="Glucose Twin home">
         <span className="brand-mark"><Activity size={18} aria-hidden="true" /></span>
-        <span>Glucose<span className="brand-secondary">Twin</span></span>
+        <span>Glucose<span className="brand-secondary">Twin</span></span><span className="brand-descriptor">a research instrument for type 2 diabetes</span>
       </Link>
       <nav aria-label="Main navigation" className="navigation-links">
         <Link href="/cohort" className="navigation-link" aria-current={current === 'cohort' ? 'page' : undefined}>
