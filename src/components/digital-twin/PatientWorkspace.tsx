@@ -1,11 +1,15 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { FileText, ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
 import { ScenarioEditor } from './ScenarioEditor';
 import { RiskPanel } from './RiskPanel';
 import { RiskStrip } from './RiskStrip';
+import { ClinicianReport } from './ClinicianReport';
+import type { ScenarioState } from '@/hooks/useScenario';
+import { MiniTwin } from '@/components/figure/MiniTwin';
+import type { HeroForecast } from '@/lib/hero';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { formatTime, formatDate, formatPct } from '@/lib/formatters/date';
 import type { ForecastResponse, MedClass } from '@/types/forecast-response';
@@ -123,7 +127,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
       : ehr.med_classes.map(med => medicationClassLabels[med]).join(', '), 'context-medications'],
   ];
   return (
-    <aside className="clinical-panel panel" aria-label="Patient Identity">
+    <section className="clinical-panel panel" aria-label="Patient Identity">
       <div className="identity-section">
         <div className="identity-mark"><UserRound size={21} aria-hidden="true" /><strong>{forecast?.subject?.simulator?.param_set_id ?? 'Subject'}</strong></div>
         <span className="status-badge">{forecast?.subject?.synthetic ? 'Synthetic subject' : 'Metadata pending'}</span>
@@ -144,7 +148,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         )}
       </div>
       <section className="clinical-context" aria-labelledby="clinical-heading">
-        <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical Context</h2>
+        <h2 id="clinical-heading" className="panel-heading"><Activity size={15} aria-hidden="true" />Clinical context</h2>
         {!forecast ? (
           <dl className="clinical-fields" aria-label="Loading clinical context" aria-busy="true">
             <div><dt>Age</dt><dd><span className="skeleton skeleton-field" aria-hidden="true" /></dd></div>
@@ -177,7 +181,7 @@ function ClinicalContext({ patientId, forecast }: Pick<PatientWorkspaceProps, 'p
         </dl>
         {twin.unannounced_meal && <details className="context-details"><summary>Model estimate details</summary><p className="fine-print">Unannounced-meal heuristic: {formatPct(twin.unannounced_meal.probability, 0)}. This is a model estimate.</p></details>}
       </section>}
-    </aside>
+    </section>
   );
 }
 
@@ -208,12 +212,35 @@ function DataAvailability({ forecast, cache }: Pick<PatientWorkspaceProps, 'fore
   );
 }
 
+/** "Case · synthetic validation subject", from the served cohort partition. */
+export function caseLabel(forecast: ForecastResponse | null): string {
+  const split = getCohortDetails(forecast?.subject?.cohort)?.split?.toLowerCase();
+  const name = split === 'val' ? 'validation' : split === 'train' ? 'training' : split === 'test' ? 'test' : null;
+  return `Case · synthetic ${name ? name + ' ' : ''}subject`;
+}
+
+/** The current forecast and its 2 h of received readings, in the thumbnail shape; null until both exist. */
+export function baselineFigure(forecast: ForecastResponse | null, cache: SubjectStore): HeroForecast | null {
+  const asOf = forecast?.as_of;
+  const current = forecast?.current?.value_mg_dl;
+  const pts = forecast?.forecast?.points ?? [];
+  if (!asOf || typeof current !== 'number' || pts.length < 2) return null;
+  const anchor = Date.parse(asOf);
+  const observed = (cache?.cgm ?? []).filter(p => Number.isFinite(p.value) && Date.parse(p.t) <= anchor && Date.parse(p.t) >= anchor - 7200000).map(p => ({ t: p.t, v: p.value }));
+  if (observed.length < 2) return null;
+  return {
+    asOf, patientId: forecast?.subject?.simulator?.param_set_id ?? 'Subject', observed, current,
+    points: pts.map(p => ({ offset_min: p.offset_min, p05: p.p05, p10: p.p10, p25: p.p25, p50: p.p50, p75: p.p75, p90: p.p90, p95: p.p95, twin_p50: p.twin_p50 ?? null })),
+    probability: forecast?.spike_risk?.probability_120m ?? null, calibrated: forecast?.spike_risk?.calibrated === true, modelName: forecast?.model?.name ?? null,
+  };
+}
+
 /** One plain-language line of the EHR record, for the header. */
 export function recordSummary(forecast: ForecastResponse | null): string | null {
   const ehr = forecast?.ehr_context;
   if (!ehr) return null;
   const meds = ehr.med_classes?.length ? `on ${ehr.med_classes.map(m => medicationClassLabels[m]).join(', ')}` : 'no diabetes medication listed';
-  const duration = typeof ehr.t2d_duration_years === 'number' && ehr.t2d_duration_years > 0 ? ` · diagnosed ${ehr.t2d_duration_years} y ago` : '';
+  const duration = typeof ehr.t2d_duration_years === 'number' && ehr.t2d_duration_years > 0 ? ` · diagnosed ${ehr.t2d_duration_years}\u00a0y\u00a0ago` : '';
   return `${ehr.age_years}-year-old ${ehr.sex} · BMI ${ehr.bmi} · HbA1c ${ehr.hba1c_pct}%${duration} · ${meds}`;
 }
 
@@ -240,13 +267,22 @@ export function PatientWorkspace({
   const [contextExpanded, setContextExpanded] = useState(false);
   // Phone and tablet show one workspace view at a time (CSS applies it up to 1024 px); desktop shows all three.
   const [section, setSection] = useState<WorkspaceSection>('forecast');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [scenario, setScenario] = useState<{ state: ScenarioState; plate: string | null } | null>(null);
+  const onScenario = useCallback((state: ScenarioState, plate: string | null) => setScenario({ state, plate }), []);
+  const closeReport = useCallback(() => setReportOpen(false), []);
   const tabsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const fromHash = sectionFromHash(window.location.hash);
     if (fromHash) setSection(fromHash);
   }, []);
-  function selectSection(next: WorkspaceSection) {
+  function selectSection(next: WorkspaceSection, reveal = false) {
     setSection(next);
+    if (reveal && typeof window !== 'undefined') {
+      // From the in-page call to action: show the start of the new view, not wherever the old one ended.
+      const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      requestAnimationFrame(() => { const el = document.getElementById(SECTION_TARGET[next]); if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); });
+    }
     if (next === 'record') setContextExpanded(true);
     const bar = tabsRef.current;
     // Bring the start of the newly shown view into sight when the bar has scrolled up and stuck.
@@ -262,17 +298,17 @@ export function PatientWorkspace({
   const isReconnecting = effectiveStatus === 'reconnecting';
   const isConnecting = effectiveStatus === 'connecting';
   const summary = recordSummary(forecast);
+  const baseline = baselineFigure(forecast, cache);
   const qualityLabel = forecast?.data_quality?.status === 'ok' ? 'Data quality: OK' : forecast?.data_quality?.status === 'degraded' ? 'Data quality: Degraded' : forecast?.data_quality?.status === 'insufficient' ? 'Data quality: Insufficient data' : null;
   return (
-    <main id="main-content" className="workspace-page twin-workstation">
+    <main id="main-content" className={'workspace-page twin-workstation' + (!forecast && isReconnecting ? ' is-unreachable' : '')}>
       <div className="workspace-breadcrumb"><Link href="/cohort"><ArrowLeft size={13} aria-hidden="true" />Cohort</Link><span>/</span><span>Patient workspace</span></div>
       <header className="workspace-heading tw-header">
         <div className="tw-identity">
-          <div className="eyebrow">Digital twin · synthetic subject</div>
-          <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : 'Loading subject…')}</h1>
-          <p className="tw-summary" data-testid="record-summary">{summary ?? 'Personalized forecasting from observable clinical and sensor context.'}</p>
-          <p className="tw-story">Will glucose go above 180 mg/dL in the next 2 hours, and which change to the plan could matter? EHR record + replayed synthetic CGM and wearables → 2-hour forecast with uncertainty → test a change.</p>
+          <div className="eyebrow">{caseLabel(forecast)}</div>
+          <h1>{forecast?.subject?.simulator?.param_set_id ?? (error ? 'Subject unavailable' : connectionStatus === 'reconnecting' ? 'Subject stream unreachable' : 'Loading subject…')}</h1>
         </div>
+        <p className="tw-summary" data-testid="record-summary">{summary ?? (isReconnecting && !forecast ? 'No data has been received for this subject yet.' : 'Personalized forecasting from observable clinical and sensor context.')}</p>
         <div className="workspace-status tw-status" role="status">
           <span
             className={
@@ -299,6 +335,7 @@ export function PatientWorkspace({
             {replay.paused ? <><Play size={13} aria-hidden="true" />Resume replay</> : <><Pause size={13} aria-hidden="true" />Pause replay</>}
           </button>}
           {qualityLabel && <span className={'tw-quality ' + (forecast?.data_quality?.status ?? '')}>{qualityLabel}</span>}
+          {forecast && <button type="button" className="secondary-button report-button" data-testid="open-report" onClick={() => setReportOpen(true)}><FileText size={13} aria-hidden="true" />Clinician summary</button>}
         </div>
       </header>
       {error && (
@@ -332,7 +369,7 @@ export function PatientWorkspace({
         </div>
       )}
       {!forecast && !error && isReconnecting && <div role="status" className="workspace-reconnect" data-testid="workspace-reconnect">
-        <strong>Can&apos;t reach the subject stream.</strong> Retrying{retryCount ? ` (attempt ${retryCount})` : ''}… Nothing is shown until real data arrives.
+        <strong>Can&apos;t reach the subject stream.</strong> Retrying{retryCount ? ` (attempt ${retryCount})` : ''}… Nothing is shown until real data arrives. <Link href="/cohort">Back to the cohort</Link>
       </div>}
       {!(error && !forecast) && <div ref={tabsRef} className="tw-section-tabs" role="group" aria-label="Workspace view">
         {SECTIONS.map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls={SECTION_TARGET[id]} onClick={() => selectSection(id)}>{label}</button>)}
@@ -361,29 +398,28 @@ export function PatientWorkspace({
           <div className="tw-grid" data-section={section}>
             <section id="forecast" data-view="forecast" className="trajectory-panel panel stage" aria-labelledby="trajectory-heading">
               <div className="trajectory-header">
-                <div><span className="eyebrow">Observed + predicted</span><h2 id="trajectory-heading">Glucose trajectory</h2></div>
-                <span className="status-badge"><ArrowUpRight size={13} aria-hidden="true" />{forecast?.forecast?.horizon_min ?? '—'} min horizon</span>
+                <div><span className="eyebrow">Figure 1</span><h2 id="trajectory-heading">Glucose trajectory</h2><p className="fig-caption tw-story">Will glucose go above 180 mg/dL in the next {forecast?.forecast?.horizon_min ? forecast.forecast.horizon_min / 60 : 2} hours? Dots are observed CGM readings; the line and bands are the forecast; the dashed line is the physiology twin and the hatched wedge is the learned adjustment.</p></div>
+                {!forecast ? (
+                  <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
+                    <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
+                    <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
+                  </div>
+                ) : (
+                  <div className="current-summary">
+                    <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
+                    <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow ? forecast.current.trend_arrow.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) : 'unavailable'}{typeof forecast.current?.trend_mg_dl_per_min === 'number' && Number.isFinite(forecast.current.trend_mg_dl_per_min) ? ` · ${forecast.current.trend_mg_dl_per_min > 0 ? '+' : forecast.current.trend_mg_dl_per_min < 0 ? '−' : ''}${Math.abs(forecast.current.trend_mg_dl_per_min).toFixed(1)} mg/dL per min` : ''}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
+                  </div>
+                )}
               </div>
-              {!forecast ? (
-                <div className="current-summary" aria-busy="true" aria-label="Loading glucose summary">
-                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose"><span className="skeleton skeleton-glucose-value" aria-hidden="true" /></div></div>
-                  <div className="forecast-metadata"><span className="skeleton skeleton-meta-line" aria-hidden="true" /><span className="skeleton skeleton-meta-line" style={{ width: '130px' }} aria-hidden="true" /></div>
-                </div>
-              ) : (
-                <div className="current-summary">
-                  <div><span className="eyebrow">Current glucose</span><div className="current-glucose">{forecast.current?.value_mg_dl ?? '—'}<span>mg/dL</span></div></div>
-                  <div className="forecast-metadata"><span>Trend: {forecast.current?.trend_arrow?.replace(/_/g, ' ') ?? 'unavailable'}</span><span>{forecast.as_of ? <>Forecast as of <time dateTime={forecast.as_of}>{formatDate(forecast.as_of) + ' · ' + formatTime(forecast.as_of) + ' UTC'}</time></> : 'Awaiting forecast timestamp'}</span></div>
-                </div>
-              )}
-              <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} /></ErrorBoundary></div>
-              <div className="model-caption"><span>{mode}</span><span>Synthetic subject · not for clinical decisions</span></div>
+              <div className="chart-frame"><ErrorBoundary fallbackText="Forecast Canvas Error"><ForecastCanvas forecast={forecast} cache={cache} isStale={isStale} unreachable={!forecast && isReconnecting} /></ErrorBoundary></div>
+              <div className="model-caption"><span>{mode.replace(' (PR-TFT)', '')}</span></div>
             </section>
 
             <div className="tw-side">
-              <aside data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
-                <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} /></ErrorBoundary>
-              </aside>
-              <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif')}>
+              <section data-view="forecast" className="insights-panel panel" aria-label="Risk and model contributions">
+                <ErrorBoundary fallbackText="Risk Panel Error"><RiskPanel forecast={forecast} unreachable={!forecast && isReconnecting} /></ErrorBoundary>
+              </section>
+              <button type="button" data-view="forecast" className="tw-next" onClick={() => selectSection('whatif', true)}>
                 <span><strong>Test a change to the plan</strong><small>Add a meal or some activity, and re-forecast from this moment</small></span><ArrowRight size={18} aria-hidden="true" />
               </button>
               <details id="record" data-view="record" className="patient-context" open={!compact || contextExpanded}>
@@ -395,7 +431,11 @@ export function PatientWorkspace({
             </div>
 
             <div className="tw-whatif panel" id="what-if" data-view="whatif">
-              <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+              {baseline && <figure className="whatif-baseline" data-testid="whatif-baseline">
+                <MiniTwin data={baseline} id="whatif-baseline" />
+                <figcaption><strong>Baseline · Figure 1 at {formatTime(baseline.asOf)} UTC.</strong> {(() => { const p = baseline.points.find(q => q.offset_min === 60); return p ? <>At +60 min: {p.twin_p50 != null ? <><span className="t-twin">{p.twin_p50}</span> + <span className="t-learn">({(p.p50 - p.twin_p50).toFixed(1).replace('-', '−')})</span> = </> : null}<span className="t-final">{p.p50}</span> mg/dL.</> : null; })()}</figcaption>
+              </figure>}
+              <ScenarioEditor patientId={patientId} currentForecast={forecast} onStateChange={onScenario} />
             </div>
 
           <section id="history" className="tw-details" data-view="record" aria-labelledby="details-heading">
@@ -408,6 +448,9 @@ export function PatientWorkspace({
           </div>
         </>
       )}
+      {reportOpen && forecast && <ClinicianReport forecast={forecast} cache={cache} baseline={baseline} record={summary}
+        partition={getCohortDetails(forecast.subject?.cohort)?.roleDescription ?? null}
+        scenario={scenario?.state ?? null} plate={scenario?.plate ?? null} onClose={closeReport} />}
       <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
     </main>
   );

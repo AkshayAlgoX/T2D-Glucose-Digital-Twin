@@ -1,0 +1,66 @@
+{
+  "timestamp": "2026-10-22 00:13:47",
+  "protocol": "PREREGISTRATION.md v1",
+  "cohort": {
+    "train_patients": 34,
+    "val_patients": 12,
+    "test_patients_pooled": 11,
+    "shanghai_patients_total": 100,
+    "shanghai_status": "NOT ESTIMABLE (15-min cadence fails 70% 5-min coverage rule)"
+  },
+  "test_results": {
+    "selected_model": "Physiological Residual Ensemble",
+    "rmse30": 16.77,
+    "rmse60": 23.11,
+    "rmse60_ci95": [
+      18.75,
+      28.12
+    ],
+    "rmse120": 26.44,
+    "mae60": 15.98,
+    "event_sensitivity": 26.4,
+    "event_sensitivity_30m": 6.9,
+    "event_sensitivity_30m_ci95": [
+      0.0,
+      13.9
+    ],
+    "false_alerts_per_patient_day": 0.11,
+    "false_alerts_ci95": [
+      0.02,
+      0.23
+    ],
+    "alert_precision": 65.5,
+    "median_lead_time_min": 10.0,
+    "lead_time_ci95": [
+      5.0,
+      15.0
+    ]
+  },
+  "baselines_test": {
+    "persistence": {
+      "rmse60": 26.27,
+      "rmse60_ci95": [
+        20.85,
+        32.22
+      ]
+    },
+    "linear_trend": {
+      "rmse60": 49.06,
+      "sens_30m": 44.4,
+      "fa_per_day": 3.84
+    },
+    "reduced_twin": {
+      "rmse60": 24.73,
+      "rmse60_ci95": [
+        20.43,
+        29.68
+      ],
+      "sens_30m": 0.0,
+      "fa_per_day": 0.1
+    }
+  },
+  "lodo_test": {
+    "cgmacros_heldout_rmse60": 23.97,
+    "bigideas_heldout_rmse60": 22.14
+  }
+}

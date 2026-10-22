@@ -48,7 +48,7 @@ describe('What-If change over time', () => {
 
   it('keeps the medication preset as a one-click refusal with a plain accessible name', () => {
     render(<ScenarioEditor patientId="s" currentForecast={null} />);
-    const med = screen.getByRole('button', { name: 'Medication change' });
+    const med = screen.getByRole('button', { name: /^Medication change/ });
     expect(med).toHaveTextContent('not modelled');
   });
 });
@@ -121,7 +121,7 @@ describe('What-If: single-step blips are flagged, never smoothed', () => {
       warnings: [{ code: 'SCENARIO_OUT_OF_RANGE', title: 'x' }], metrics: { delta_peak_mg_dl: 0, new_peak_mg_dl: 0, baseline_peak_mg_dl: 0, delta_probability: 0.1, new_probability: 0.5, baseline_probability: 0.4 },
     };
     expect(announce({ status: 'result', patientId: 's', asOf: anchor, input: { kind: 'meal', offset_min: 30, carbs_g: 60 }, result } as never))
-      .toBe('Result ready: 60 g carbohydrate meal in 30 min. Largest change at the same time +11.5 mg/dL at +120 min. Spike onset risk 40.0% to 50.0%. Inputs are outside the training range.');
+      .toBe('Result ready: 60 g carbohydrate meal in 30 min. Biggest gap between the two forecast curves +11.5 mg/dL at +120 min. Spike onset risk 40.0% to 50.0%. Inputs are outside the training range.');
   });
 });
 

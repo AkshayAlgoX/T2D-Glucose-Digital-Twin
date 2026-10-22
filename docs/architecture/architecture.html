@@ -180,7 +180,7 @@
         <div class="grid-4">
           <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
             <strong>Static EHR Context</strong><br>
-            <span style="color:#64748b;">Age, BMI, HbA1c, eGFR, T2D duration, 9 medication class flags (Metformin, SGLT2i, GLP-1 RA, Insulin).</span>
+            <span style="color:#64748b;">Age, BMI, HbA1c, eGFR, T2D duration, 7 medication class flags (metformin, SGLT2i, GLP-1 RA, DPP-4i, sulfonylurea, basal and prandial insulin).</span>
           </div>
           <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
             <strong>Dynamic CGM Telemetry</strong><br>
@@ -207,13 +207,13 @@
               dG/dt = -(p_1 + X)G + p_1 G_b + Ra(t) / V_G<br>
               dX/dt = -p_2 X + p_3 (I - I_b)
             </div>
-            <p style="font-size:8pt; color:#64748b;">Unscented Kalman Filter (UKF) dynamically tracks insulin sensitivity ($S_I$) and gastric emptying ($t_{\max}$), delivering continuous 120-minute mechanistic forward rollouts.</p>
+            <p style="font-size:8pt; color:#64748b;">Unscented Kalman Filter (UKF) dynamically tracks insulin sensitivity (<i>S<sub>I</sub></i>) and gastric emptying (<i>t</i><sub>max</sub>), delivering continuous 120-minute mechanistic forward rollouts.</p>
           </div>
           <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #cbd5e1;">
             <strong style="color:#7e22ce;">PR-TFT Deep Residual Architecture:</strong>
             <p style="margin-top:4px;">Physics-Residual Temporal Fusion Transformer (PR-TFT) learns behavioral and physiological residuals over the mechanistic baseline:</p>
             <div class="formula-box">
-              &ycirc;_t^{(q)} = &ycirc;_t^{\text{UKF}} + &rcirc;_t^{(q)}(\text{Observable History}, \text{Context})
+              <i>&ycirc;</i><sub>t</sub><sup>(q)</sup> = <i>&ycirc;</i><sub>t</sub><sup>UKF</sup> + <i>r&#770;</i><sub>t</sub><sup>(q)</sup>(observable history, context)
             </div>
             <p style="font-size:8pt; color:#64748b;">Variable Selection Networks (VSN) filter multimodal inputs; temporal LSTM encodes past dynamics; causal self-attention models long-range multi-horizon dependencies.</p>
           </div>
@@ -223,17 +223,17 @@
       <div class="grid-2">
         <div class="card">
           <h3>Residual Quantile Heads (Multi-Horizon)</h3>
-          <p>Outputs 7 quantiles (<strong>p05, p10, p25, p50, p75, p90, p95</strong>) across 24 discrete 5-minute steps (120 min total). Conformal interval adjustment guarantees strictly valid empirical coverage.</p>
+          <p>Outputs 7 quantiles (<strong>p05, p10, p25, p50, p75, p90, p95</strong>) across 24 discrete 5-minute steps (120 min total). Conformal adjustment brings the 80% interval to 80.00% empirical coverage on the validation partition (a resubstitution diagnostic, not a guarantee).</p>
         </div>
         <div class="card">
           <h3>Discrete-Time Spike Hazard Head</h3>
-          <p>Predicts cumulative onset probability $P(\text{spike within } 120\text{ min})$. Calibrated post-training via isotonic regression ($ECE = 0.000094$), driving clinical alert tiers.</p>
+          <p>Predicts cumulative onset probability <i>P</i>(spike within 120 min). Calibrated post-training via isotonic regression (ECE 0.000094, a resubstitution diagnostic on the validation partition); it drives research alert tiers, not clinical alerts.</p>
         </div>
       </div>
     </div>
 
     <div class="footer">
-      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Release branch: <code>release/candidate-clean</code></span>
       <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
       <span>Research Prototype — Not for Clinical Decisions</span>
     </div>
@@ -281,7 +281,7 @@
           </div>
           <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
             <strong>Risk Panel & Alert Strip</strong><br>
-            <span style="color:#64748b;">Cumulative adverse event hazard curve with clinical threshold badges (Watch at $p \ge 0.35$, Warning at $p \ge 0.60$).</span>
+            <span style="color:#64748b;">Cumulative adverse event hazard curve with research threshold badges (Watch at <i>p</i> &ge; 0.35, Warning at <i>p</i> &ge; 0.60).</span>
           </div>
           <div style="background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
             <strong>Model Contributions</strong><br>
@@ -310,7 +310,7 @@
     </div>
 
     <div class="footer">
-      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Release branch: <code>release/candidate-clean</code></span>
       <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
       <span>Research Prototype — Not for Clinical Decisions</span>
     </div>
@@ -331,8 +331,8 @@
         <div class="card highlight-blue">
           <h3><span class="badge badge-physics">Core Differentiation</span> Why a Physics-Residual Hybrid Architecture?</h3>
           <ul style="margin-top: 6px;">
-            <li><strong>Mass Conservation & Physiological Grounding:</strong> Pure black-box neural networks frequently hallucinate impossible glucose spikes or cliff-drops. The UKF minimal model guarantees mass conservation and physiological bounds.</li>
-            <li><strong>Patient-Specific Personalization:</strong> UKF continuously tracks individual metabolic traits (EHR priors $S_I$ insulin sensitivity and $t_{\max}$ absorption kinetics) from longitudinal history.</li>
+            <li><strong>Mass Conservation & Physiological Grounding:</strong> Pure black-box neural networks frequently hallucinate impossible glucose spikes or cliff-drops. The UKF-tracked minimal model keeps the twin on glucose–insulin dynamics; the learned adjustment can still add isolated steps, which the product flags.</li>
+            <li><strong>Patient-Specific Personalization:</strong> UKF continuously tracks individual metabolic traits (EHR priors: insulin sensitivity <i>S<sub>I</sub></i> and absorption time <i>t</i><sub>max</sub>) from longitudinal history.</li>
             <li><strong>Deep Residual Learning:</strong> The PR-TFT transformer does not need to re-learn basic human physiology; it focuses entirely on modeling complex residual behaviors (delayed dawn phenomenon, stress, meal composition).</li>
             <li><strong>Interpretability for Clinicians:</strong> Decomposes predictions into observable physiological drivers and learned corrections without black-box opacity.</li>
           </ul>
@@ -341,7 +341,7 @@
         <div class="card highlight-purple">
           <h3><span class="badge badge-ml">Evidence</span> Validation Benchmark & Calibrated Uncertainty</h3>
           <ul style="margin-top: 6px;">
-            <li><strong>Evaluated Validation Partition:</strong> 44 validation patients (47,629 decision anchors) from pre-registered <code>split_293.json</code>.</li>
+            <li><strong>Evaluated Validation Partition:</strong> 44 validation patients (54,281 eligible anchors; 47,629 is the at-risk subset used for hazard calibration) from pre-registered <code>split_293.json</code>.</li>
             <li><strong>Trajectory Error (RMSE mg/dL):</strong><br>
               &bull; <strong>30-min:</strong> 12.36 (MAE 8.43, MARD 7.22%)<br>
               &bull; <strong>60-min:</strong> 19.53 (MAE 12.43, MARD 10.16%)<br>
@@ -358,7 +358,7 @@
           <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
             <strong style="color:#be123c;">1. Gate 3 Realism Audit: FAILED</strong><br>
             <p style="color:#64748b; font-size:8pt; margin-top:2px;">
-              Historical AUROC <strong>0.9320</strong> / Duration-corrected AUROC <strong>0.9290</strong> vs. threshold <strong>&le; 0.65</strong>. Discriminator easily separates synthetic ODE series from mock-real CGM (top tell: <code>jerk_sd</code>). Factorial drift controls prove generator AR(1) drift explains part of curvature differences, but not the full multivariate failure. No fabricated smoothing applied.
+              Historical AUROC <strong>0.9320</strong> / Duration-corrected AUROC <strong>0.9290</strong> vs. threshold <strong>&le; 0.65</strong>. Discriminator easily separates synthetic ODE series from mock-real CGM (top tell: <code>jerk_sd</code>). Reported factorial drift controls (scripts not in this repository) indicate generator AR(1) drift explains part of curvature differences, but not the full multivariate failure. No fabricated smoothing applied.
             </p>
           </div>
           <div style="background:#fff; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
@@ -377,12 +377,12 @@
       </div>
 
       <div class="banner banner-danger">
-        <strong>Investigational Research Prototype:</strong> This submission establishes verifiable engineering excellence (41 Jest suites, 411 tests; 134 backend tests). All negative findings are disclosed in full accordance with scientific peer-review standards.
+        <strong>Investigational Research Prototype:</strong> Engineering checks: 45 Jest suites, 424 tests; 140 backend tests. Negative findings, including the failed realism gate, are published with the results.
       </div>
     </div>
 
     <div class="footer">
-      <span>Release Candidate: <code>release/candidate-20261017</code> (Commit <code>df40f7dd</code>)</span>
+      <span>Release branch: <code>release/candidate-clean</code></span>
       <span>Happiest Health Digital Twin Challenge — Architecture Specification</span>
       <span>Research Prototype — Not for Clinical Decisions</span>
     </div>

@@ -9,9 +9,9 @@ const empty: SubjectStore = { patientId: 'unit-subject', cgm: [], risk: [], aler
 
 it('keeps context, analysis, history and unavailable capabilities in a coherent reading sequence', () => {
   const { container } = render(<PatientWorkspace patientId="unit-subject" forecast={null} cache={empty} isConnected={false} isStale={false} />);
-  const context = screen.getByRole('complementary', { name: 'Patient Identity' });
+  const context = screen.getByRole('region', { name: 'Patient Identity' });
   const trajectory = screen.getByRole('region', { name: 'Glucose trajectory' });
-  const risk = screen.getByRole('complementary', { name: 'Risk and model contributions' });
+  const risk = screen.getByRole('region', { name: 'Risk and model contributions' });
   const history = screen.getByRole('region', { name: 'Risk history' });
   const coverage = screen.getByRole('heading', { name: 'Data coverage' });
   const simulation = screen.getByRole('heading', { name: 'What-if simulation' });

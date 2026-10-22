@@ -136,7 +136,7 @@ describe('Honest data and risk presentation', () => {
 
   it('keeps EHR context and the disclaimer visible with compact missing streams', () => {
     render(<PatientWorkspace patientId="test-subject" forecast={forecastFixture()} cache={cache} isConnected isStale={false} />);
-    expect(screen.getByRole('heading', { name: 'Clinical Context' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Clinical context' })).toBeInTheDocument();
     expect(screen.getByText('42 years')).toBeInTheDocument();
     expect(screen.getByText('01 Oct 2026')).toHaveAttribute('datetime', '2026-10-01');
     expect(screen.getByText('Not received in this forecast')).toBeInTheDocument();

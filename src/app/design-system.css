@@ -575,7 +575,6 @@ details.contributions[open] > summary .fine-print::after { content: ' ▴'; }
   .chart-legend { column-gap: 12px; }
 }
 
-.preset-refused { border-style: dashed; color: var(--color-ink-2); }
 .whatif-gap { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: #172421; font-size: 13px; line-height: 1.55; }
 .whatif-gap strong { color: inherit; }
 .stage .chart-readout { font-size: 12.5px; color: #b5c0ca; }

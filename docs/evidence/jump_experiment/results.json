@@ -1,0 +1,127 @@
+{
+ "preregistration": "docs/evidence/jump_experiment/PREREGISTRATION.md",
+ "checkpoint": "runs/pr_tft_ablation_arm_d",
+ "train_sample": {
+  "original": {
+   "rmse": {
+    "30min": 12.159,
+    "60min": 19.431,
+    "120min": 23.184
+   },
+   "share_isolated_step_gt_20": 0.22,
+   "share_isolated_step_gt_40": 0.128,
+   "p10_p90_coverage": 0.8166
+  },
+  "R3": {
+   "rmse": {
+    "30min": 12.163,
+    "60min": 19.215,
+    "120min": 23.184
+   },
+   "share_isolated_step_gt_20": 0.036,
+   "share_isolated_step_gt_40": 0.0,
+   "p10_p90_coverage": 0.8157
+  },
+  "twin_alone": {
+   "rmse": {
+    "30min": 13.871,
+    "60min": 21.792,
+    "120min": 27.233
+   }
+  },
+  "persistence": {
+   "rmse": {
+    "30min": 20.998,
+    "60min": 34.425,
+    "120min": 46.028
+   }
+  },
+  "jump_diagnostics": {
+   "n_forecasts": 800,
+   "n_with_step_gt_20": 173,
+   "step_offset_min_histogram": {
+    "35": 1,
+    "40": 1,
+    "60": 2,
+    "65": 3,
+    "70": 8,
+    "75": 12,
+    "80": 24,
+    "85": 28,
+    "90": 19,
+    "95": 18,
+    "100": 14,
+    "105": 7,
+    "110": 16,
+    "115": 20
+   },
+   "mean_abs_error_at_step_mg_dl": 48.24,
+   "mean_abs_error_if_neighbour_mean_mg_dl": 26.06,
+   "share_step_worse_than_neighbour_mean": 0.763,
+   "share_upward_steps": 0.977
+  }
+ },
+ "validation": {
+  "original": {
+   "rmse": {
+    "30min": 11.798,
+    "60min": 19.16,
+    "120min": 24.417
+   },
+   "share_isolated_step_gt_20": 0.198,
+   "share_isolated_step_gt_40": 0.116,
+   "p10_p90_coverage": 0.8054
+  },
+  "R3": {
+   "rmse": {
+    "30min": 11.802,
+    "60min": 18.99,
+    "120min": 24.417
+   },
+   "share_isolated_step_gt_20": 0.023,
+   "share_isolated_step_gt_40": 0.001,
+   "p10_p90_coverage": 0.8049
+  },
+  "twin_alone": {
+   "rmse": {
+    "30min": 14.014,
+    "60min": 22.559,
+    "120min": 27.257
+   }
+  },
+  "persistence": {
+   "rmse": {
+    "30min": 21.724,
+    "60min": 36.989,
+    "120min": 47.758
+   }
+  },
+  "jump_diagnostics": {
+   "n_forecasts": 880,
+   "n_with_step_gt_20": 174,
+   "step_offset_min_histogram": {
+    "40": 1,
+    "45": 2,
+    "50": 1,
+    "55": 4,
+    "60": 3,
+    "65": 1,
+    "70": 4,
+    "75": 13,
+    "80": 25,
+    "85": 28,
+    "90": 12,
+    "95": 22,
+    "100": 16,
+    "105": 15,
+    "110": 17,
+    "115": 10
+   },
+   "mean_abs_error_at_step_mg_dl": 52.28,
+   "mean_abs_error_if_neighbour_mean_mg_dl": 26.17,
+   "share_step_worse_than_neighbour_mean": 0.81,
+   "share_upward_steps": 0.954
+  }
+ },
+ "seconds": 58.1
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import EvidencePage from '../src/app/evidence/page';
 import fs from 'fs/promises';
 import crypto from 'crypto';
@@ -143,7 +143,7 @@ describe('EvidencePage Responsive & Accessibility Audit', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Evidence & validation');
 
     // Generalization banner region
-    const banner = screen.getByRole('region', { name: 'Generalization Boundary Disclosure' });
+    const banner = screen.getByRole('region', { name: 'Generalization boundary' });
     expect(banner).toBeInTheDocument();
 
     // Table accessibility
@@ -151,19 +151,17 @@ describe('EvidencePage Responsive & Accessibility Audit', () => {
     expect(table).toBeInTheDocument();
     expect(table.parentElement).toHaveClass('evidence-table-container');
 
-    // Column headers
-    const colHeaders = screen.getAllByRole('columnheader');
-    expect(colHeaders.length).toBe(7);
-    colHeaders.forEach((th) => {
+    // Column headers: the baselines table has its 7, and every column header on the page is scoped.
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
+    screen.getAllByRole('columnheader').forEach((th) => {
       expect(th).toHaveAttribute('scope', 'col');
     });
 
-    // Check all images have meaningful alt text
-    const images = container.querySelectorAll('img');
-    expect(images.length).toBe(5);
-    images.forEach((img) => {
-      expect(img).toHaveAttribute('alt');
-      expect(img.getAttribute('alt')?.length).toBeGreaterThan(5);
+    // Figures are inline SVG drawn from the artifacts; every chart carries an accessible description.
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    container.querySelectorAll('svg[role="img"]').forEach((svg) => {
+      const name = svg.getAttribute('aria-label') ?? svg.getAttribute('aria-labelledby') ?? '';
+      expect(name.length).toBeGreaterThan(5);
     });
 
     // Check semantic collapsible disclosure

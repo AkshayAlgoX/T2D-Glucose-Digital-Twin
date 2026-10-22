@@ -40,7 +40,7 @@ function HighGlucoseWindow({ points }: { points: NonNullable<ForecastResponse['f
   );
 }
 
-export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
+export function RiskPanel({ forecast, unreachable = false }: { forecast: ForecastResponse | null; unreachable?: boolean }) {
   const risk = forecast?.spike_risk;
   const prob = risk?.probability_120m ?? null;
   const alert = forecast?.alert;
@@ -66,7 +66,9 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
     <div className="risk-panel">
       <section className="risk-summary" aria-labelledby="risk-heading">
         <div className="section-heading"><h2 id="risk-heading"><Gauge size={16} aria-hidden="true" /> Risk · next 2 hours</h2></div>
-        {!forecast ? (
+        {!forecast && unreachable ? (
+          <p className="risk-unreachable" data-testid="risk-unreachable">No risk is shown until data arrives. Nothing has been estimated without readings.</p>
+        ) : !forecast ? (
           <>
             <div className="risk-estimate" aria-busy="true"><span className="skeleton skeleton-risk-value" aria-hidden="true" /><span>onset probability</span></div>
             <div className="risk-alert" aria-busy="true"><span className="skeleton skeleton-risk-alert" aria-hidden="true" /></div>
@@ -78,9 +80,17 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             {!!forecast.forecast?.points?.length && <HighGlucoseWindow points={forecast.forecast.points} />}
             <span className="risk-kicker">New-spike onset risk</span>
             <div className="risk-estimate">{prob != null ? formatPct(prob, 1) : '—'}<span>onset probability</span></div>
+            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}.</p>
             {forecast.as_of && <p className="risk-as-of fine-print">Forecast as of <time dateTime={forecast.as_of}>{formatDateTime(forecast.as_of)}</time></p>}
-            <div className={'risk-alert ' + tone}>{alert?.state === 'watch' || alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong></div>
-            <p className="muted-copy">Probability that a new spike <em>starts</em> within 120 min{risk ? risk.calibrated ? ' (calibrated on the validation split; not independently tested)' : ' (not calibrated)' : ''}. A separate model output from the curve: it can fall while glucose is already high.</p>
+            <div className={'risk-alert ' + tone}>{alert?.state === 'warning' ? <AlertTriangle size={15} aria-hidden="true" /> : null}<strong>{alertLabel}</strong>{alert?.state === 'watch' ? <span className="risk-alert-why">{prob != null ? `Onset risk ${formatPct(prob, 1)} is above the 35% watch line of the research alert policy (60% is its warning line). Not a clinical alert.` : 'Onset risk is above the 35% watch line.'}</span> : alert?.state === 'warning' ? <span className="risk-alert-why">{prob != null ? `Onset risk ${formatPct(prob, 1)} is above the 60% warning line.` : 'Onset risk is above the 60% warning line.'}</span> : null}</div>
+            {(() => {
+              const w = aboveLevel(forecast.forecast?.points ?? []);
+              const range = (r: [number, number]) => (r[0] === r[1] ? `at +${r[0]} min` : `from +${r[0]} to +${r[1]} min`);
+              if (prob == null || !w.median) return null;
+              return w.lower && prob < 0.9
+                ? <p className="risk-reconcile disagree" data-testid="risk-reconcile"><strong>The two models disagree here.</strong> {range(w.lower).replace(/^from/, 'From').replace(/^at/, 'At')}, the forecast&apos;s lower 10% bound is above 180, so the trajectory model puts at least 90% of its range above 180 at those times. The separate onset classifier gives {formatPct(prob, 1)} for a new spike, a stricter event defined below. Neither model is validated in people; read both and do not average them.</p>
+                : <p className="risk-reconcile" data-testid="risk-reconcile"><strong>Why both numbers?</strong> The bands above say where glucose is likely to be. This probability answers a narrower question: whether a <em>new</em> spike, defined below, starts in the next 2 h. It is not the chance of being above 180.</p>;
+            })()}
             {risk?.spike_in_progress && <p className="risk-in-progress" data-testid="spike-in-progress">The service reports a spike already in progress.</p>}
             <p className="fine-print risk-definition" data-testid="risk-definition">Spike: glucose reaches 180 mg/dL after rising at least 50 mg/dL within 60 min, and stays there 15 min.</p>
             {!!checkpoints.length && <div className="cumulative-summary">
@@ -100,7 +110,7 @@ export function RiskPanel({ forecast }: { forecast: ForecastResponse | null }) {
             </div>}
           </>
         )}
-        <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>
+        {forecast && <div className="policy-labels"><span>35% watch</span><span>60% warning</span></div>}
         <details className="spike-definition context-details">
           <summary>How to read this probability</summary>
           <p className="fine-print" data-testid="risk-vs-curve">The curve shows the middle outcome at each time. A median above 180 mg/dL means the model puts at least half of its predicted range above 180 at that time. It does not mean a spike is certain: a spike also needs a rise of at least 50 mg/dL within 60 min that lasts 15 min. The probability is a separate estimate, calibrated on the validation data, that a new spike starts within 120 min.</p>

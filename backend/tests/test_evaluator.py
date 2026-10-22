@@ -62,6 +62,92 @@ def test_event_counts_hand_computed():
     assert c["detected_onsets"] == 1 and c["lead_times_min"] == [5]
 
 
+def test_one_to_one_matching_single_alert_with_multiple_onsets():
+    """Regression test: a single alert whose horizon covers two onsets must match only one onset."""
+    n = 300
+    onset = np.zeros(n, dtype=bool)
+    onset[[100, 110]] = True  # 10 steps (50 min) apart; both monitored
+    raised = np.zeros(n, dtype=bool)
+    raised[90] = True  # 10 steps before 100 (lead 50 min) and 20 steps before 110 (lead 100 min)
+    c = E.event_counts(raised, onset, first=10, last=250)
+    # Under old logic, alert 90 was credited with both onsets (detected_onsets = 2).
+    # Under 1-to-1 matching, alert 90 matches the earliest onset (100); onset 110 is missed.
+    assert c["monitored_onsets"] == 2
+    assert c["detected_onsets"] == 1
+    assert c["alerts_raised"] == 1
+    assert c["true_alerts"] == 1
+    assert c["false_alerts"] == 0
+    assert c["lead_times_min"] == [50]
+
+
+def test_one_to_one_matching_multiple_alerts_for_single_onset():
+    """Regression test: multiple alerts within the window of a single onset must yield at most one true alert."""
+    n = 300
+    onset = np.zeros(n, dtype=bool)
+    onset[150] = True
+    raised = np.zeros(n, dtype=bool)
+    raised[[130, 140]] = True  # Both in [150 - 24, 150 - 1] = [126, 149]
+    c = E.event_counts(raised, onset, first=10, last=250)
+    # Earliest alert (130) matches onset 150 (lead 100 min).
+    # Alert 140 has no onset to match, so it is counted as a false alert.
+    assert c["monitored_onsets"] == 1
+    assert c["detected_onsets"] == 1
+    assert c["alerts_raised"] == 2
+    assert c["true_alerts"] == 1
+    assert c["false_alerts"] == 1
+    assert c["lead_times_min"] == [100]
+
+
+def test_one_to_one_matching_overlapping_chain():
+    """Chained overlapping windows: alerts at 80, 100 and onsets at 95, 115."""
+    n = 300
+    onset = np.zeros(n, dtype=bool)
+    onset[[95, 115]] = True
+    raised = np.zeros(n, dtype=bool)
+    raised[[80, 100]] = True
+    c = E.event_counts(raised, onset, first=10, last=250)
+    # Alert 80 reaches 95 (lead 75 min); cannot reach 115 (diff 35 > 24).
+    # Alert 100 reaches 115 (lead 75 min).
+    assert c["monitored_onsets"] == 2
+    assert c["detected_onsets"] == 2
+    assert c["alerts_raised"] == 2
+    assert c["true_alerts"] == 2
+    assert c["false_alerts"] == 0
+    assert c["lead_times_min"] == [75, 75]
+
+
+def test_event_counts_boundary_conditions():
+    """Boundary conditions for horizon window and monitored decision range."""
+    n = 300
+    first, last, horizon = 50, 200, 24
+    onset = np.zeros(n, dtype=bool)
+    # Boundaries for monitored onsets:
+    # first + horizon = 74 (monitored), 73 (unmonitored)
+    # last + 1 = 201 (monitored), 202 (unmonitored)
+    onset[[73, 74, 150, 201, 202]] = True
+    raised = np.zeros(n, dtype=bool)
+    # For onset 150: window is [126, 149]
+    # Alert at 125: too early (25 steps = 125 min > 120 min) -> false alert
+    # Alert at 126: exact earliest boundary (24 steps = 120 min) -> matches 150
+    # Alert at 149: exact latest boundary (1 step = 5 min)
+    # Alert at 150: step of onset (lead 0 min) -> outside window
+    raised[[125, 126]] = True
+    c = E.event_counts(raised, onset, first=first, last=last, horizon=horizon)
+    assert c["monitored_onsets"] == 3  # 74, 150, 201
+    assert c["detected_onsets"] == 1   # onset 150 detected by alert 126
+    assert c["alerts_raised"] == 2
+    assert c["true_alerts"] == 1       # alert 126
+    assert c["false_alerts"] == 1      # alert 125
+    assert c["lead_times_min"] == [120]
+
+    # Test latest boundary (1 step before onset)
+    raised2 = np.zeros(n, dtype=bool)
+    raised2[149] = True  # lead = 5 min
+    c2 = E.event_counts(raised2, onset, first=first, last=last, horizon=horizon)
+    assert c2["detected_onsets"] == 1 and c2["lead_times_min"] == [5]
+    assert c2["true_alerts"] == 1 and c2["false_alerts"] == 0
+
+
 def test_alert_precision_is_reported_once_in_alert_units():
     stats = {"monitored_onsets": np.array([10.0]), "detected_onsets": np.array([3.0]),
              "alerts_raised": np.array([4.0]), "true_alerts": np.array([1.0]), "false_alerts": np.array([3.0]),

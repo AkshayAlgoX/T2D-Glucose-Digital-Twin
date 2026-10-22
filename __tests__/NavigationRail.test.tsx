@@ -28,7 +28,7 @@ describe('Shared research navigation', () => {
     expect(within(navigation).getByRole('link', { name: 'Cohort' })).toHaveAttribute('href', '/cohort');
     expect(within(navigation).getByRole('link', { name: 'Evidence' })).toHaveAttribute('href', '/evidence');
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#main-content');
-    expect(screen.getByText('Research prototype')).toBeInTheDocument();
+    expect(screen.queryByText('Research prototype')).not.toBeInTheDocument(); // stated once, in each page footer
     const workspace = within(navigation).getByRole('link', { name: 'Workspace' });
     expect(workspace).toHaveAttribute('href', label === 'Workspace' ? '/patients/' + firstSubject : '/cohort#subject-directory');
     expect(within(navigation).queryByRole('button', { name: 'Workspace' })).not.toBeInTheDocument();

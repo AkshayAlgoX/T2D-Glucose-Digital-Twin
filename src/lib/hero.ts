@@ -4,13 +4,18 @@ import { DEMO_SUBJECT_ID } from './landing';
 export const HERO_AS_OF = '2026-09-29T08:00:00Z';
 const HISTORY_MIN = 120;
 
-export interface HeroPoint { offset_min: number; p10: number; p50: number; p90: number; twin_p50: number | null }
+export interface HeroPoint { offset_min: number; p05?: number | null; p10: number; p25?: number | null; p50: number; p75?: number | null; p90: number; p95?: number | null; twin_p50: number | null }
+/** Wearable and log readings received with each replayed forecast; null where none was received. */
+export interface HeroInput { t: string; hr: number | null; hrv: number | null; steps: number | null; asleep: boolean | null; carbs: number | null }
 export interface HeroForecast {
   asOf: string;
   patientId: string;
   observed: Array<{ t: string; v: number }>;
   current: number;
   points: HeroPoint[];
+  inputs?: HeroInput[];
+  /** The subject's served EHR summary and partition, from /v1/subjects; absent if it could not be read. */
+  subject?: { group: string | null; split: string | null; age_years: number | null; sex: string | null; bmi: number | null; hba1c_pct: number | null } | null;
   probability: number | null;
   calibrated: boolean;
   modelName: string | null;
@@ -46,7 +51,18 @@ export function heroFromForecasts(forecasts: Array<Record<string, any>>, asOf = 
     .sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
   const points: HeroPoint[] = anchor.forecast.points
     .filter((p: any) => finite(p?.offset_min) && finite(p.p10) && finite(p.p50) && finite(p.p90))
-    .map((p: any) => ({ offset_min: p.offset_min, p10: p.p10, p50: p.p50, p90: p.p90, twin_p50: finite(p.twin_p50) ? p.twin_p50 : null }));
+    .map((p: any) => ({
+      offset_min: p.offset_min, p10: p.p10, p50: p.p50, p90: p.p90, twin_p50: finite(p.twin_p50) ? p.twin_p50 : null,
+      p05: finite(p.p05) ? p.p05 : null, p25: finite(p.p25) ? p.p25 : null, p75: finite(p.p75) ? p.p75 : null, p95: finite(p.p95) ? p.p95 : null,
+    }));
+  const inputs: HeroInput[] = inWindow
+    .filter(f => f.observed_inputs && typeof f.observed_inputs === 'object')
+    .map(f => {
+      const o = f.observed_inputs;
+      return { t: f.as_of as string, hr: finite(o.heart_rate_bpm) ? o.heart_rate_bpm : null, hrv: finite(o.hrv_rmssd_ms) ? o.hrv_rmssd_ms : null,
+        steps: finite(o.steps_5min) ? o.steps_5min : null, asleep: typeof o.asleep === 'boolean' ? o.asleep : null, carbs: finite(o.carbs_logged_g) ? o.carbs_logged_g : null };
+    })
+    .sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
   if (points.length < 2 || observed.length < 2) return null;
   const risk = anchor.spike_risk;
   return {
@@ -55,6 +71,7 @@ export function heroFromForecasts(forecasts: Array<Record<string, any>>, asOf = 
     observed,
     current: anchor.current.value_mg_dl,
     points,
+    inputs,
     probability: finite(risk?.probability_120m) ? risk.probability_120m : null,
     calibrated: risk?.calibrated === true,
     modelName: typeof anchor.model?.name === 'string' ? anchor.model.name : null,
@@ -79,7 +96,19 @@ export async function readHeroForecast(): Promise<HeroForecast | null> {
     const res = await fetch(url, { headers, signal: controller.signal, cache: 'no-store' });
     if (!res.ok) return null;
     const value = heroFromForecasts(parseForecastEvents(await res.text()));
-    if (value) cache = { at: Date.now(), value };
+    if (value) {
+      value.subject = await fetch(`${backendUrl}/v1/subjects`, { headers: { ...headers, Accept: 'application/json' }, signal: controller.signal, cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then((list: any) => {
+          const s = Array.isArray(list) ? list.find((x: any) => x?.subject_id === DEMO_SUBJECT_ID) : null;
+          if (!s) return null;
+          const n = (v: unknown) => (finite(v) ? v : null);
+          return { group: typeof s.group === 'string' ? s.group : null, split: typeof s.split === 'string' ? s.split : null,
+            age_years: n(s.ehr?.age_years), sex: typeof s.ehr?.sex === 'string' ? s.ehr.sex : null, bmi: n(s.ehr?.bmi), hba1c_pct: n(s.ehr?.hba1c_pct) };
+        })
+        .catch(() => null);
+      cache = { at: Date.now(), value };
+    }
     return value;
   } catch {
     return null;

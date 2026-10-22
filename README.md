@@ -1,238 +1,276 @@
-# T2D Glucose Digital Twin — Clinical Workstation & Replay Engine
+<div align="center">
 
-**A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
+# Glucose Twin
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-41%20suites%20%7C%20411%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-134%20passed-brightgreen.svg)]()
-[![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
-[![Release Candidate](https://img.shields.io/badge/candidate-release%2Fcandidate--20261017-blue.svg)]()
-[![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
+### A physiology-informed digital twin that forecasts type 2 diabetes glucose spikes,<br>and states exactly what its evidence does and does not prove.
 
----
+[![Frontend tests](https://img.shields.io/badge/frontend%20tests-48%20suites%20%7C%20450%20passed-0f6e74)](#tests-and-verification)
+[![Backend tests](https://img.shields.io/badge/backend%20tests-162%20passed-0f6e74)](#tests-and-verification)
+[![License](https://img.shields.io/badge/license-Apache--2.0-1f3a5f)](LICENSE)
+[![Intended use](https://img.shields.io/badge/intended%20use-research%20only-8f5e0b)](#limitations-and-intended-use)
 
-## Submission Summary & Governance Overview
+[What it does](#what-it-does) · [Architecture](#architecture) · [Evidence](#evidence) · [Quick start](#quick-start) · [Datasets](#datasets-and-licences) · [Limitations](#limitations-and-intended-use)
 
-| Submission Deliverable | Location / Status | Verified Metric / Detail |
-| :--- | :--- | :--- |
-| **Project Title** | `T2D Glucose Digital Twin` | Focus: Prediabetes & Type 2 Diabetes Adverse Event Early Warning |
-| **Team & Institution** | **T2D Digital Twin Team**<br>• Akshaya R — BGS College of Engineering and Technology<br>• Nikhil VS — East West Institute of Technology | Descriptive project-team label; independent engineering college affiliations |
-| **Public GitHub Repository** | [`https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin`](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) | Authoritative GitHub repository (clone: `https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git`) |
-| **Release Candidate** | `release/candidate-20261017` | Verified release candidate branch (tag: `v1.0.0-top1`) |
-| **Architecture Document** | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) | Verified 3-page landscape document; source in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) |
-| **Presentation Deck** | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) | Verified 12-page PDF; editable source in [`docs/presentation/presentation.html`](docs/presentation/presentation.html) |
-| **Demonstration Script** | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) | Verified 20:00 exact timeline (segment 16:00–18:30 is exactly 2:30) |
-| **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
-| **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
-| **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
+<img src="docs/assets/readme/screens/patient-forecast.png" alt="Patient workspace: observed CGM, the physiology twin, the learned adjustment and the 2-hour forecast with bands and spike-onset risk" width="100%">
 
----
+<sub>The patient workspace, captured from the production build on this branch with a synthetic validation subject. Dots: observed CGM. Dashed: physiology twin. Hatched: learned adjustment. Bands: forecast quantiles.</sub>
 
-## Clinical Problem & System Hypothesis
-
-While modern Continuous Glucose Monitors (CGMs) offer predictive low alerts for hypoglycemia, hyperglycemic spike alarms remain predominantly reactive once interstitial glucose breaches static clinical limits (e.g., post-prandial excursion &gt; 180 mg/dL). Because post-prandial glycemic excursions develop rapidly (30–60 minutes), reactive alarms leave patients and clinicians with minimal response windows.
-
-This project investigates whether **continuous forward visibility**—predicting multi-horizon quantile trajectories and adverse event hazards using multimodal patient context—can provide actionable advance insight.
+</div>
 
 > [!IMPORTANT]
-> **Investigational Research Boundary**: This system is an engineering research prototype evaluated on synthetic physiological cohorts. It has **not** been evaluated in clinical trials, does **not** carry medical device certification, and must **not** be used for autonomous clinical or therapeutic decisions.
+> **Research prototype. Not for clinical decisions.** The application replays a synthetic cohort. It has no medical-device status and no clinical validation. Every metric below names its data, its denominator and its evidence tier.
 
----
+## In 30 seconds
 
-## System Architecture
+- **The problem.** After-meal glucose spikes above 180 mg/dL drive long-term harm in type 2 diabetes, and CGM alarms usually fire only once the spike has started.
+- **What we built.** A clinical workstation around a hybrid twin. A physiological model (UKF-tracked) gives the baseline; a learned residual and a calibrated hazard head give a 2-hour forecast and a spike-onset risk. Around it: ward triage, What-if meal and activity scenarios, a printable clinician summary and a FHIR R4 export.
+- **What we proved, and what we did not.** On a locked, preregistered real-patient evaluation, the hybrid forecasts better than persistence at 60 minutes. It warns of only **6.9% of spikes ≥30 min ahead**. Two later preregistered checks on unused cohorts did **not** confirm an early-warning improvement over simple trend rules. A new candidate policy is exploratory, and its confirmation protocol is frozen but not yet run.
 
+| Evidence tier | Status | Where |
+|---|---|---|
+| Locked real-patient evaluation | ✅ run once, immutable | [`docs/evidence/real_data/RESULTS.md`](docs/evidence/real_data/RESULTS.md) |
+| External check 1: Hall 2018 | ❌ not confirmed | [`docs/evidence/external_hall/RESULTS.md`](docs/evidence/external_hall/RESULTS.md) |
+| External check 2: AZT1D + Broll | ❌ not met | [`docs/evidence/external_v2/RESULTS.md`](docs/evidence/external_v2/RESULTS.md) |
+| Candidate C2 (risk-gated trend) | 🧪 exploratory, CI includes 0 | [`docs/evidence/fa_controller/README.md`](docs/evidence/fa_controller/README.md) |
+| AI-READI confirmation | ⏳ protocol frozen, awaiting data access | [`docs/evidence/aireadi_confirmation/PREREGISTRATION.md`](docs/evidence/aireadi_confirmation/PREREGISTRATION.md) |
+
+## What it does
+
+| | |
+|---|---|
+| <img src="docs/assets/readme/screens/ward-triage.png" alt="Ward triage table ranking validation patients by 2-hour spike risk" width="420"> | **Ward triage.** Ranks every validation patient by the backend's calibrated 2-hour spike-onset risk at the replay hold. Shows current glucose, alert tier, and when and how high the forecast median crosses 180 mg/dL. Patients the service declines to forecast are listed by name, never silently ranked. |
+| <img src="docs/assets/readme/screens/whatif-result.png" alt="What-if comparison of baseline and scenario forecasts with twin and learned-adjustment contributions" width="420"> | **What-if, on the same time axis.** Add a meal, activity, or a skipped usual meal. The backend re-runs the twin and the network from the forecast moment. The result separates the twin's response from the learned adjustment and flags inputs outside the training range. Medication changes are refused rather than guessed. |
+| <img src="docs/assets/readme/screens/whatif-meal-builder.png" alt="Indian meal plate builder with USDA FNDDS dishes and carbohydrate totals" width="420"> | **Indian meals with provenance.** Build a plate from 29 dishes of Indian origin in USDA FNDDS (public domain), by survey portion or weighed grams. Every dish keeps its FDC id. Only carbohydrate grams reach the model, and the interface says so. |
+| <img src="docs/assets/readme/screens/clinician-summary.png" alt="Printable one-page clinician summary" width="420"> | **Clinician summary and FHIR R4.** A one-page printable summary covers measured versus forecast glucose, risk, data quality and the last scenario. It includes a patient note in English or Hindi; the Hindi is marked as not yet reviewed by a native-speaking clinician. The FHIR R4 Bundle export validates against the official HL7 R4 JSON schema in tests, with semantic checks on references, LOINC and UCUM codes, and a test-data label. |
+| <img src="docs/assets/readme/screens/evidence-claim-tiers.png" alt="Evidence page tiers: proven, exploratory, independently confirmed (none yet)" width="420"> | **Evidence inside the product.** The Evidence page separates proven capabilities, exploratory candidates and independently confirmed results (currently none). It shows the failed external checks with their numbers. A test keeps every figure in sync with the committed result files. |
+
+## Architecture
+
+The product and the real-patient research pipeline are separate systems. The **workstation** serves a synthetic cohort through the hybrid twin. The **research pipeline** produced the locked real-patient evaluation and the external checks; it is not served.
+
+```mermaid
+flowchart LR
+  subgraph Served["Clinical workstation (synthetic cohort replay)"]
+    direction LR
+    EHR["Synthetic EHR context<br/>age · BMI · HbA1c · medications"] --> Contract
+    CGM["CGM + wearables<br/>5-min replay stream"] --> Contract
+    Contract["Observable-input contract<br/>causal, no future data"] --> UKF["Physiology twin<br/>UKF state + 2-h rollout"]
+    Contract --> TFT["PR-TFT network<br/>residual quantiles + hazard"]
+    UKF --> TFT
+    TFT --> Cal["Calibration<br/>conformal bands · isotonic risk"]
+    Cal --> Policy["Data quality + alert policy"]
+    Policy --> API["FastAPI /v1<br/>forecasts · scenarios · SSE"]
+    API --> BFF["Next.js BFF<br/>Zod contract checks"]
+    BFF --> UI["Ward · Workspace · What-if<br/>Clinician summary · FHIR · Evidence"]
+  end
+  subgraph Research["Real-patient research pipeline (offline)"]
+    direction LR
+    Real["CGMacros · BIG IDEAs · ShanghaiT2DM"] --> Split["Patient-level split<br/>SHA-256, 60/20/20"]
+    Split --> Feat["Causal 5-min decisions<br/>meals masked to zero"]
+    Feat --> Models["Reduced UKF twin prior +<br/>LightGBM / neural residual"]
+    Models --> Locked["Locked test run<br/>RESULTS.md"]
+  end
 ```
-[ Observable Static EHR ]       [ Dynamic Wearable Telemetry ]
-(Age, BMI, HbA1c, eGFR, Meds)   (CGM, HR, HRV, Sleep, Steps, Meals)
-           │                                     │
-           ▼                                     ▼
- ┌─────────────────────────────────────────────────────────────┐
- │            Observable Input Contract (Contract S3)          │
- └──────────────────────────────┬──────────────────────────────┘
-                                │
-               ┌────────────────┴────────────────┐
-               ▼                                 ▼
- ┌───────────────────────────┐     ┌───────────────────────────┐
- │   Mechanistic UKF Twin    │     │   PR-TFT Neural Model     │
- │ 2-Compartment Bergman ODE │     │ Variable Selection + LSTM │
- │ Physiological Rollouts    │     │ Causal Multi-Head Attn    │
- └─────────────┬─────────────┘     └─────────────┬─────────────┘
-               │                                 │
-               └────────────────┬────────────────┘
-                                │
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │  Residual Combination: UKF Prior + Learned Quantile Residuals│
- │  24 Steps (120 min) | 7 Quantiles (p05–p95) | Spike Hazard  │
- └──────────────────────────────┬──────────────────────────────┘
-                                │
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │       FastAPI Inference Service (`backend/serve_pr_tft.py`) │
- └──────────────────────────────┬──────────────────────────────┘
-                                │ SSE (port 8001)
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │  Next.js SSE Proxy & Earliest-Delimiter Transform Stream    │
- └──────────────────────────────┬──────────────────────────────┘
-                                │ (port 3000)
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │  Clinical Workstation Dashboard (`/cohort`, `/patients/[id]`)│
- └─────────────────────────────────────────────────────────────┘
+
+<details>
+<summary><b>Prediction and early-warning pipeline</b></summary>
+
+```mermaid
+flowchart TB
+  A["Last 24 h of CGM<br/>coverage ≥ 70%"] --> B["Causal features<br/>lags · slopes · variability · time of day"]
+  A --> R["Daily routine<br/>same clock window, 1–3 days earlier"]
+  B --> F["Forecast<br/>twin prior + learned residual<br/>30 / 60 / 120 min"]
+  B --> H["Spike-onset hazard<br/>calibrated on patient-grouped OOF"]
+  R --> H
+  A --> T["30-min trend projection"]
+  H --> P{"Alert policy"}
+  T --> P
+  P --> O["Alert<br/>120-min cooldown · at-risk only<br/>1-to-1 matching to onsets"]
+  O --> M["Scored: sensitivity ≥30 min · any lead ·<br/>false alerts per patient-day · lead time"]
 ```
 
-1. **Observable Ingestion Boundary (Contract S3)**: Consumes static clinical variables and dynamic sensor channels. Prohibits privileged simulation latents from leaking into inference features.
-2. **Physiological Prior (Mechanistic UKF)**: Two-compartment Bergman minimal model tracking glucose, insulin dynamics, and gut absorption.
-3. **Deep Residual Network (PR-TFT)**: Temporal Fusion Transformer predicting non-linear residual quantiles over the physics prior, plus discrete-time spike hazard.
-4. **Reliable Telemetry Stream**: Next.js proxy route pipes upstream SSE through `createSafeSSETransformStream`, enforcing chunk-invariant earliest-boundary detection across mixed CRLF/LF packet boundaries.
-5. **Fail-Closed Client Telemetry**: `useRealtimeTelemetry` hook implements envelope-level subject isolation, bounded exponential backoff retries, and strict terminal `contract-invalid` failure modes.
+**Research pipeline:** a spike onset is the start of a run of at least 15 min at or above 180 mg/dL. **Served application:** it also requires a rise of at least 50 mg/dL within the previous 60 min. In both, warnings count only 5–120 min before an onset, alerts are raised only while glucose is below 180 mg/dL, and each alert can claim at most one onset.
+</details>
 
----
+<details>
+<summary><b>Evaluation design: isolation, selection, freezing</b></summary>
 
-## Technical Stack
+```mermaid
+flowchart LR
+  D["Development patients<br/>train / validation"] --> O["Patient-grouped 5-fold<br/>OOF predictions"]
+  O --> S["Calibration, thresholds,<br/>policy selection"]
+  S --> Z["Freeze: protocol + code<br/>committed to git"]
+  Z --> L["Locked V1 test<br/>(11 held-out patients, 5-min)"]
+  Z --> E1["Hall 2018<br/>(freeze d1a2d887)"]
+  Z --> E2["AZT1D + Broll<br/>(freeze 3f1d7350)"]
+  Z --> E3["AI-READI<br/>(frozen, not run)"]
+  L --> X["Results published,<br/>including failures"]
+  E1 --> X
+  E2 --> X
+```
 
-- **Frontend Application**: Next.js 16.3.7 (App Router), React 19, TypeScript 5.8 / 7.0, Tailwind CSS 4, D3 scales.
-- **Backend Inference Service**: Python 3.12, FastAPI, Uvicorn, Pydantic v2.
-- **Machine Learning & Simulation**: PyTorch, PyTorch Lightning, FilterPy (Unscented Kalman Filter), SciPy, NumPy, Pandas.
-- **Validation & Quality Gates**: Zod schemas (client/proxy contract enforcement), Jest 30 (unit and integration testing), Playwright (end-to-end browser verification).
+Test records are loaded only by the single authorized run. External cohorts are read once, after the freeze commit. A later amendment is allowed only for a loading error and must be committed before any outcome exists (one occurred, in AZT1D, and is documented).
+</details>
 
----
+## Evidence
 
-## Verified Installation & Local Startup
+### Locked real-patient evaluation
 
-The setup instructions below have been verified on Linux x86_64:
+Preregistered ([`PREREGISTRATION.md`](docs/evidence/real_data/PREREGISTRATION.md), [`AMENDMENT_001.md`](docs/evidence/real_data/AMENDMENT_001.md)) and run once. It is **immutable**: none of the exploratory work below changes it. The cohort has 161 nominal participants across three datasets. The 5-min headline metrics come from **11 held-out test patients**. The 20 ShanghaiT2DM test patients are not estimable at 15-min cadence.
 
-### 1. Prerequisites
-- **Git LFS**: Required for model weights and UKF state artifacts (`git lfs pull` to fetch `canonical_ukf_state.npz` [198 MB] and checkpoints)
-- **Node.js**: `>=20.9.0` (Next.js lock requirement; tested on `v20.x` and `v22.23.2`)
-- **Python**: `3.12.x` (strictly required by pinned dependencies, tested on `3.12.3`)
-- **Brave / Chromium**: Required for end-to-end browser verification
+<img src="docs/assets/readme/charts/locked_rmse60.svg" alt="Locked evaluation 60-minute RMSE: hybrid 23.11 mg/dL with 95% CI 18.75 to 28.12, reduced twin 24.73, persistence 26.27, linear trend 49.06" width="100%">
 
-### 2. Backend Setup & Service Startup
+| Metric (held-out test, point estimate) | Value | 95% CI (patient bootstrap) |
+|---|---|---|
+| RMSE at 30 / 60 / 120 min | 16.77 / **23.11** / 26.44 mg/dL | 60 min: 18.75–28.12 |
+| Spike onsets warned ≥30 min ahead | **6.9%** | 0.0–13.9 |
+| Alert precision | 65.5% | — |
+| False alerts per patient-day | 0.11 | 0.02–0.23 |
+| Median warning lead time | 10 min | none (the code reports a fixed ±5 min band, not a CI) |
+| Leave-one-dataset-out RMSE at 60 min | CGMacros 23.97 · BIG IDEAs 22.14 mg/dL | — |
+
+<details>
+<summary>Why <code>RESULTS.md</code> shows 23.04 and 6.0%</summary>
+
+Both locked files come from one run, but they print different statistics:
+- `results.json` and the `RESULTS.md` horizon list give **point estimates** on the full test set, used here: 23.11 mg/dL and 6.9%.
+- The `RESULTS.md` headline table gives the **mean of 2,000 patient-bootstrap resamples**: 23.04 and 6.0%.
+
+The 95% intervals are identical in both. The code traces are in [`LOCKED_RESULTS_RECONCILIATION.md`](docs/submission/LOCKED_RESULTS_RECONCILIATION.md). Both locked files are unchanged, and the chart above is generated from `results.json`.
+</details>
+
+### External checks (preregistered, on cohorts unused in development)
+
+<img src="docs/assets/readme/charts/external_hall_sens30.svg" alt="Hall 2018: routine model 7.8 percent, learned baseline 0 percent, linear-trend reference 32.8 percent of spike onsets warned at least 30 minutes ahead" width="100%">
+
+**Hall 2018: not confirmed.** The routine model beat the learned baseline by +7.8 points [0.0, +13.2], but the preregistered rule needed the lower bound above zero. A simple linear-trend reference did better than both learned policies on this mostly normoglycaemic cohort.
+
+<img src="docs/assets/readme/charts/external_azt1d_sens30.svg" alt="AZT1D: learned baseline 12.5 percent, trend 15.0, trend or risk 15.2, routine 21.0 over budget, risk-gated trend 26.4 over budget" width="100%">
+
+**AZT1D (type 1 diabetes, closed-loop insulin): not met.** The learned policy scored −2.5 points [−6.4, +1.4] against the trend rule and −2.7 [−5.7, +0.5] against trend-or-risk. Broll (5 adults with type 2 diabetes) is descriptive only: persistence had the lowest RMSE at every horizon.
+
+### Exploratory candidate and pending confirmation
+
+<img src="docs/assets/readme/charts/candidate_c2_validation.svg" alt="Candidate C2 on validation: 27.3 percent at 0.87 false alerts per day versus 22.7 percent at 0.98 for the learned baseline; paired difference +4.5 points, CI -2.5 to +12.8" width="100%">
+
+- **Candidate C2** is a risk-gated trend policy, with thresholds chosen on training data so that the *worst* patient fold stays within 1 false alert/day. It is the first policy here to stay within budget on new patients. The gain is not established: +4.5 points, with a CI from −2.5 to +12.8, on 12 validation patients used in earlier work.
+- **AI-READI confirmation** covers type 2 participants in AI-READI's test split and is frozen in [`aireadi_evaluate.py`](docs/evidence/aireadi_confirmation/aireadi_evaluate.py), tested on a synthetic release. **It has not been run**: data access is not yet approved.
+
+<details>
+<summary><b>Every exploratory experiment, including the null results</b></summary>
+
+All of these use training and validation patients only. None touches the locked test partition.
+
+| Question | Result | Report |
+|---|---|---|
+| Does a budget-matched threshold help? | Small gain inside the CI | [`operating_point/README.md` §1](docs/evidence/operating_point/README.md) |
+| Do logged meals help? | Precision and lead up; ≥30-min sensitivity inside the CI | §2 |
+| An explicit ≥30-min target? | Rejected (worse) | §3 |
+| The patient's daily routine? | Ranking improves: training OOF +5.4 points [+0.7, +10.1] | §3 |
+| Does the routine threshold transfer? | No (1.55 false alerts/day); per-patient rate control holds the budget but loses the gain | §4 |
+| Online per-patient forecast personalization? | Does not beat LightGBM | §5 |
+| False-alert feedback controller? | Null (1.09/day) | [`fa_controller/README.md`](docs/evidence/fa_controller/README.md) |
+</details>
+
+Every claim, with its artifact and promotion rule, is in the [claim–evidence ledger](docs/submission/CLAIM_EVIDENCE_LEDGER.md).
+
+## Quick start
+
+**Requirements:** Node.js ≥ 20.9, Python 3.12, Git LFS (model weights and twin state).
+
 ```bash
-# Clone the repository:
 git clone https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git
-cd T2D-Glucose-Digital-Twin
+cd T2D-Glucose-Digital-Twin && git lfs pull
 
-# Pull Git LFS assets and create virtual environment:
-git lfs pull
-python3 -m venv .venv
-source .venv/bin/activate
+# Backend: synthetic-cohort inference service
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+python -B backend/serve_pr_tft.py --run-dir runs/pr_tft_ablation_arm_d --host 127.0.0.1 --port 8001
 
-# Start the permitted synthetic inference backend (runs on port 8001):
-python -B backend/serve_pr_tft.py \
-  --run-dir runs/pr_tft_ablation_arm_d \
-  --host 127.0.0.1 \
-  --port 8001
-```
-Verify backend health: `curl -s http://127.0.0.1:8001/v1/health` &rarr; `{"status":"ok", ...}`.
-
-### 3. Frontend Setup & Startup
-```bash
-# In a separate terminal:
+# Frontend (second terminal)
 npm ci
-
-# Configure backend target:
 echo "BACKEND_URL=http://127.0.0.1:8001" > .env.local
-
-# For demos and judging, run the production build (smooth, no development overlay):
 npm run build && npx next start -p 3000
-
-# For development only (slower, with the Next.js error overlay):
-# npx next dev --webpack -p 3000
 ```
-Open `http://localhost:3000/` (overview and a direct link to the demonstration twin), `http://localhost:3000/cohort`, or the validation-split demonstration subject P0017 at `http://localhost:3000/patients/6f50ef50-b6e5-5408-a70c-d8f0509d6012`. Use `localhost`, not `127.0.0.1`: the Next.js dev server does not serve its client runtime to other origins, and the page stays on "Connecting".
 
-### 4. Running Verification Test Suites
+Open `http://localhost:3000/cohort` and choose a patient from the ward. Use `localhost`, not `127.0.0.1`.
+
+<details>
+<summary><b>API entry points</b></summary>
+
+| Layer | Endpoint | Purpose |
+|---|---|---|
+| Backend | `GET /v1/health` | Liveness |
+| Backend | `GET /v1/subjects` | Served subjects (the sealed test split is never listed) |
+| Backend | `POST /v1/forecasts` | Forecast, spike risk and optional scenarios at a pinned moment |
+| Backend | `GET /v1/subjects/{id}/twin` | Twin card |
+| Backend | `GET /v1/subjects/{id}/stream` | Server-sent replay stream |
+| Frontend BFF | `/api/subjects`, `/api/forecast`, `/api/ward`, `/api/patients/[id]/stream`, `/api/patients/[id]/twin` | Proxies with contract validation |
+
+Contracts live in `backend/contracts/v1/*.json` and are compiled into `src/types` by `npm run prebuild`. `npm run build` fails if they drift.
+</details>
+
+<details>
+<summary><b>Reproducing the evidence</b></summary>
+
 ```bash
-# Run all 41 Jest test suites (411 tests: unit, integration, contracts, safety invariants):
-npm test -- --runInBand --silent --no-cache
+python docs/assets/readme/make_charts.py      # regenerates every README chart from committed results
 
-# Run all 134 backend tests (provenance, contracts, causality, safety, sealed-split access):
-RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
-
-# Run TypeScript typecheck:
-npx tsc --noEmit --incremental false
-
-# Run Git whitespace validation:
-git diff --check
+# Research scripts need the licensed raw datasets under data/real (not redistributed):
+python docs/evidence/operating_point/routine_target_arms.py --data-dir data/real
+python docs/evidence/fa_controller/develop_controller.py   --data-dir data/real
 ```
 
----
+Seeds are fixed at `20260930`. External-check inputs are verified by the sha256 values recorded in their preregistrations.
+</details>
 
-## Scientific Evidence & Explicit Limitations
+## Tests and verification
 
-In accordance with scientific integrity guidelines, all reported metrics and limitations are disclosed without fabrication:
-
-### 1. Negative Validation Gate: Synthetic Realism (Gate 3)
-- **Result**: **FAILED**
-- **Metric**: Historical AUROC = **0.9320** (90% CI: 0.928–0.936); Fresh duration-corrected AUROC = **0.9290** (90% CI: 0.925–0.933) against target threshold **&le; 0.65**.
-- **Implication**: A 40-feature classifier reliably distinguishes synthetic ODE trajectories from mock-real generator records. Controlled factorial drift experiments confirm empirical AR(1) background drift (SD 8–16 mg/dL) accounts for a portion of the trajectory curvature difference (e.g., jerk/acceleration), but does not explain the entire multivariate failure across the 40-feature discriminator. Acceptance threshold remains &le; 0.65; result remains FAILED without metric-gaming.
-
-### 2. EW-01 Scientific Evaluation
-- **Status**: **UNEXECUTED / GOVERNANCE-BLOCKED**
-- **Detail**: The formal EW-01 comparative evaluation harness was not executed due to incomplete co-author sign-offs. No comparative superiority or lead-time claims are made over clinical baselines.
-
-### 3. Baseline Checkpoint Discrepancy
-- **Status**: **METRICS EXCLUDED**
-- **Detail**: `backend/runs/pr_tft_demo/evaluation_baseline.json` references an absent checkpoint (`stage2_observed-epoch=01-val_loss=0.3096.ckpt`). Its metrics are strictly excluded from performance claims.
-
-### 4. Meal / Activity What-If (Simulated Model Response)
-- **Status**: **INTERACTIVE, BACKEND-DRIVEN — NOT A VALIDATED CAUSAL EFFECT**
-- **Detail**: The patient workspace sends meal, activity and skip-a-usual-meal scenarios through `/api/forecast` to `POST /v1/forecasts`. The linearized twin re-rolls the plan and the network re-scores it. Baseline and scenario come from the same response at the same anchor. The panel shows the highest median in the next 2 h for each (with its time), the largest same-time difference, and the calibrated 2-h spike probability before and after.
-- **Example (genuine backend output, P0017, validation split, anchor 2026-10-05T07:30Z, 60 g carbohydrate meal in 30 min)**: highest median 185.0 → 199.3 mg/dL (peaks at +60 → +95 min), largest same-time difference +34.5 mg/dL, spike probability 10.6% → 17.3%. The physiology twin alone moves glucose by up to +55.3 mg/dL. At anchor 2026-09-28T23:55Z the same meal gives 101.5 → 133.6 mg/dL and 0.0% → 3.3%.
-- **Default demonstration view**: every subject's replay opens at 08:00 UTC on the cohort's first morning (cohort start 23:55 plus 97 readings; the same rule for every subject). For P0017 the window shows the night, waking and a 123 g breakfast logged at 07:35. The 08:00 forecast's median rises to 222.5 mg/dL at +45 min; observed CGM then reads 207 mg/dL at 08:30 and 216 mg/dL at 09:00 (`backend/synthetic_v2/patient_cgm_telemetry.csv`). This is one favourable example; aggregate accuracy is on the Evidence page. From 08:00, a further 60 g meal in 30 min moves the physiology twin alone by up to +47.8 mg/dL, the network's highest median from 222.5 to 228.5 mg/dL, and the spike probability from 53.3% to 56.9%. This view does not show the one-step artefact described below. At 05:55, the same meal gives a network curve with a single 5-min spike at +75 min, 53.7 mg/dL above the physiology twin and about 54 mg/dL above its neighbouring steps (`docs/evidence/whatif_probe_P0017.json`).
-- **Audit (2026-10-20)**: see `docs/evidence/model_audit/MODEL_AUDIT_20261020.md`.
-  - **Meal timing:** scenario meals were entered 5 min late. This is fixed and covered by a regression test.
-  - **Out-of-range inputs:** a meal scenario feeds the network a meal probability of 1.0 and its full carbohydrate amount in one 5-min step. In training these inputs never exceeded 0.29 and 33 g, so the service attaches `SCENARIO_OUT_OF_RANGE`.
-  - **Isolated steps:** the learned adjustment adds isolated one-step jumps of more than 20 mg/dL to 19.8% of sampled validation forecasts, and the physiology twin never does. This is a disclosed model limitation. The chart flags it when present.
-- **Boundary**: These are synthetic-model outputs. Neither their direction nor their size has been validated against a reference counterfactual. Activity is modelled as immediate insulin-independent uptake only (the service attaches `SCENARIO_APPROXIMATION`). Medication changes are refused with `SCENARIO_UNSUPPORTED` because the served twin has no drug terms.
-
-### 5. Validation Trajectory Benchmark & Matched Baseline Audit
-- **Scope**: Evaluated on the **44 validation patients** (54,281 eligible anchors; 53,920 / 53,906 / 53,849 evaluable rows at 30 / 60 / 120 min) from the pre-registered split (`split_293.json`). (Note: 47,629 was the at-risk hazard calibration subset).
-- **Matched Trajectory Benchmark (95% Patient-Clustered Bootstrap CI, B=10,000 draws)**:
-  - **30-min**: PR-TFT **12.36** [11.89, 12.84] (MAE 8.43, MARD 7.22%) vs. UKF Twin **15.24** [14.30, 16.16] vs. Persistence **21.64** [20.44, 22.79]. Paired diff: $\Delta = \mathbf{-9.28}$ [-10.05, -8.43] vs. PE (42.87% reduction); $\Delta = \mathbf{-2.88}$ [-3.37, -2.38] vs. Twin (18.90% reduction); 10,000/10,000 draws negative.
-  - **60-min**: PR-TFT **19.53** [18.56, 20.48] (MAE 12.43, MARD 10.16%) vs. UKF Twin **23.23** [21.76, 24.64] vs. Persistence **36.05** [33.85, 38.13]. Paired diff: $\Delta = \mathbf{-16.53}$ [-17.77, -15.17] vs. PE (45.84% reduction); $\Delta = \mathbf{-3.71}$ [-4.27, -3.15] vs. Twin (15.96% reduction); 10,000/10,000 draws negative.
-  - **120-min**: PR-TFT **25.03** [23.67, 26.27] (MAE 16.76, MARD 13.66%) vs. UKF Twin **28.64** [26.67, 30.51] vs. Persistence **48.36** [45.06, 51.46]. Paired diff: $\Delta = \mathbf{-23.33}$ [-25.31, -21.23] vs. PE (48.24% reduction); $\Delta = \mathbf{-3.61}$ [-4.44, -2.81] vs. Twin (12.61% reduction); 10,000/10,000 draws negative.
-- **Aggregation Reporting**: Both pooled micro-averages and unweighted patient macro-averages are reported side-by-side (e.g., at 60 min, Macro 19.27 mg/dL vs. Micro 19.53 mg/dL) as distinct aggregation perspectives.
-- **Patient Win Rates (Exact 95% Clopper-Pearson Binomial CIs)**: 44/44 (100% [92.0%, 100.0%]) at 30m & 60m; at 120m: 44/44 (100% [92.0%, 100.0%]) vs. Persistence, 41/44 (93.2% [81.3%, 98.6%]) vs. UKF Twin. *Sampling assumption:* Independent Bernoulli trials across the 44 subjects in simulated cohort; strictly limited to this simulated cohort.
-- **Probabilistic Calibration (Resubstitution Diagnostics)**: 80% conformal interval empirical coverage is **80.00%** (mean width 37.30 mg/dL). Isotonic-calibrated hazard achieves AUROC **0.9226**, AUPRC **0.6314**, Brier score **0.0703** (raw 0.1650), and ECE **0.000094** on 47,629 at-risk anchors (source: `runs/pr_tft_ablation_arm_d/run_manifest.json` → `validation.hazard_calibrated`; raw AUROC 0.9221, AUPRC 0.6388). Isotonic calibration is monotone, so discrimination is essentially unchanged, and an ECE near zero is expected when the calibrator is scored on the anchors it was fitted to. Because calibration parameters were estimated on this validation set, all calibration metrics are resubstitution diagnostics; evaluated thresholds (0.35 and 0.60) are empirical diagnostics, not approved clinical operating points.
-- **Explicit Boundary & Ledger Caveat**: These figures are simulated development-validation results derived from the development validation partition (`split_293.json`) which was used for both checkpoint selection and calibration. They establish architecture-level validation error metrics under simulated conditions, but are explicitly **NOT** independent held-out generalization to human patients. The 44-subject test cohort remains sealed and strictly unexecuted under protocol.
-
----
-
-## Public-Release Safety Audit
-
-A repository security scan across tracked files, commit history, and branches confirmed:
-- **Credentials & API Keys**: Zero leaked AWS tokens, GitHub PATs, or live service passwords.
-- **Protected Cohorts**: No quarantined or restricted H1 / WIF-02 truth datasets are tracked.
-- **Sealed Test Partition**: The 44 test-split subjects are loaded only for provenance checks and are never served. `/v1/subjects` omits them, and forecast, scenario, twin-card and stream requests for them return the same `404 SUBJECT_NOT_FOUND` as an unknown id (`backend/tests/test_sealed_split_access.py`).
-- **Local Path Sanitization Finding**: Tracked pycache file `backend/__pycache__/train_pr_tft.cpython-312.pyc` has been removed from tracking. `backend/final_config.json` uses portable relative path `"data_dir": "synthetic_v2"` with `T2D_DATA_DIR` environment override support. `experiments/early_warning_ew01/ew01_trust.py` supports `EW01_REGISTRY_ROOT` override with fail-closed validation.
-
----
-
-## License & Legal Notice
-
-This project is licensed under the **Apache License, Version 2.0**. See the [`LICENSE`](LICENSE) file for the full license text and [`NOTICE`](NOTICE) for copyright attribution.
-
-```
-Copyright 2026 Akshaya R, Nikhil VS (T2D Digital Twin Team)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+```bash
+npm test -- --runInBand --silent                     # 48 suites, 450 tests
+RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -q   # 162 passed (134 collected without RUN_DIR)
+npx tsc --noEmit && npm run build                     # types, contract-drift check, production build
 ```
 
-### Attribution & Redistribution Terms
-- **Project Copyright**: Held by the verified project team: Akshaya R (BGS College of Engineering and Technology) and Nikhil VS (East West Institute of Technology).
-- **Synthetic Data & Model Artifacts**: Model checkpoints (`runs/pr_tft_ablation_arm_d/checkpoints/`), UKF state (`canonical_ukf_state.npz`), and synthetic datasets (`backend/synthetic_v2/`) were generated exclusively using project simulation and training pipelines without third-party patient PHI or proprietary weights, and are distributed under the terms of this license.
-- **Third-Party Dependencies**: External runtime and development dependencies installed via `npm` or `pip` are governed by their respective upstream open-source licenses (MIT, BSD-3-Clause, Apache-2.0, etc.) and are not re-licensed under this project's Apache-2.0 grant.
+- **Frontend:** contracts, safety invariants, stream recovery, accessibility (jest-axe), FHIR schema and semantics, and evidence-number drift.
+- **Backend:** causality, sealed-split access, twin counterfactual plausibility, alert-policy mechanics, and the AI-READI harness on synthetic data.
+- **Browser:** the ward → patient → What-if → summary → FHIR flow is checked on desktop and at 390 px.
+
+## Datasets and licences
+
+| Dataset | Role | Licence |
+|---|---|---|
+| Synthetic cohort (`backend/synthetic_v2`) | Served application | Project, Apache-2.0 |
+| CGMacros (PhysioNet 1.0.0) | Real-patient development and locked test | CC BY-NC-SA 4.0 (not redistributed) |
+| BIG IDEAs (PhysioNet 1.1.3) | Real-patient development and locked test | ODC-By 1.0 (not redistributed) |
+| ShanghaiT2DM | Real-patient development; test not estimable | CC BY 4.0 (not redistributed) |
+| Hall et al. 2018, *PLoS Biol* | External check 1 | CC BY 4.0 (not redistributed) |
+| AZT1D (Mendeley Data) · Broll (iglu) | External check 2 | CC BY 4.0 · GPL-2 (not redistributed) |
+| USDA FoodData Central FNDDS 2021–2023 | Meal catalogue | Public domain (CC0) |
+| HL7 FHIR R4 JSON schema | Test fixture | HL7 FHIR licence (CC0) |
+
+## Limitations and intended use
+
+- **Research only.** Not a medical device. Not for diagnosis, dosing or treatment decisions.
+- **The served application replays a synthetic cohort.** Its realism check (Gate 3) failed. Real-patient results come from the separate research pipeline.
+- **Early warning is the weak point.** It was 6.9% at ≥30 min in the locked evaluation, and no improvement over simple trend rules has been shown on unused data.
+- **What-if results are model responses, not validated causal effects.** Meal inputs are outside the network's training range, and only carbohydrate grams are modelled.
+- **Hindi text is unreviewed** by a native-speaking clinician.
+- **FHIR checks are partial.** Invariants, profiles and terminology bindings are not checked.
+
+## Submission
+
+| Item | Location |
+|---|---|
+| Team | **T2D Digital Twin Team**: Akshaya R (BGS College of Engineering and Technology) · Nikhil VS (East West Institute of Technology) |
+| Repository | [github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) |
+| Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
+| Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (submission snapshot) |
+| Demo script | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) |
+| Demonstration video | Pending: link to be added by the team |
+| Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
+<!-- TODO(owner): replace "Pending: link to be added by the team" in the Demonstration video row with the recorded video URL. No public deployment is linked because none has been verified. -->
+
+## License
+
+Apache License 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Copyright 2026 Akshaya R and Nikhil VS (T2D Digital Twin Team). Third-party datasets keep their own licences (above) and are not redistributed. npm and pip dependencies keep their upstream licences.

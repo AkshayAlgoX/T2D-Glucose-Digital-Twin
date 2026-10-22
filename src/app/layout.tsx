@@ -1,8 +1,9 @@
 import './globals.css';
 import './design-system.css';
 import './refine.css';
+import './figure.css';
 import React from 'react';
-import { IBM_Plex_Sans, IBM_Plex_Mono, Newsreader } from 'next/font/google';
+import { IBM_Plex_Sans, IBM_Plex_Mono, Source_Serif_4 } from 'next/font/google';
 
 const plexSans = IBM_Plex_Sans({
   subsets: ['latin'],
@@ -11,10 +12,11 @@ const plexSans = IBM_Plex_Sans({
   display: 'swap',
 });
 
-const newsreader = Newsreader({
+const serif4 = Source_Serif_4({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-newsreader',
+  weight: ['400', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif4',
   display: 'swap',
 });
 
@@ -36,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${newsreader.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} ${serif4.variable}`}>
       <body className="antialiased">
         {children}
       </body>

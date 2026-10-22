@@ -150,7 +150,7 @@ describe('ScenarioEditor — backend-driven what-if', () => {
     respond(422, { type: 'x', title: 'Scenario input not supported', status: 422, code: 'SCENARIO_UNSUPPORTED', detail: 'medication changes need the full twin' });
     render(<ScenarioEditor patientId="subject-1" currentForecast={forecast()} />);
     // One click demonstrates the refusal; the backend answers SCENARIO_UNSUPPORTED rather than guessing.
-    fireEvent.click(screen.getByRole('button', { name: 'Medication change' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Medication change/ }));
     const error = await screen.findByTestId('scenario-error');
     expect(error).toHaveAttribute('data-kind', 'unsupported');
     expect(error).toHaveTextContent('Medication changes are not supported');

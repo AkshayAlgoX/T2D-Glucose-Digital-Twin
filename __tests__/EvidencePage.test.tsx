@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import EvidencePage from '../src/app/evidence/page';
 import fs from 'fs/promises';
 import crypto from 'crypto';
@@ -417,10 +417,10 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Exploratory · 10 patients')).toBeInTheDocument();
 
     // Pillar 4: Realism & Limitations
-    expect(screen.getByText('4. Governance and realism')).toBeInTheDocument();
+    expect(screen.getByText('4. Realism · Gate 3 analysis')).toBeInTheDocument();
     expect(screen.getByText('Gate 3 FAILED')).toBeInTheDocument();
-    expect(screen.getByText('AUROC 0.9320 (Target ≤ 0.65)')).toBeInTheDocument();
-    expect(screen.getByText('No clinical generalization')).toBeInTheDocument();
+    expect(screen.getByText('AUROC 0.932; passing needs the upper 90% bound ≤ 0.65')).toBeInTheDocument();
+    expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });
 
   it('renders technical reproducibility details inside collapsible disclosure with byte verification', async () => {
@@ -434,7 +434,7 @@ describe('EvidencePage', () => {
     render(Component);
 
     expect(screen.getByText('Artifact hashes and verification')).toBeInTheDocument();
-    expect(screen.getByText('SHA-256 Verified')).toBeInTheDocument();
+    expect(screen.getByText('Hashes match manifest')).toBeInTheDocument();
     expect(screen.getByText(MANIFEST_SHA)).toBeInTheDocument();
     expect(screen.getByText('b'.repeat(64))).toBeInTheDocument();
     expect(screen.getByText('runs/pr_tft_ablation_arm_d/run_manifest.json')).toBeInTheDocument();
@@ -450,7 +450,7 @@ describe('EvidencePage', () => {
     const Component = await EvidencePage();
     render(Component);
 
-    expect(screen.getByText('Exploratory Analysis · n=44 Cohort')).toBeInTheDocument();
+    expect(screen.getByText('Exploratory · n=44 cohort')).toBeInTheDocument();
     expect(screen.getByText(/Type 2 \(Target Clinical Focus\)/i)).toBeInTheDocument();
 
     // Check denominators distinction: eligible vs evaluable rows
@@ -474,25 +474,53 @@ describe('EvidencePage', () => {
     expect(screen.getByText(/Brier Score \(Raw → Calibrated\)/i)).toBeInTheDocument();
     expect(screen.getByText('0.0703')).toBeInTheDocument();
     expect(screen.getByText(/47,629 at-risk anchors/i)).toBeInTheDocument();
-    expect(screen.getByText('Evaluated Threshold 0.35')).toBeInTheDocument();
+    expect(screen.getByText('Evaluated threshold 0.35 (resubstitution)')).toBeInTheDocument();
     expect(screen.getByText('High Threshold Diagnostic (0.60)')).toBeInTheDocument();
   });
 
-  it('renders all five evidence SVG visual assets with appropriate accessible alternative text', async () => {
+  it('reads spike-classifier discrimination from the hash-verified manifest and shows none when it is absent', async () => {
+    const manifest = JSON.stringify({ ...BASE_MANIFEST, validation: {
+      hazard_raw: { auroc: 0.9220612796666005, auprc: 0.6387910589660569 },
+      hazard_calibrated: { auroc: 0.9226164870676722, auprc: 0.6314089233854392, ece: 9.39627770104291e-05 },
+    } }, null, 2);
+    const report = { ...FULL_BENCHMARK_REPORT, provenance: { ...FULL_BENCHMARK_REPORT.provenance, run_manifest_sha256: sha256(manifest) } };
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(manifest);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(report));
+      throw new Error('Not found');
+    });
+    const { unmount } = render(await EvidencePage());
+    expect(screen.getByTestId('spike-discrimination')).toHaveTextContent('0.9226 · 0.6314 (Raw: 0.9221 · 0.6388)');
+    expect(screen.getByText(/ECE 0\.000094/)).toBeInTheDocument();
+    unmount();
+
     (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
       if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
       if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
       throw new Error('Not found');
     });
+    render(await EvidencePage());
+    expect(screen.queryByTestId('spike-discrimination')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ECE 0\./)).not.toBeInTheDocument();
+  });
+
+  it('draws the evidence figures inline from the artifacts, each with an accessible description', async () => {
+    const realFs = jest.requireActual('fs/promises');
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      if (filePath.endsWith('validation_ceiling_results.json')) return realFs.readFile(filePath, 'utf8');
+      throw new Error('Not found');
+    });
 
     const Component = await EvidencePage();
-    render(Component);
+    const { container } = render(Component);
 
-    expect(screen.getByAltText('Matched Baselines with 95% Patient-Clustered Bootstrap CIs')).toBeInTheDocument();
-    expect(screen.getByAltText('Forecast Error Trajectory Across Horizons (5 to 120 min)')).toBeInTheDocument();
-    expect(screen.getByAltText('Subgroup robustness across clinical strata')).toBeInTheDocument();
-    expect(screen.getByAltText('Calibration Reliability Diagram with Equal-Width Probability Bins')).toBeInTheDocument();
-    expect(screen.getByAltText('Gate 3 Realism Audit Discriminator Summary')).toBeInTheDocument();
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    expect(screen.getAllByRole('img', { name: /Forecast error \(RMSE, mg\/dL\) at every horizon/ }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('Error the learned adjustment removes, by subgroup and horizon')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /fitted and evaluated on the same validation split \(resubstitution\)/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /Gate 3 discriminator AUROC/ }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('maintains prominent display of negative findings (Gate 3 FAILED, Sealed Test Split, External NO-GO, EW-01 Unexecuted)', async () => {
@@ -507,12 +535,65 @@ describe('EvidencePage', () => {
 
     // Negative governance findings must be explicit and unhidden
     expect(screen.getByText('Validation status and provenance register')).toBeInTheDocument();
-    expect(screen.getByText('Synthetic-data indistinguishability')).toBeInTheDocument();
+    expect(screen.getByText('Synthetic-data realism check')).toBeInTheDocument();
     expect(screen.getByText('Sealed · not run')).toBeInTheDocument();
     expect(screen.getByText('ShanghaiT2DM diagnostic')).toBeInTheDocument();
     expect(screen.getByText('NO-GO')).toBeInTheDocument();
     expect(screen.getByText('EW-01 protocol')).toBeInTheDocument();
     expect(screen.getByText('UNEXECUTED')).toBeInTheDocument();
+  });
+
+  it('keeps one authoritative Gate 3 analysis; the register shows a compact FAILED status that links to it', async () => {
+    const realFs = jest.requireActual('fs/promises');
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      if (filePath.endsWith('validation_ceiling_results.json') || filePath.endsWith('validation_report.json')) return realFs.readFile(filePath, 'utf8');
+      throw new Error('Not found');
+    });
+    const Component = await EvidencePage();
+    const { container } = render(Component);
+
+    const analysis = container.querySelector('#gate3-analysis')!;
+    expect(analysis).not.toBeNull();
+    expect(analysis.closest('details')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Gate 3 analysis: is the synthetic data realistic?' })).toBe(analysis);
+    expect(analysis).toHaveTextContent('Gate 3 FAILED');
+    expect(analysis).toHaveTextContent('Historical AUROC');
+    expect(analysis).toHaveTextContent('16,719 synthetic windows with 16,443 mock-real windows');
+    expect(analysis).toHaveTextContent('Null control');
+    expect(analysis).toHaveTextContent('Power control');
+    expect(analysis).toHaveTextContent('backend/synthetic_v2/validation/validation_report.json');
+    expect(within(analysis as HTMLElement).getByRole('link', { name: 'Back to the status register' })).toHaveAttribute('href', '#status-register');
+    expect(analysis).toHaveTextContent('jerk_sd 0.888, roc_max_fall 0.766');
+    expect(analysis).toHaveTextContent('Null control0.507 90% interval 0.481–0.533');
+    expect(analysis).toHaveTextContent('Power control1.000');
+    expect(analysis).toHaveTextContent('from 300 and 300 patients');
+    expect(analysis).toHaveTextContent('What it does not establish');
+
+    const register = screen.getByRole('region', { name: 'Validation status and provenance register' });
+    const link = within(register).getByRole('link', { name: 'View Gate 3 analysis' });
+    expect(link).toHaveAttribute('href', '#gate3-analysis');
+    expect(within(register).getByText('FAILED')).toBeInTheDocument();
+    // The register does not repeat the metrics or the explanation.
+    expect(register).not.toHaveTextContent('Historical AUROC');
+    expect(register).not.toHaveTextContent('jerk_sd');
+    // Limitations formerly listed in the summary keep a home in their register cards.
+    expect(register).toHaveTextContent("18-subject ‘test’ record is kept separately and excluded from claims");
+  });
+
+  it('shows no Gate 3 method counts or controls when the recorded check artifact cannot be read', async () => {
+    (fs.readFile as jest.Mock).mockImplementation(async (filePath) => {
+      if (filePath.endsWith('run_manifest.json')) return Buffer.from(MANIFEST_STRING);
+      if (filePath.endsWith('evaluation_report.json')) return Buffer.from(JSON.stringify(FULL_BENCHMARK_REPORT));
+      throw new Error('Not found');
+    });
+    const Component = await EvidencePage();
+    const { container } = render(Component);
+    const analysis = container.querySelector('#gate3-analysis')!;
+    expect(analysis).toHaveTextContent('The recorded check details could not be read, so no counts are shown.');
+    expect(analysis).not.toHaveTextContent('16,719');
+    expect(analysis).not.toHaveTextContent('0.507');
   });
 
   it('keeps audit detail in one collapsed methodology appendix, out of the reading path', async () => {
@@ -529,7 +610,7 @@ describe('EvidencePage', () => {
     expect(appendix).toContainElement(screen.getByText('Historical development reference (18-subject partition)'));
     expect(appendix.querySelector('details.reproducibility-details')).not.toBeNull();
     // The negative register stays outside the appendix.
-    expect(appendix).not.toContainElement(screen.getByText('Synthetic-data indistinguishability'));
+    expect(appendix).not.toContainElement(screen.getByText('Synthetic-data realism check'));
   });
 
   it('answers the four essential questions on the first screen hero', async () => {
@@ -557,9 +638,9 @@ describe('EvidencePage', () => {
     expect(screen.getByText('Δ −4.49 mg/dL')).toBeInTheDocument();
     expect(screen.getByText(/Exploratory evidence from only 10 simulated T2D subjects/i)).toBeInTheDocument();
 
-    // Question 4: What remains unproven?
-    expect(screen.getByText('What remains unproven?')).toBeInTheDocument();
-    expect(screen.getByText(/Realism gate \(Gate 3\) FAILED/i)).toBeInTheDocument();
+    // Question 4: the authoritative Gate 3 analysis
+    expect(screen.getByText('Is the synthetic data realistic?')).toBeInTheDocument();
+    expect(screen.getByText(/How it was tested:/)).toBeInTheDocument();
     expect(screen.getByText(/No clinical claim:/i)).toBeInTheDocument();
   });
 

@@ -1,0 +1,285 @@
+import React from 'react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import catalog from '../src/data/indian-meals.json';
+import { MEAL_FOODS, MEAL_SOURCE, plateCarbs, searchFoods } from '../src/lib/meals';
+import { fhirBundle } from '../src/lib/fhir';
+import { patientNote } from '../src/lib/patient-note';
+import { ScenarioEditor } from '../src/components/digital-twin/ScenarioEditor';
+import { ClinicianReport } from '../src/components/digital-twin/ClinicianReport';
+import { PatientWorkspace } from '../src/components/digital-twin/PatientWorkspace';
+import type { ScenarioState } from '../src/hooks/useScenario';
+import type { ForecastResponse } from '../src/types/forecast-response';
+import type { SubjectStore } from '../src/lib/types';
+
+// Unit-test data only; never used by the application or as scientific evidence.
+const anchor = '2026-10-04T12:00:00Z';
+const at = (min: number) => new Date(Date.parse(anchor) + min * 60000).toISOString();
+const cache: SubjectStore = { patientId: 'test-subject', cgm: [{ t: at(-10), value: 150 }, { t: at(-5), value: 155 }, { t: at(0), value: 160 }], risk: [], alerts: [], dataQuality: [] } as SubjectStore;
+
+function forecastFixture(): ForecastResponse {
+  return {
+    request_id: 'req-1', as_of: anchor, subject: { synthetic: true, subject_id: 'test-subject', cohort: 'unit/val', simulator: { param_set_id: 'UNIT-7' } },
+    model: { name: 'unit-model', version: '0.0', run_id: 'run-1', alert_policy_version: 'ap-1', fallback_used: null },
+    current: { value_mg_dl: 160, flag: 'in_range', measured_at: anchor, trend_arrow: 'rising' }, alert: { state: 'watch', since: anchor },
+    data_quality: { status: 'degraded', cgm_coverage_6h_pct: 81.5, staleness_min: 4, last_cgm_at: anchor, reasons: ['cgm_gap'] },
+    ehr_context: { age_years: 42, sex: 'female', bmi: 26.2, hba1c_pct: 6.8, hba1c_date: '2026-10-01', egfr: null },
+    forecast: { units: 'mg/dL', step_min: 5, horizon_min: 120,
+      points: Array.from({ length: 24 }, (_, i) => ({ offset_min: (i + 1) * 5, t: at((i + 1) * 5), p05: 150, p10: 155, p25: 160, p50: 170 + i, p75: 180, p90: 190 + i, p95: 200, twin_p50: 168 + i })) },
+    spike_risk: { probability_120m: 0.42, tier: 'elevated', calibrated: true, spike_in_progress: false,
+      definition: { threshold_mg_dl: 180, min_rise_mg_dl: 30, rise_window_min: 60, persistence_min: 15 },
+      cumulative: Array.from({ length: 24 }, (_, i) => ({ offset_min: (i + 1) * 5, p: (i + 1) / 60 })) },
+    intended_use: 'research_only_not_for_clinical_decisions',
+  } as unknown as ForecastResponse;
+}
+
+describe('Indian meal catalog (USDA FNDDS)', () => {
+  it('keeps source, licence and per-dish provenance, with no hand-filled values', () => {
+    expect(MEAL_SOURCE.source).toMatch(/USDA FoodData Central.*FNDDS/);
+    expect(MEAL_SOURCE.license).toMatch(/CC0/);
+    expect(MEAL_FOODS.length).toBe(catalog.foods.length);
+    for (const f of MEAL_FOODS) {
+      expect(Number.isInteger(f.fdcId)).toBe(true);
+      expect(f.carbsPer100g).toBeGreaterThanOrEqual(0);
+      expect(f.portions.length).toBeGreaterThan(0);
+      f.portions.forEach(p => expect(p.grams).toBeGreaterThan(0));
+    }
+  });
+
+  it('searches on every word and totals a plate to one decimal', () => {
+    expect(searchFoods('dosa').map(f => f.name)).toEqual(['Dosa, plain', 'Dosa, with filling']);
+    expect(searchFoods('dosa fill').map(f => f.name)).toEqual(['Dosa, with filling']);
+    const idli = searchFoods('idli')[0];
+    expect(plateCarbs([{ food: idli, portion: idli.portions[0], count: 2 }])).toBe(Math.round(idli.carbsPer100g * idli.portions[0].grams * 2 / 10) / 10);
+  });
+});
+
+describe('What-if meal builder', () => {
+  beforeEach(() => { global.fetch = jest.fn(); });
+
+  it('builds a plate, sends its carbohydrate as the scenario meal and reports the plate upward', async () => {
+    const idli = searchFoods('idli')[0];
+    const expected = plateCarbs([{ food: idli, portion: idli.portions[0], count: 2 }]);
+    (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({
+      pinned_as_of: anchor, subject_id: 'test-subject', fallback_used: null, current_mg_dl: 160, warnings: [],
+      baseline_forecast: Array.from({ length: 24 }, (_, i) => ({ timestamp: at((i + 1) * 5), p10: 150, p50: 160 + i, p90: 170 })),
+      scenario_forecast: Array.from({ length: 24 }, (_, i) => ({ timestamp: at((i + 1) * 5), p10: 150, p50: 160 + 2 * i, p90: 190 })),
+      metrics: { delta_peak_mg_dl: 23, new_peak_mg_dl: 206, baseline_peak_mg_dl: 183, delta_probability: 0.1, new_probability: 0.5, baseline_probability: 0.4 },
+    }) });
+    const onStateChange = jest.fn();
+    render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} onStateChange={onStateChange} />);
+    const builder = screen.getByTestId('meal-builder');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'idli' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Idli/ }));
+    fireEvent.change(within(builder).getByLabelText('Count'), { target: { value: '2' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    expect(screen.getByTestId('plate-total')).toHaveTextContent(`${expected.toFixed(1)} g`);
+    fireEvent.click(within(builder).getByRole('button', { name: `Use ${expected.toFixed(1)} g carbohydrate` }));
+    expect(screen.getByLabelText('Carbohydrate (g)')).toHaveValue(expected);
+    // A plate total has one decimal; the native field must accept it or the browser blocks the submit.
+    expect((screen.getByLabelText('Carbohydrate (g)') as HTMLInputElement).validity.valid).toBe(true);
+    expect(screen.getByLabelText('Carbohydrate (g)')).toHaveAttribute('step', '0.1');
+    expect(screen.getByTestId('meal-applied')).toHaveTextContent('2 × Idli');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    await screen.findByTestId('scenario-result');
+    const sent = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(sent.scenarios[0].inputs).toEqual([{ kind: 'meal', offset_min: 30, carbs_g: expected }]);
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'result' }), expect.stringContaining('Idli')));
+  });
+
+  it('rejects a count outside 1–10 and forgets the plate once grams are typed by hand', () => {
+    render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    const builder = screen.getByTestId('meal-builder');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'dal' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Dal/ }));
+    fireEvent.change(within(builder).getByLabelText('Count'), { target: { value: '11' } });
+    expect(within(builder).getByRole('alert')).toHaveTextContent('1 to 10');
+    expect(within(builder).getByRole('button', { name: /Add to plate/ })).toBeDisabled();
+    fireEvent.change(within(builder).getByLabelText('Count'), { target: { value: '1' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    fireEvent.click(within(builder).getByRole('button', { name: /^Use / }));
+    expect(screen.getByTestId('meal-applied')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Carbohydrate (g)'), { target: { value: '45' } });
+    expect(screen.queryByTestId('meal-applied')).not.toBeInTheDocument();
+  });
+
+  it('says plainly when no catalogued dish matches', () => {
+    render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    fireEvent.change(screen.getByLabelText('Find a dish'), { target: { value: 'zzzz' } });
+    expect(screen.getByText(/No catalogued dish matches/)).toBeInTheDocument();
+  });
+});
+
+describe('Clinician summary', () => {
+  it('opens from the workspace header, shows served values with their status, and closes on Escape', () => {
+    render(<PatientWorkspace patientId="test-subject" forecast={forecastFixture()} cache={cache} isConnected isStale={false} />);
+    fireEvent.click(screen.getByTestId('open-report'));
+    const dialog = screen.getByRole('dialog', { name: /UNIT-7: glucose forecast summary/ });
+    expect(dialog).toHaveTextContent('160 mg/dL');
+    expect(dialog).toHaveTextContent('42.0%');
+    expect(dialog).toHaveTextContent('calibrated · above 180 mg/dL');
+    expect(dialog).toHaveTextContent('model output, not measured');
+    expect(dialog).toHaveTextContent('81.5%');
+    expect(dialog).toHaveTextContent('cgm gap');
+    expect(dialog).toHaveTextContent('No scenario was run in this session');
+    expect(dialog).toHaveTextContent('not for clinical decisions');
+    expect(within(dialog).getByRole('row', { name: /\+60 min/ })).toHaveTextContent('181 mg/dL');
+    expect(document.body).toHaveClass('report-open');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.body).not.toHaveClass('report-open');
+  });
+
+  it('includes the last scenario comparison with its plate and disclaimer', () => {
+    const f = forecastFixture();
+    const curve = (slope: number) => Array.from({ length: 24 }, (_, i) => ({ timestamp: at((i + 1) * 5), p10: 150, p50: 160 + slope * i, p90: 190 }));
+    const scenario: ScenarioState = { status: 'result', patientId: 'test-subject', asOf: anchor, input: { kind: 'meal', offset_min: 30, carbs_g: 19 },
+      result: { pinned_as_of: anchor, fallback_used: null, current_mg_dl: 160, warnings: [{ code: 'OOD', title: 'Meal outside training range' }],
+        baseline_forecast: curve(1), scenario_forecast: curve(2),
+        metrics: { delta_peak_mg_dl: 23, new_peak_mg_dl: 206, baseline_peak_mg_dl: 183, delta_probability: 0.1, new_probability: 0.5, baseline_probability: 0.4 } } };
+    render(<ClinicianReport forecast={f} cache={cache} baseline={null} record={null} partition={null} scenario={scenario} plate="2 × Idli (1 item)" onClose={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('2 × Idli (1 item)');
+    expect(dialog).toHaveTextContent('183 → 206 mg/dL');
+    expect(dialog).toHaveTextContent('40.0% → 50.0%');
+    expect(dialog).toHaveTextContent('Meal outside training range');
+    expect(dialog).toHaveTextContent('not a validated causal treatment effect');
+  });
+});
+
+describe('FHIR R4 export', () => {
+  it('marks measured readings final, forecasts preliminary, and carries the served risk unchanged', () => {
+    const b = fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z');
+    expect(b).toMatchObject({ resourceType: 'Bundle', type: 'collection' });
+    const res = b.entry.map(e => e.resource as Record<string, any>);
+    const obs = res.filter(r => r.resourceType === 'Observation');
+    expect(obs.filter(o => o.status === 'final').map(o => o.valueQuantity.value)).toEqual([150, 155, 160]);
+    const fc = obs.filter(o => o.status === 'preliminary');
+    expect(fc).toHaveLength(24);
+    expect(fc[0].code.text).toMatch(/model output, not measured/);
+    expect(fc[11]).toMatchObject({ valueQuantity: { value: 181, unit: 'mg/dL' }, referenceRange: [{ low: { value: 155 }, high: { value: 201 } }] });
+    const risk = res.find(r => r.resourceType === 'RiskAssessment');
+    expect(risk.prediction[0].probabilityDecimal).toBe(0.42);
+    expect(res.every(r => r.meta.security[0].system === 'http://terminology.hl7.org/CodeSystem/v3-ActReason' && r.meta.security[0].code === 'HTEST')).toBe(true);
+  });
+
+  it('is semantically consistent: references resolve, units are UCUM, codes carry their systems', () => {
+    const res = fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z').entry.map(e => e.resource as Record<string, any>);
+    const ids = new Set(res.map(r => `${r.resourceType}/${r.id}`));
+    expect(new Set(res.map(r => r.id)).size).toBe(res.length);
+    res.filter(r => r.subject).forEach(r => expect(ids.has(r.subject.reference)).toBe(true));
+    const obs = res.filter(r => r.resourceType === 'Observation');
+    obs.forEach(o => {
+      expect(o.code.coding[0]).toMatchObject({ system: 'http://loinc.org', code: '99504-3' });
+      expect(o.valueQuantity).toMatchObject({ system: 'http://unitsofmeasure.org', code: 'mg/dL' });
+      expect(o.category[0].coding[0]).toMatchObject({ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory' });
+    });
+    // Measured readings are at or before the forecast moment; forecasts strictly after it.
+    const asOf = Date.parse(anchor);
+    obs.filter(o => o.status === 'final').forEach(o => expect(Date.parse(o.effectiveDateTime)).toBeLessThanOrEqual(asOf));
+    obs.filter(o => o.status === 'preliminary').forEach(o => expect(Date.parse(o.effectiveDateTime)).toBeGreaterThan(asOf));
+    const risk = res.find(r => r.resourceType === 'RiskAssessment');
+    expect(risk.prediction[0].probabilityDecimal).toBeGreaterThanOrEqual(0);
+    expect(risk.prediction[0].probabilityDecimal).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('FHIR export against the official HL7 R4 JSON schema', () => {
+  // hl7.org/fhir/R4/fhir.schema.json (sha256 2230406893b4cf002a4ee1e5e2bbeca22ac5d2d4931b3e9ef7b9594bbc376a01), gzipped.
+  // JSON-schema validation checks structure, types and value sets in the schema; it does not check FHIR invariants or terminology bindings.
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const zlib = require('zlib');
+  const fs = require('fs');
+  const path = require('path');
+  const Ajv = require('ajv');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'fhir-r4.schema.json.gz'))).toString());
+  const { id, ...rest } = raw;
+  const ajv = new Ajv({ strict: false, allErrors: true, validateSchema: false });
+  ajv.addMetaSchema(require('ajv/dist/refs/json-schema-draft-06.json'));
+  const validate = ajv.compile({ ...rest, $id: id });
+
+  it('accepts the exported bundle', () => {
+    const ok = validate(fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z'));
+    expect(validate.errors ?? []).toEqual([]);
+    expect(ok).toBe(true);
+  });
+
+  it('rejects an invalid status code and an unknown property (the validator is not a no-op)', () => {
+    const b = fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z') as any;
+    const badStatus = JSON.parse(JSON.stringify(b)); badStatus.entry[1].resource.status = 'measured';
+    expect(validate(badStatus)).toBe(false);
+    const extra = JSON.parse(JSON.stringify(b)); extra.entry[1].resource.confidence = 0.9;
+    expect(validate(extra)).toBe(false);
+  });
+});
+
+describe('Weighed portions', () => {
+  it('adds a weighed amount of a catalogued dish and bounds it to 1–1000 g', () => {
+    const rice = searchFoods('rice white')[0];
+    render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    const builder = screen.getByTestId('meal-builder');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'rice white' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Rice, white/ }));
+    fireEvent.change(within(builder).getByLabelText('Portion'), { target: { value: '-1' } });
+    fireEvent.change(within(builder).getByLabelText('Weight (g)'), { target: { value: '0' } });
+    expect(within(builder).getByRole('alert')).toHaveTextContent('1–1000 g');
+    fireEvent.change(within(builder).getByLabelText('Weight (g)'), { target: { value: '150' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    expect(screen.getByTestId('plate-total')).toHaveTextContent(`${(rice.carbsPer100g * 1.5).toFixed(1)} g`);
+    expect(builder).toHaveTextContent('150 g, weighed');
+  });
+});
+
+describe('Bilingual patient note', () => {
+  const input = { time: '08:00 UTC', glucose: 143, risk: 0.747, scenario: { change: '2 × Idli (1 item)', from: 0.747, to: 0.907 } };
+  it('has the same sentences, in order, with the same numbers, in English and Hindi', () => {
+    const en = patientNote('en', input);
+    const hi = patientNote('hi', input);
+    expect(hi).toHaveLength(en.length);
+    // Hindi puts the verb last, so numbers can appear in another order; compare them as a sorted list.
+    const nums = (s: string) => (s.match(/\d+(\.\d+)?%?/g) ?? []).sort().join(' ');
+    en.forEach((line, i) => expect(nums(hi[i])).toBe(nums(line)));
+    expect(hi.join(' ')).toMatch(/[ऀ-ॿ]/);
+    expect(en[en.length - 1]).toMatch(/talk to your doctor/);
+  });
+
+  it('omits sentences whose values were not served', () => {
+    expect(patientNote('hi', { time: '08:00 UTC', glucose: null, risk: null, scenario: null })).toHaveLength(2);
+  });
+
+  it('switches the summary note to Hindi with lang="hi" and states it is unreviewed', () => {
+    render(<PatientWorkspace patientId="test-subject" forecast={forecastFixture()} cache={cache} isConnected isStale={false} />);
+    fireEvent.click(screen.getByTestId('open-report'));
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('Your glucose at');
+    fireEvent.click(screen.getByRole('button', { name: 'हिन्दी' }));
+    expect(screen.getByTestId('patient-note')).toHaveAttribute('lang', 'hi');
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('160 mg/dL');
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('42%');
+    expect(screen.getByTestId('hindi-review-note')).toHaveTextContent('not yet reviewed');
+  });
+});
+
+describe('Accessibility of the new surfaces (axe)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { axe, toHaveNoViolations } = require('jest-axe');
+  expect.extend(toHaveNoViolations);
+
+  it('clinician summary dialog, in English and in Hindi, has no axe violations', async () => {
+    const { container } = render(<ClinicianReport forecast={forecastFixture()} cache={cache} baseline={null} record="42-year-old female" partition="Validation partition" scenario={null} plate={null} onClose={() => {}} />);
+    expect(await axe(container)).toHaveNoViolations();
+    fireEvent.click(screen.getByRole('button', { name: 'हिन्दी' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('meal builder with a plate and a weighed item has no axe violations', async () => {
+    const { container } = render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    const builder = screen.getByTestId('meal-builder');
+    builder.setAttribute('open', '');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'dal' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Dal/ }));
+    fireEvent.change(within(builder).getByLabelText('Portion'), { target: { value: '-1' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

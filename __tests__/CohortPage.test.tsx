@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CohortPage from '../src/app/cohort/page';
 
 jest.mock('next/navigation', () => ({ usePathname: () => '/cohort' }));
+// The ward makes its own request and has its own suite (ward.test.tsx); these tests cover the directory's request.
+jest.mock('../src/components/digital-twin/WardTriage', () => ({ WardTriage: () => null }));
 
 // Explicit unit-test subject directory; not application data or evaluation evidence.
 const subjects = [
@@ -33,7 +35,7 @@ describe('Cohort directory and Workspace entry', () => {
     const p17 = { subject_id: '33333333-3333-4333-8333-333333333333', patient_id: 'P0017', group: 'Type 2', split: 'val' };
     jest.mocked(global.fetch).mockResolvedValueOnce({ ok: true, json: async () => [...subjects, p17] } as Response);
     const { unmount } = render(<CohortPage />);
-    const entry = await screen.findByRole('region', { name: /P0017 · Type 2 · val split/ });
+    const entry = await screen.findByRole('region', { name: /P0017 · Type 2 · validation split/ });
     expect(entry).toHaveTextContent('Start here');
     expect(screen.getByRole('link', { name: /Open P0017/ })).toHaveAttribute('href', '/patients/' + p17.subject_id);
     unmount();

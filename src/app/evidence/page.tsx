@@ -1,3 +1,7 @@
+import { readLandingEvidence, readJumpExperiment, readGate3Checks, readEventEvaluation, readRealDataResults } from '@/lib/landing';
+import { ErrorCurve } from '@/components/figure/ErrorCurve';
+import { GainBar } from '@/components/figure/marks';
+import { SubgroupGains, ReliabilityFigure, Gate3Figure, DispersionBoxes, JumpFinding, EventWarning, RealDataBenchmark } from '@/components/figure/EvidenceFigures';
 import React from 'react';
 import fs from 'fs/promises';
 import path from 'path';
@@ -17,6 +21,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
+import { C2_CANDIDATE, CLAIM_TIERS, EXTERNAL_CHECKS } from '@/lib/external-evidence';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +37,10 @@ const ManifestSchema = z.object({
     path: z.string().optional(),
     sha256: HashSchema.optional(),
   }).passthrough().refine(checkpoint => !!(checkpoint.path || checkpoint.name), 'Checkpoint path or name required'),
+  validation: z.object({
+    hazard_raw: z.object({ auroc: z.number().finite().min(0).max(1), auprc: z.number().finite().min(0).max(1) }).passthrough().optional(),
+    hazard_calibrated: z.object({ auroc: z.number().finite().min(0).max(1), auprc: z.number().finite().min(0).max(1), ece: z.number().finite().min(0).optional() }).passthrough().optional(),
+  }).passthrough().optional(),
 }).passthrough();
 
 const MetricSchema = z.object({
@@ -284,6 +293,7 @@ export default async function EvidencePage() {
     }
   }
 
+  const [landing, jumps, g3c, events, realData] = await Promise.all([readLandingEvidence(), readJumpExperiment(), readGate3Checks(), readEventEvaluation(), readRealDataResults()]);
   const primaryPop = report?.populations.primary;
   const metrics = primaryPop?.models.pr_tft;
   const models = primaryPop?.models;
@@ -291,6 +301,8 @@ export default async function EvidencePage() {
   const wins = primaryPop?.patient_pairwise_wins;
   const subgroups = primaryPop?.subgroups;
   const cal = primaryPop?.calibration_resubstitution_diagnostics;
+  const hazard = manifest?.validation?.hazard_calibrated;
+  const hazardRaw = manifest?.validation?.hazard_raw;
   const gate3 = primaryPop?.gate3_realism_status;
   const dist = primaryPop?.patient_level_distribution;
 
@@ -320,6 +332,7 @@ export default async function EvidencePage() {
             <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
+            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> for the synthetic-cohort model on this page, Gate 3, the realism check, failed (<a href="#gate3-analysis">Gate 3 analysis</a>) · its held-out synthetic test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator. Real-patient and external results, including the checks that failed, are in <a href="#real-and-external">Real patients and external cohorts</a>.</p>
             <p className="evidence-glossary" data-testid="evidence-glossary"><strong>Terms:</strong> <em>PR-TFT</em> is the neural network that makes the learned adjustment; <em>UKF</em> is the filter that keeps the physiology twin in step with the readings; <em>Arm D</em> is the trained configuration evaluated here; <em>persistence</em> assumes glucose stays where it is.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -344,10 +357,57 @@ export default async function EvidencePage() {
               )}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--color-ink-3)' }}>
-              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results · SHA‑256 matches the run manifest'}
+              {errorState ? 'Artifact verification failed' : 'Synthetic development-validation results'}
             </span>
           </div>
         </header>
+
+        <section className="panel evidence-section external-evidence" id="real-and-external" tabIndex={-1} aria-labelledby="external-heading" data-testid="external-evidence">
+          <span className="eyebrow">Real patients and external cohorts</span>
+          <h2 id="external-heading">What held up on real and unused data, and what did not</h2>
+          <div className="claim-tiers" data-testid="claim-tiers">
+            <div><h3>Proven</h3><ul>{CLAIM_TIERS.proven.map(t => <li key={t}>{t}</li>)}</ul></div>
+            <div><h3>Exploratory, not established</h3><ul>{CLAIM_TIERS.exploratory.map(t => <li key={t}>{t}</li>)}</ul></div>
+            <div><h3>Independently confirmed</h3>{CLAIM_TIERS.confirmed.length ? <ul>{CLAIM_TIERS.confirmed.map(t => <li key={t}>{t}</li>)}</ul> : <p data-testid="confirmed-none">None yet. No early-warning improvement has been confirmed on an unused cohort.</p>}</div>
+          </div>
+          <p className="fine-print">Sensitivity is the share of spike onsets warned at least 30 min ahead, or at any lead, with 1-to-1 alert matching and a 120-min cooldown; the false-alert budget is 1.0 per patient-day. External checks were preregistered and frozen in a git commit before the data were read.</p>
+          {EXTERNAL_CHECKS.map(c => (
+            <div key={c.id} className="external-check" data-testid={`external-${c.id}`}>
+              <div className="external-check-head">
+                <h3>{c.title}</h3>
+                <span className={'status-badge external-status ' + c.status}>{c.statusText}</span>
+              </div>
+              <p className="fine-print">{c.cohort}{c.freeze ? <> · protocol frozen at commit <code>{c.freeze}</code></> : null} · <code>{c.artifact}</code></p>
+              <div className="evidence-table-container" tabIndex={0} role="region" aria-label={`${c.title} results`}>
+                <table className="external-table">
+                  <caption className="sr-only">{c.title}: sensitivity at least 30 min ahead, at any lead, false alerts per patient-day and median lead time</caption>
+                  <thead><tr><th scope="col">Policy</th><th scope="col">≥30 min</th><th scope="col">Any lead</th><th scope="col">False alerts / day</th><th scope="col">Median lead</th></tr></thead>
+                  <tbody>{c.rows.map(r => (
+                    <tr key={r.label}><th scope="row">{r.label}</th><td>{(r.sens30 * 100).toFixed(1)}%</td><td>{r.sensAny == null ? '—' : `${(r.sensAny * 100).toFixed(1)}%`}</td>
+                      <td className={r.faPerDay > 1 ? 'over-budget' : undefined}>{r.faPerDay.toFixed(2)}{r.faPerDay > 1 ? ' (over budget)' : ''}</td><td>{r.medianLeadMin == null ? '—' : `${r.medianLeadMin} min`}</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              <p className="fine-print">{c.note}</p>
+            </div>
+          ))}
+          <div className="external-check external-candidate" data-testid="external-c2-candidate">
+            <div className="external-check-head">
+              <h3>{C2_CANDIDATE.title}</h3>
+              <span className="status-badge external-status not-confirmed">Exploratory: paired +{(C2_CANDIDATE.pairedSens30.point * 100).toFixed(1)} points [{(C2_CANDIDATE.pairedSens30.lo * 100).toFixed(1)}, +{(C2_CANDIDATE.pairedSens30.hi * 100).toFixed(1)}] at ≥30 min, validation</span>
+            </div>
+            <p className="fine-print">{C2_CANDIDATE.rule} · <code>{C2_CANDIDATE.artifact}</code></p>
+            <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Exploratory candidate validation results">
+              <table className="external-table">
+                <caption className="sr-only">Exploratory candidate on development validation: sensitivity, false alerts per patient-day and median lead</caption>
+                <thead><tr><th scope="col">Policy</th><th scope="col">≥30 min</th><th scope="col">Any lead</th><th scope="col">False alerts / day</th><th scope="col">Median lead</th></tr></thead>
+                <tbody>{C2_CANDIDATE.rows.map(r => <tr key={r.label}><th scope="row">{r.label}</th><td>{(r.sens30 * 100).toFixed(1)}%</td><td>{r.sensAny == null ? '—' : `${(r.sensAny * 100).toFixed(1)}%`}</td><td>{r.faPerDay.toFixed(2)}</td><td>{r.medianLeadMin} min</td></tr>)}</tbody>
+              </table>
+            </div>
+            <p className="fine-print">{C2_CANDIDATE.note} Protocol: <code>{C2_CANDIDATE.confirmation}</code>.</p>
+          </div>
+          <p className="fine-print">No unused, openly licensed type 2 cohort large enough for confirmation was found (AI-READI and OMIX002493 are controlled-access). Early-warning superiority over simple trend rules has not been shown.</p>
+        </section>
 
         {/* Error State View */}
         {errorState && (
@@ -431,6 +491,8 @@ export default async function EvidencePage() {
                   <div className="pillar-substat" data-testid="headline-definition">
                     60-min RMSE vs the physiology twin alone{paired ? ` · ${paired.pr_minus_persistence_rmse_60.relative_reduction_pct.toFixed(1)}% lower than persistence` : ''}
                   </div>
+                  {models?.twin_only?.rmse_60 && <GainBar id="pillar-gain" hybrid={metrics.rmse_60.estimate} twin={models.twin_only.rmse_60.estimate} />}
+                  <p className="pillar-note">60-min RMSE in mg/dL; the hatched gap is the error the learned adjustment removes. Percentages are computed from the unrounded values.</p>
                   <details className="pillar-more"><summary>Per-horizon values and how to read them</summary>
                   <div className="pillar-compact-summary">
                     <div className="summary-row"><span>30m:</span> <strong>{metrics.rmse_30.estimate.toFixed(2)} mg/dL</strong> <small>[{metrics.rmse_30.ci_95 ? `${metrics.rmse_30.ci_95[0].toFixed(2)}–${metrics.rmse_30.ci_95[1].toFixed(2)}` : ''}]</small> <span>(&Delta; {minus(paired?.pr_minus_twin_rmse_30.diff)} vs twin alone; {minus(paired?.pr_minus_persistence_rmse_30.diff)} vs persistence)</span></div>
@@ -470,41 +532,84 @@ export default async function EvidencePage() {
                 <span className="pillar-tag">Exploratory · 10 patients</span>
               </div>
 
-              {/* Question 4: What remains unproven? */}
-              <div className="evidence-pillar-card pillar-limitations">
-                <div>
+              {/* Finding 4: the single, authoritative Gate 3 analysis (the register below links here). */}
+              <div className="evidence-pillar-card pillar-limitations" id="gate3-analysis" tabIndex={-1} role="region" aria-label="Gate 3 analysis: is the synthetic data realistic?">
+                <div className="g3-summary">
                   <div className="pillar-label">
-                    <span>4. Governance and realism</span>
-                    <XCircle size={14} color="var(--color-danger)" aria-hidden="true" />
+                    <span>4. Realism · Gate 3 analysis</span>
                   </div>
-                  <h3 className="pillar-question">What remains unproven?</h3>
+                  <h3 className="pillar-question" id="gate3-analysis-heading">Is the synthetic data realistic?</h3>
                   <div className="pillar-stat stat-danger">
-                    Gate 3 {gate3?.status ?? 'FAILED'}
+                    {gate3 ? `Gate 3 ${gate3.status}` : 'Gate 3 status unavailable'}
                   </div>
                   <div className="pillar-substat">
-                    AUROC {gate3?.historical_auroc.toFixed(4) ?? '0.9320'} (Target &le; 0.65)
+                    {gate3 ? `AUROC ${gate3.historical_auroc.toFixed(3)}; passing needs the upper 90% bound ≤ 0.65` : 'The realism artifact could not be read; no value is shown.'}
                   </div>
-                  <ul className="pillar-limits-list">
-                    <li><strong>Realism gate (Gate 3) FAILED:</strong> a classifier still tells our synthetic glucose traces apart from an independent mock-real generator&apos;s data, itself synthetic (AUROC 0.932031 historical, 0.928974 duration-corrected; target ≤ 0.65).</li>
-                    <li><strong>Held-out test not run:</strong> the 44 sealed test patients of this split have not been scored by this model, so no test result is claimed. An earlier demo run&apos;s 18-subject &lsquo;test&rsquo; record is kept separately and excluded from claims.</li>
-                    <li><strong>Early-warning alerts not validated:</strong> the pre-registered alert study (EW-01) has not been run.</li>
-                    <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
-                  </ul>
                 </div>
-                <span className="pillar-tag" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
-                  No clinical generalization
-                </span>
+                <div className="g3-body">
+                  {landing?.gate3ci && gate3 && <div className="pillar-gate3-figure"><div className="ec-wide"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} caption={false} intervals={false} /></div><div className="ec-narrow"><Gate3Figure historical={gate3.historical_auroc} ci={landing.gate3ci} compact caption={false} /></div><p className="g3-figure-note">Each dot is an AUROC; its 90% interval is narrower than the dot. The shaded zone is where the gate would pass.</p></div>}
+                  <p className="g3-implication">A classifier can still tell our synthetic glucose from an independent generator&apos;s, so realism is not established: every result on this page describes this synthetic cohort only.</p>
+                  <details className="g3-more">
+                    <summary>How it was tested, controls and what it means</summary>
+                  <p className="g3-method"><strong>How it was tested:</strong> {g3c
+                    ? <>an XGBoost classifier, {g3c.folds}-fold cross-validated with each patient kept within one fold, tries to tell {g3c.windowHours}-hour glucose windows ({g3c.features} features on a {g3c.gridMin}-minute grid) from our generator apart from an HbA1c-matched mock-real cohort made by an independent generator, itself synthetic. It compared {g3c.windows.synthetic.toLocaleString('en-US')} synthetic windows with {g3c.windows.mockReal.toLocaleString('en-US')} mock-real windows from {g3c.patients.synthetic} and {g3c.patients.mockReal} patients. An AUROC of 0.5 would mean the two are indistinguishable; the gate passes only if the upper bound of the AUROC&apos;s 90% interval is at or below 0.65.</>
+                    : <>an XGBoost classifier tries to tell glucose windows from our generator apart from an independent mock-real generator&apos;s, itself synthetic. The recorded check details could not be read, so no counts are shown.</>}</p>
+                  <dl className="g3-metrics">
+                    <div><dt>Historical AUROC</dt><dd>{gate3 ? gate3.historical_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.historical[0].toFixed(3)}–{landing.gate3ci.historical[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Duration-corrected AUROC</dt><dd>{gate3?.duration_corrected_auroc != null ? gate3.duration_corrected_auroc.toFixed(3) : '—'}{landing?.gate3ci ? <small> 90% interval {landing.gate3ci.correctedCi[0].toFixed(3)}–{landing.gate3ci.correctedCi[1].toFixed(3)}</small> : null}</dd></div>
+                    <div><dt>Pass rule</dt><dd>upper 90% bound &le; 0.65</dd></div>
+                    <div><dt>Null control</dt><dd>{g3c ? g3c.nullControl.estimate.toFixed(3) : '—'}{g3c ? <small> 90% interval {g3c.nullControl.ci[0].toFixed(3)}–{g3c.nullControl.ci[1].toFixed(3)}; two random halves of the synthetic cohort, so the pipeline does not invent differences</small> : null}</dd></div>
+                    <div><dt>Power control</dt><dd>{g3c ? g3c.powerControl.estimate.toFixed(3) : '—'}{g3c ? <small> +5 mg/dL sensor noise on one half is detected, so the classifier can see real distortions</small> : null}</dd></div>
+                    <div><dt>Strongest tells (mean |SHAP|)</dt><dd className="g3-tells">{g3c ? g3c.tells.map((t, i) => <span key={t.name}><code>{t.name}</code> {t.shap.toFixed(3)}{i < g3c.tells.length - 1 ? ', ' : ''}</span>) : '—'}</dd></div>
+                  </dl>
+                  {landing?.gate3ci?.mechanism && <p className="g3-mechanism"><strong>Recorded mechanism:</strong> {landing.gate3ci.mechanism}</p>}
+                  <div className="g3-scope">
+                    <div>
+                      <h4>What the failure establishes</h4>
+                      <ul>
+                        <li>Synthetic ODE dynamics remain distinguishable from the comparison generator&apos;s, mainly in glucose curvature and fall rates.</li>
+                        <li>Real-world physiological realism of this cohort remains unestablished; this test cannot address it, because the comparison data are synthetic.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>What it does not establish</h4>
+                      <ul>
+                        <li>Anything about people: the comparison data are themselves synthetic, so passing would not show realism against real patients either.</li>
+                        <li>Forecast accuracy on this synthetic data, which is measured separately in Figures 1 and 2.</li>
+                        <li><strong>No clinical claim:</strong> evaluated on simulated patients only; not validated in people.</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="fine-print g3-source"><strong>Historical</strong> is the recorded discriminator run (30 Sep 2026). <strong>Duration-corrected</strong> is a later re-estimate taken from the recorded summary; its definition and the script that computed it are not in the repository. Sources: status and both AUROCs from <code>runs/<wbr />pr_tft_ablation_arm_d/<wbr />evaluation_report.json</code>; their 90% intervals and the mechanism from <code>docs/<wbr />evidence/<wbr />validation_ceiling_results.json</code> → <code>gate3_realism_status</code>; method, counts, null and power controls and SHAP tells from <code>backend/<wbr />synthetic_v2/<wbr />validation/<wbr />validation_report.json</code> (checks G3.1–G3.3). The recorded note there says the mock-real comparison is not evidence of realism and should be rerun with CGMacros or ShanghaiT2DM before relying on this gate.</p>
+                  </details>
+                  <a className="register-link g3-back" href="#status-register">Back to the status register</a>
+                </div>
               </div>
             </div>
           </section>
+        )}
+
+        {hasBenchmarks && landing?.progression && (
+          <EvidenceDisclosure labelledBy="error-curve-heading" label="Error at every 5-minute step · Figure 1">
+          <section className="panel evidence-figure" aria-labelledby="error-curve-heading">
+            <div className="evidence-figure-head">
+              <span className="eyebrow">Figure 1</span>
+              <h2 id="error-curve-heading">What the learned adjustment adds, at every horizon</h2>
+              <p className="fine-print">RMSE in mg/dL at each 5-minute forecast step, 44 synthetic validation patients. Point estimates only; intervals for 30, 60 and 120 min are in Figure 2. Source: <code>docs/evidence/validation_ceiling_results.json</code> → <code>horizon_progression</code>.</p>
+            </div>
+            <div className="ec-wide"><ErrorCurve data={landing.progression} id="ev-ec" /></div>
+            <div className="ec-narrow"><ErrorCurve data={landing.progression} id="ev-ec-n" compact /></div>
+          </section>
+          </EvidenceDisclosure>
         )}
 
         {/* Always-visible figure: forecast error by horizon, from the same validated report as the tables below. */}
         {hasBenchmarks && models && (
           <section className="panel evidence-figure" aria-labelledby="error-figure-heading" data-testid="error-by-horizon">
             <div className="evidence-figure-head">
-              <h2 id="error-figure-heading">Forecast error by horizon</h2>
-              <p className="fine-print">RMSE in mg/dL, lower is better · bars show the estimate, whiskers the patient-clustered 95% CI · 44 synthetic validation patients</p>
+              <span className="eyebrow">Figure 2</span>
+              <h2 id="error-figure-heading">Forecast error by horizon, with intervals</h2>
+              <p className="fine-print">RMSE in mg/dL, lower is better · the dot is the estimate, the whisker its patient-clustered 95% CI · the hatched teal segment is the error the learned adjustment removes from the physiology twin · 44 synthetic validation patients</p>
             </div>
             {(['30', '60', '120'] as const).map(h => {
               const rows = [
@@ -513,6 +618,7 @@ export default async function EvidencePage() {
                 { key: 'persistence', label: 'Persistence (glucose stays flat)', m: models.persistence?.[`rmse_${h}`] },
               ].filter(r => r.m && Number.isFinite(r.m.estimate));
               const scaleMax = 55;
+              const twinM = models.twin_only?.[`rmse_${h}`];
               const pct = (v: number) => `${Math.max(0, Math.min(100, (v / scaleMax) * 100))}%`;
               return (
                 <div key={h} className="error-horizon">
@@ -521,7 +627,8 @@ export default async function EvidencePage() {
                     {rows.map(r => (
                       <div key={r.key} className={`error-bar-row ${r.key}`}>
                         <span className="error-bar-name">{r.label}</span>
-                        <span className="error-bar-track" aria-hidden="true">
+                        <span className="error-bar-track" aria-hidden="true"><span className="error-scale">{[0, 10, 20, 30, 40, 50].map(t => <i key={t} style={{ left: pct(t) }} />)}</span>
+                          {r.key === 'pr_tft' && twinM && twinM.estimate > r.m!.estimate && <i className="error-gain" title="Learned adjustment's reduction in error versus the physiology twin alone" style={{ left: pct(r.m!.estimate), width: `calc(${pct(twinM.estimate)} - ${pct(r.m!.estimate)})` }} />}
                           <i className="error-bar" style={{ width: pct(r.m!.estimate) }} />
                           {r.m!.ci_95 && <b className="error-ci" style={{ left: pct(r.m!.ci_95[0]), width: `calc(${pct(r.m!.ci_95[1])} - ${pct(r.m!.ci_95[0])})` }} />}
                         </span>
@@ -532,16 +639,21 @@ export default async function EvidencePage() {
                 </div>
               );
             })}
+            <div className="error-horizon error-axis-row" aria-hidden="true"><div /><div className="error-bars"><div className="error-bar-row"><span /><span className="error-bar-track">{[0, 10, 20, 30, 40, 50].map(t => <b key={t} style={{ left: `${(t / 55) * 100}%` }}>{t}</b>)}</span><span className="error-bar-value">mg/dL</span></div></div></div>
             <p className="fine-print evidence-figure-foot">Development-validation partition, also used for checkpoint selection and calibration; not held-out or human evidence. Source: <code>runs/pr_tft_ablation_arm_d/evaluation_report.json</code>.</p>
           </section>
         )}
+
+        {hasBenchmarks && events && <EventWarning data={events} />}
+        {hasBenchmarks && realData && <RealDataBenchmark data={realData} />}
+        {hasBenchmarks && jumps && <EvidenceDisclosure labelledBy="jump-heading" label="Known model artefact · isolated one-step jumps"><JumpFinding data={jumps} /></EvidenceDisclosure>}
 
         {/* Verified Benchmark Tables rendered ONLY when validated artifact benchmarks are present */}
         {hasBenchmarks && models && paired && (
           <>
             {/* Generalization Boundary Notice */}
-            <div className="generalization-banner" role="region" aria-label="Generalization Boundary Disclosure">
-              <strong>Generalization Boundary Disclosure</strong>
+            <div className="generalization-banner" role="region" aria-label="Generalization boundary">
+              <strong>Generalization boundary</strong>
               <p>
                 All performance metrics on this page are evaluated on the 44-patient synthetic validation split used during model checkpoint selection and Stage-3 calibration fitting. These figures represent the internal development validation benchmark. They do not show how the model would perform in people or in clinical use. The held-out test split has not been run.
               </p>
@@ -557,7 +669,7 @@ export default async function EvidencePage() {
                   </h2>
                 </div>
                 <span className="status-badge" style={{ background: 'transparent', borderColor: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
-                  n=44 patients · B=10,000 Cluster Resamples (Primary)
+                  n=44 patients · 10,000 cluster resamples (primary)
                 </span>
               </div>
 
@@ -574,8 +686,8 @@ export default async function EvidencePage() {
                       <th scope="col">RMSE (mg/dL) [95% CI]</th>
                       <th scope="col">MAE (mg/dL)</th>
                       <th scope="col">MARD (%)</th>
-                      <th scope="col">&Delta; vs. Persistence</th>
-                      <th scope="col">&Delta; vs. UKF Twin</th>
+                      <th scope="col">&Delta; vs. persistence</th>
+                      <th scope="col">&Delta; vs. physiology twin</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -628,7 +740,7 @@ export default async function EvidencePage() {
                           <td rowSpan={3} style={{ fontWeight: 600, verticalAlign: 'top', borderRight: '1px solid var(--color-line)', background: 'var(--color-surface)' }}>
                             {row.hz}
                           </td>
-                          <td style={{ fontWeight: 600, color: 'var(--color-ok)' }}>PR-TFT (Arm D)</td>
+                          <td style={{ fontWeight: 600 }}><span className="model-role hybrid">Hybrid</span> <span>PR-TFT (Arm D)</span></td>
                           <td style={{ fontWeight: 700 }}>
                             {row.pr?.estimate.toFixed(2)}{' '}
                             <span style={{ fontWeight: 400, fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -637,15 +749,15 @@ export default async function EvidencePage() {
                           </td>
                           <td>{row.maePr?.estimate ? row.maePr.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardPr?.estimate ? `${row.mardPr.estimate.toFixed(2)}%` : '—'}</td>
-                          <td style={{ color: 'var(--color-ok)', fontWeight: 600 }}>
-                            {row.diffPe?.diff ? `${row.diffPe.diff.toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}%)` : '—'}
+                          <td style={{ fontWeight: 600 }}>
+                            {row.diffPe?.diff ? `${row.diffPe.diff < 0 ? '−' : '+'}${Math.abs(row.diffPe.diff).toFixed(2)} (${row.diffPe.relative_reduction_pct.toFixed(1)}% lower)` : '—'}
                           </td>
                           <td style={{ color: 'var(--color-accent-ink)', fontWeight: 600 }}>
-                            {row.diffTw?.diff ? `${row.diffTw.diff.toFixed(2)} (${row.diffTw.relative_reduction_pct.toFixed(1)}%)` : '—'}
+                            {row.diffTw?.diff ? `${row.diffTw.diff < 0 ? '−' : '+'}${Math.abs(row.diffTw.diff).toFixed(2)} (${row.diffTw.relative_reduction_pct.toFixed(1)}% lower)` : '—'}
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#8c5b0c' }}>UKF Twin</td>
+                          <td className="model-twin"><span className="model-role twin">Physiology twin</span> <span>UKF</span></td>
                           <td>
                             {row.tw?.estimate ? row.tw.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -654,11 +766,11 @@ export default async function EvidencePage() {
                           </td>
                           <td>{row.maeTw?.estimate ? row.maeTw.estimate.toFixed(2) : '—'}</td>
                           <td>{row.mardTw?.estimate ? `${row.mardTw.estimate.toFixed(2)}%` : '—'}</td>
-                          <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
+                          <td style={{ color: 'var(--color-ink-3)' }} title="The paired analysis compares the hybrid with each baseline; twin versus persistence was not part of it">—</td>
                           <td style={{ color: 'var(--color-ink-3)' }}>Reference</td>
                         </tr>
                         <tr>
-                          <td style={{ color: 'var(--color-danger)' }}>Persistence</td>
+                          <td className="model-persistence">Persistence</td>
                           <td>
                             {row.pe?.estimate ? row.pe.estimate.toFixed(2) : '—'}{' '}
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-3)' }}>
@@ -680,14 +792,7 @@ export default async function EvidencePage() {
                 Note: Paired differences (&Delta; = PR-TFT - Comparator) are strictly negative in all 10,000/10,000 bootstrap draws in the primary analysis (and 1,000/1,000 in the secondary cross-check). Negative &Delta; indicates lower prediction error. P-values are not inferred from finite bootstrap draws.
               </p>
 
-              <div className="evidence-chart-grid">
-                <div className="evidence-chart-card">
-                  <img src="/evidence/baseline_comparison.svg" alt="Matched Baselines with 95% Patient-Clustered Bootstrap CIs" />
-                </div>
-                <div className="evidence-chart-card">
-                  <img src="/evidence/horizon_trajectory.svg" alt="Forecast Error Trajectory Across Horizons (5 to 120 min)" />
-                </div>
-              </div>
+              <p className="fine-print">These values are drawn in Figures 1 and 2 above.</p>
             </EvidenceDisclosure>
 
             {/* 2. Patient-Level Pairwise Wins */}
@@ -701,7 +806,7 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: 'var(--color-accent-ink)', color: 'var(--color-accent-ink)' }}>
-                    n=44 patients · Exact Binomial Test
+                    n=44 patients · exact binomial test
                   </span>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
@@ -714,11 +819,11 @@ export default async function EvidencePage() {
                     if (!wRow) return null;
                     return (
                       <div key={hKey} style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--color-ink)' }}>{hKey} Horizon Wins</div>
+                        <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--color-ink)' }}>{hKey.replace('min', '-min')} horizon wins</div>
                         <div style={{ display: 'grid', gap: '6px', fontSize: '13px' }}>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)' }}>vs. Persistence:</span>{' '}
-                            <strong style={{ color: 'var(--color-ok)' }}>
+                            <span style={{ color: 'var(--color-ink-3)' }}>vs. persistence:</span>{' '}
+                            <strong>
                               {wRow.pr_vs_persistence.wins_count}/{wRow.pr_vs_persistence.n_patients} ({(wRow.pr_vs_persistence.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -726,8 +831,8 @@ export default async function EvidencePage() {
                             </small>
                           </div>
                           <div>
-                            <span style={{ color: 'var(--color-ink-3)' }}>vs. UKF Twin:</span>{' '}
-                            <strong style={{ color: wRow.pr_vs_twin.wins_count === wRow.pr_vs_twin.n_patients ? 'var(--color-ok)' : 'var(--color-accent-ink)' }}>
+                            <span style={{ color: 'var(--color-ink-3)' }}>vs. physiology twin:</span>{' '}
+                            <strong>
                               {wRow.pr_vs_twin.wins_count}/{wRow.pr_vs_twin.n_patients} ({(wRow.pr_vs_twin.win_fraction * 100).toFixed(1)}%)
                             </strong>{' '}
                             <small style={{ color: 'var(--color-ink-3)' }}>
@@ -753,7 +858,7 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ borderColor: '#8c5b0c', color: '#8c5b0c', background: 'rgba(140, 91, 12, 0.08)' }}>
-                    Exploratory Analysis · n=44 Cohort
+                    Exploratory · n=44 cohort
                   </span>
                 </div>
 
@@ -804,9 +909,7 @@ export default async function EvidencePage() {
                   })}
                 </div>
 
-                <div className="evidence-chart-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
-                  <img src="/evidence/subgroup_robustness.svg" alt="Subgroup robustness across clinical strata" />
-                </div>
+                {landing?.subgroups && <SubgroupGains rows={landing.subgroups} />}
               </EvidenceDisclosure>
             )}
 
@@ -821,16 +924,17 @@ export default async function EvidencePage() {
                     </h2>
                   </div>
                   <span className="status-badge" style={{ color: 'var(--color-ink-3)', borderColor: 'var(--color-line)' }}>
-                    Compact Numeric Summary (n=44)
+                    Compact summary (n=44)
                   </span>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Per-patient RMSE quantiles across the 44 simulated validation subjects, summarizing patient-to-patient error dispersion (median 18.86 mg/dL, IQR 3.42 mg/dL at 60m). <em>Clinical disclosure:</em> These cohort-level summary distributions describe median performance and spread, but do not rule out individual acute forecast errors or outlier trajectory deviations in specific subjects.
                 </p>
+                {dist && <><div className="ec-wide"><DispersionBoxes dist={dist} /></div><div className="ec-narrow"><DispersionBoxes dist={dist} compact /></div></>}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                   {dist['rmse_60'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-Minute Horizon Dispersion</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>60-min horizon dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_60'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_60'].median?.toFixed(2)}</strong></div>
@@ -843,7 +947,7 @@ export default async function EvidencePage() {
                   )}
                   {dist['rmse_120'] && (
                     <div style={{ border: '1px solid var(--color-line)', borderRadius: '6px', padding: '14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-Minute Horizon Dispersion</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: '8px' }}>120-min horizon dispersion</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Min:</span> {dist['rmse_120'].min?.toFixed(2)}</div>
                         <div><span style={{ color: 'var(--color-ink-3)' }}>Median:</span> <strong>{dist['rmse_120'].median?.toFixed(2)}</strong></div>
@@ -879,13 +983,13 @@ export default async function EvidencePage() {
                     <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-ink-3)' }}>
                       80% Conformal Interval Coverage Reconciliation
                     </span>
-                    <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
-                      Reconciled Metric Provenance
+                    <span className="register-chip neutral">
+                      Reconciled metric provenance
                     </span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '10px' }}>
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px', background: 'var(--color-surface-2)' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw Model Coverage (Uncalibrated):</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 600 }}>Raw model coverage (uncalibrated):</div>
                       <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ink)' }}>
                         78.16% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.781553)</span>
                       </div>
@@ -893,9 +997,9 @@ export default async function EvidencePage() {
                         Mean uncalibrated p10–p90 width: <strong>36.02 mg/dL</strong> across 53,849–53,920 evaluable rows. Measures raw PR-TFT quantile heads before post-processing.
                       </p>
                     </div>
-                    <div style={{ padding: '12px', border: '1px solid var(--color-ok)', borderRadius: '6px', background: 'rgba(11, 113, 107, 0.04)' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ok)', fontWeight: 600 }}>Conformal-Adjusted Coverage (Resubstitution):</div>
-                      <div style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
+                    <div style={{ padding: '12px', borderLeft: '3px solid var(--color-line-control)' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--color-ink-2)', fontWeight: 600 }}>Conformal-adjusted coverage (resubstitution):</div>
+                      <div style={{ fontSize: '20px', fontWeight: 600, margin: '4px 0' }}>
                         80.00% <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--color-ink-3)', fontFamily: 'var(--font-mono)' }}>(0.800020)</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-ink-3)', lineHeight: 1.45 }}>
@@ -911,17 +1015,27 @@ export default async function EvidencePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
                   <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
                     <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Brier Score (Raw &rarr; Calibrated)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-ok)' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
                       {cal.brier_score_calibrated?.toFixed(4)}
                       <small style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {cal.brier_score_raw?.toFixed(4)})</small>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Resubstitution evaluation on {cal.at_risk_anchors?.toLocaleString()} at-risk anchors.</div>
                   </div>
 
+                  {hazard && (
+                    <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }} data-testid="spike-discrimination">
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Spike classifier AUROC · AUPRC</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0' }}>
+                        {hazard.auroc.toFixed(4)} · {hazard.auprc.toFixed(4)}
+                        {hazardRaw && <small style={{ fontSize: '12px', color: 'var(--color-ink-3)', fontWeight: 400 }}> (Raw: {hazardRaw.auroc.toFixed(4)} · {hazardRaw.auprc.toFixed(4)})</small>}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Calibrated onset probability on the validation partition (<code>run_manifest.json</code> → <code>validation.hazard_calibrated</code>); resubstitution, not an independent test.</div>
+                    </div>
+                  )}
                   {cal.threshold_evaluations?.['0.35'] && (
                     <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '6px' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--color-ink-3)', textTransform: 'uppercase' }}>Evaluated Threshold 0.35</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-accent-ink)' }}>
+                      <div style={{ fontSize: '12.5px', color: 'var(--color-ink-3)' }}>Evaluated threshold 0.35 (resubstitution)</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0', color: 'var(--color-ink-2)' }}>
                         Sens {(cal.threshold_evaluations['0.35'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.35'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>Anchor-level alert fraction: {cal.threshold_evaluations['0.35'].alert_rate_pct?.toFixed(1)}% of decision anchors (diagnostic only; does not represent event-level alerts per day).</div>
@@ -929,9 +1043,9 @@ export default async function EvidencePage() {
                   )}
 
                   {cal.threshold_evaluations?.['0.60'] && (
-                    <div style={{ padding: '12px', border: '1px solid #78350f', borderRadius: '6px', background: 'rgba(120, 53, 15, 0.05)' }}>
-                      <div style={{ fontSize: '12px', color: '#8c5b0c', textTransform: 'uppercase' }}>High Threshold Diagnostic (0.60)</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, margin: '4px 0', color: 'var(--color-danger)' }}>
+                    <div style={{ padding: '12px', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
+                      <div style={{ fontSize: '12.5px', color: 'var(--color-ink-3)' }}>High Threshold Diagnostic (0.60)</div>
+                      <div style={{ fontSize: '18px', fontWeight: 600, margin: '4px 0', color: 'var(--color-ink-2)' }}>
                         Sens {(cal.threshold_evaluations['0.60'].sensitivity * 100).toFixed(1)}% · Prec {(cal.threshold_evaluations['0.60'].precision * 100).toFixed(1)}%
                       </div>
                       <div style={{ fontSize: '12px', color: '#8c5b0c' }}>High threshold empirical diagnostic (29.9% sensitivity, 74.5% precision, 5.3% anchor-level alert rate). Evaluated on the 44-patient validation partition; does not prove an underlying plateau or collapse mechanism.</div>
@@ -939,120 +1053,108 @@ export default async function EvidencePage() {
                   )}
                 </div>
 
-                <div className="evidence-chart-card" style={{ marginBottom: '16px' }}>
-                  <img src="/evidence/calibration_reliability.svg" alt="Calibration Reliability Diagram with Equal-Width Probability Bins" />
-                </div>
+                {landing?.reliability && <ReliabilityFigure data={landing.reliability} />}
 
                 <p className="fine-print" style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6, margin: 0 }}>
-                  Conformal coverage ({metrics.coverage_80_conformal.estimate ? (metrics.coverage_80_conformal.estimate * 100).toFixed(2) : '80.00'}%, width {metrics.width_80_conformal_mg_dl?.estimate?.toFixed(2) ?? '37.30'} mg/dL), Expected Calibration Error (ECE 0.000094), and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting. No threshold should be treated as an approved clinical operating recommendation.
+                  Conformal coverage{metrics.coverage_80_conformal?.estimate != null && <> ({(metrics.coverage_80_conformal.estimate * 100).toFixed(2)}%{metrics.width_80_conformal_mg_dl?.estimate != null && <>, width {metrics.width_80_conformal_mg_dl.estimate.toFixed(2)} mg/dL</>})</>}, Expected Calibration Error{hazard?.ece != null && <> (ECE {hazard.ece.toFixed(6)})</>}, discrimination and Brier scores are resubstitution diagnostics evaluated on the identical validation split used during calibration fitting.
                 </p>
               </EvidenceDisclosure>
             )}
 
             {/* 6. Scientific governance & Boundary Disclosures Register */}
-            <section className="panel evidence-section" aria-labelledby="governance-heading" style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+            <section className="panel evidence-section register" id="status-register" tabIndex={-1} aria-labelledby="governance-heading">
+              <div className="register-head">
                 <div>
                   <span className="eyebrow">Scientific governance</span>
-                  <h2 id="governance-heading" style={{ margin: '4px 0 0' }}>Validation status and provenance register</h2>
+                  <h2 id="governance-heading">Validation status and provenance register</h2>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {/* Gate 3 Realism */}
+              <div className="register-grid">
+                {/* Gate 3 Realism: compact status; the full analysis is in finding 4 above */}
                 {gate3 && (
-                  <div style={{ border: '1px solid #78350f', borderRadius: '8px', padding: '16px', background: 'rgba(120, 53, 15, 0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8c5b0c' }}>Gate 3 Realism</span>
-                      <span className="status-badge" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', background: 'rgba(185, 28, 28, 0.1)' }}>
+                  <div className="register-card failed">
+                    <div className="register-card-head">
+                      <span className="register-label">Gate 3 · realism</span>
+                      <span className="register-chip failed">
                         <XCircle size={12} aria-hidden="true" /> {gate3.status}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Synthetic-data indistinguishability</h3>
-                    <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
-                      A classifier can tell our synthetic glucose windows from those of an independent mock-real generator (16,719 synthetic vs 16,443 mock-real windows). The comparison data are also synthetic, so this says nothing about realism against people.
-                    </p>
-                    <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
-                      <div><strong>Historical AUROC:</strong> {gate3.historical_auroc?.toFixed(4)}</div>
-                      <div><strong>Duration-Corrected:</strong> {gate3.duration_corrected_auroc?.toFixed(4)}</div>
-                      <div><strong>Acceptance Target:</strong> AUROC &le; 0.65</div>
-                      <div><strong>Top Tells:</strong> <code>jerk_sd</code> (SHAP 0.8878), <code>roc_max_fall</code></div>
-                    </div>
-                    <details className="context-details" style={{ marginTop: '10px' }}>
-                      <summary>Show the Gate 3 summary figure</summary>
-                      <div className="evidence-chart-card" style={{ marginTop: '8px' }}>
-                        <img src="/evidence/gate3_realism_summary.svg" alt="Gate 3 Realism Audit Discriminator Summary" />
-                      </div>
-                    </details>
-                    <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
-                      Synthetic ODE dynamics remain distinguishable; real-world physiological realism is unestablished. Pipeline verified via null control (AUROC 0.507). The duration-corrected value is taken from the recorded summary in docs/evidence; the script that computed it is not in the repository.
-                    </p>
+                    <h3 className="register-title">Synthetic-data realism check</h3>
+                    <p className="register-text">Our synthetic glucose traces remain distinguishable from the comparison generator&apos;s, so realism is not established.</p>
+                    <a className="register-link" href="#gate3-analysis">View Gate 3 analysis</a>
+                    <p className="fine-print register-foot">No realism claim is made.</p>
                   </div>
                 )}
 
                 {/* Sealed Test Cohort */}
-                <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Sealed Test Split</span>
-                    <span className="status-badge" style={{ color: '#4b5563', borderColor: '#9ca3af', background: 'rgba(75, 85, 99, 0.08)' }}>
+                <div className="register-card">
+                  <div className="register-card-head">
+                    <span className="register-label">Sealed test split</span>
+                    <span className="register-chip neutral">
                       Sealed · not run
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>Held-out test cohort</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                  <h3 className="register-title">Held-out test cohort</h3>
+                  <p className="register-text">
                     Sealed evaluation on the held-out test split (a separate set of 44 patients, not the 44 validation patients) has not been run.
                   </p>
-                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
+                  <div className="register-facts">
                     <div><strong>Why it is not run:</strong> the model was trained from code that had not been committed, and two training source files have changed since, so a test result could not be tied to exactly reproducible code.</div>
-                    <div><strong>What this does not affect:</strong> the check that the evaluation report, checkpoint and data match the recorded run.</div>
-                    <details className="context-details"><summary>Technical detail</summary><p style={{ margin: '6px 0 0' }}>The run manifest (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>) records uncommitted changes in 11 files; <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</p></details>
-                    <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
+                    <details className="context-details register-more"><summary>Details</summary>
+                      <div className="register-facts register-details">
+                        <div><strong>What this does not affect:</strong> the check that the evaluation report, checkpoint and data match the recorded run.</div>
+                        <div><strong>Status:</strong> not executed, so the test result cannot be attributed to an exactly reproducible training source.</div>
+                        <div><strong>Earlier record:</strong> an earlier demo run&apos;s 18-subject &lsquo;test&rsquo; record is kept separately and excluded from claims.</div>
+                        <div><strong>Technical detail:</strong> The run manifest (<code>run_manifest.json</code> → <code>preflight.git.dirty</code>) records uncommitted changes in 11 files; <code>backend/train_pr_tft.py</code> and <code>backend/ukf_twin.py</code> now differ from the source hashes recorded at training.</div>
+                      </div>
+                    </details>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print register-foot">
                     No performance claim is made for unexecuted test evaluation.
                   </p>
                 </div>
 
                 {/* External Dataset */}
-                <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>External Dataset</span>
-                    <span className="status-badge" style={{ color: '#8c5b0c', borderColor: '#8c5b0c', background: 'rgba(140, 91, 12, 0.08)' }}>
+                <div className="register-card">
+                  <div className="register-card-head">
+                    <span className="register-label">External dataset</span>
+                    <span className="register-chip nogo">
                       <AlertCircle size={12} aria-hidden="true" /> NO-GO
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>ShanghaiT2DM diagnostic</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                  <h3 className="register-title">ShanghaiT2DM diagnostic</h3>
+                  <p className="register-text">
                     Assessed diagnostically for input-contract feasibility with the locked model.
                   </p>
-                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
-                    <div><strong>Sampling Interval:</strong> 15 min (Contract: 5 min)</div>
-                    <div><strong>Missing Channels:</strong> Wearable &amp; meal logs absent</div>
+                  <div className="register-facts">
+                    <div><strong>Sampling interval:</strong> 15 min (Contract: 5 min)</div>
+                    <div><strong>Missing channels:</strong> Wearable &amp; meal logs absent</div>
                     <div><strong>Conclusion:</strong> Incompatible; external validation NO-GO</div>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print register-foot">
                     External forecasting evaluation remains unexecuted.
                   </p>
                 </div>
 
                 {/* EW-01 protocol */}
-                <div style={{ border: '1px solid var(--color-line)', borderRadius: '8px', padding: '16px', background: 'var(--color-surface)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-ink-3)' }}>Early Warning</span>
-                    <span className="status-badge" style={{ color: '#4b5563', borderColor: '#9ca3af', background: 'rgba(75, 85, 99, 0.08)' }}>
+                <div className="register-card">
+                  <div className="register-card-head">
+                    <span className="register-label">Early warning</span>
+                    <span className="register-chip neutral">
                       UNEXECUTED
                     </span>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 6px' }}>EW-01 protocol</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.5, margin: '0 0 10px' }}>
+                  <h3 className="register-title">EW-01 protocol</h3>
+                  <p className="register-text">
                     The pre-registered study of early-warning spike alerts has not been run.
                   </p>
-                  <div style={{ fontSize: '13px', display: 'grid', gap: '4px' }}>
+                  <div className="register-facts">
                     <div><strong>Protocol:</strong> awaiting sign-off before it can run</div>
-                    <div><strong>Prospective Trial:</strong> Not conducted</div>
+                    <div><strong>Prospective trial:</strong> Not conducted</div>
                     <div><strong>Status:</strong> Excluded from release claims</div>
                   </div>
-                  <p className="fine-print" style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--color-ink-3)' }}>
+                  <p className="fine-print register-foot">
                     Passing interface tests do not constitute clinical alert validation.
                   </p>
                 </div>
@@ -1063,7 +1165,7 @@ export default async function EvidencePage() {
 
         {/* Methodology appendix: everything a reviewer may audit, out of the reading path. */}
         <details className="panel evidence-section evidence-disclosure methodology-appendix" data-testid="methodology-appendix">
-          <summary><span>Methodology appendix <small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
+          <summary><span>Methodology appendix<small className="appendix-scope">Historical reference · artifact hashes · data source</small></span><span className="evidence-disclosure-hint" aria-hidden="true">Details</span></summary>
         <section className="evidence-disclosure-body" aria-labelledby="historical-record-heading">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span className="eyebrow" style={{ color: 'var(--color-ink-3)' }}>Separate fixed evidence record</span>
@@ -1086,11 +1188,11 @@ export default async function EvidencePage() {
               <div className="reproducibility-summary-title">
                 <span className="eyebrow" style={{ color: 'var(--color-accent)' }}>Technical methodology and reproducibility</span>
                 <h3>Artifact hashes and verification</h3>
-                <p>Click to inspect SHA-256 byte manifests, training checkpoint provenance, data integrity digests, and pipeline parameters.</p>
+                <p className="repro-hint">SHA-256 byte manifests, training checkpoint provenance, data integrity digests and pipeline parameters.</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="status-badge" style={{ borderColor: 'var(--color-ok)', color: 'var(--color-ok)', background: 'rgba(11, 113, 107, 0.08)' }}>
-                  <CheckCircle2 size={12} aria-hidden="true" /> SHA-256 Verified
+                <span className="register-chip neutral">
+                  Hashes match manifest
                 </span>
                 <ChevronDown size={16} aria-hidden="true" style={{ color: 'var(--color-ink-3)' }} />
               </div>
@@ -1098,7 +1200,7 @@ export default async function EvidencePage() {
             <div className="reproducibility-content">
               <div style={{ padding: '16px 0 12px', fontSize: '13px', color: 'var(--color-ink-2)', lineHeight: 1.6 }}>
                 <p style={{ margin: '0 0 12px' }}>
-                  Cryptographic verification succeeded. All recorded artifact hashes below match the on-disk byte manifests and checkpoint identities.
+                  The recorded artifact hashes below match the on-disk files and checkpoint identities. This confirms which files were evaluated; it is not evidence of model quality.
                   {manifest.run_kind && manifest.run_kind !== 'full' ? ' Notice: Pipeline-check run, not validation evidence.' : ''}
                 </p>
                 <dl className="provenance-fields" style={{ margin: 0 }}>
@@ -1144,10 +1246,7 @@ export default async function EvidencePage() {
         </div>
         </details>
 
-        <footer className="research-footer">
-          Research Only (Not for clinical decisions)
-          <span>Evidence availability is separate from prototype functionality</span>
-        </footer>
+        <footer className="research-footer"><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
       </main>
     </div>
   );

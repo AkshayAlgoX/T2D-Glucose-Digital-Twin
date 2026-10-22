@@ -3,6 +3,8 @@ import * as d3Scale from 'd3-scale';
 import * as d3Shape from 'd3-shape';
 import { FlaskConical, Footprints, Pill, Utensils, UtensilsCrossed } from 'lucide-react';
 import { formatTime } from '@/lib/formatters/date';
+import { Glyph, HatchDefs } from '@/components/figure/marks';
+import { MealBuilder } from './MealBuilder';
 import { useScenario, type ScenarioComparison, type ScenarioCurvePoint, type ScenarioState } from '@/hooks/useScenario';
 import type { ForecastResponse, MedClass, ScenarioInput } from '@/types/forecast-response';
 
@@ -152,7 +154,7 @@ function spreadLabels<T extends { y: number }>(labels: T[], gap: number, top: nu
 
 export function ScenarioComparisonChart({ result, step = null, change = null, twinFirst = false }: { result: ScenarioComparison; step?: { size: number; offset: number } | null; change?: { start: number; end: number | null; label: string } | null; twinFirst?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
-  const height = width < 420 ? 200 : 250;
+  const height = width < 420 ? 280 : 270;
   const labelled = width >= 520;
   const anchor = Date.parse(result.pinned_as_of);
   const toPoint = (p: ScenarioCurvePoint) => ({ ...p, min: (Date.parse(p.timestamp) - anchor) / 60000 });
@@ -162,7 +164,7 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
   const values = [...base, ...scen].flatMap(p => [p.p10, p.p90]).concat([...base, ...scen].flatMap(p => (p.twin_p50 != null ? [p.twin_p50] : []))).concat(result.current_mg_dl ?? []);
   const yMin = Math.max(0, Math.floor((Math.min(...values) - 10) / 20) * 20);
   const yMax = Math.ceil((Math.max(200, ...values) + 10) / 20) * 20;
-  const m = { left: 40, right: labelled ? 118 : 12, top: 14, bottom: 24 };
+  const m = { left: 40, right: labelled ? 134 : 12, top: 20, bottom: 24 };
   const x = d3Scale.scaleLinear().domain([0, 120]).range([m.left, width - m.right]);
   const y = d3Scale.scaleLinear().domain([yMin, yMax]).range([height - m.bottom, m.top]);
   type P = { min: number; p10: number; p50: number; p90: number };
@@ -178,34 +180,44 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
     <div ref={ref} className="whatif-chart">
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="whatif-chart-title">
         <title id="whatif-chart-title">Baseline forecast compared with the simulated scenario over the next 120 minutes</title>
+        <text x={m.left - 6} y={m.top - 2} textAnchor="end" className="chart-axis">mg/dL</text>
         {yTicks.map(t => <g key={t}>
-          <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} stroke={t === 180 ? 'var(--color-amber)' : 'var(--color-line)'} strokeOpacity={t === 180 ? 0.85 : 1} strokeDasharray={t === 180 ? '5 4' : undefined} />
+          <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} className={t === 180 ? 'wf-threshold' : 'fig-grid'} />
           <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className={t === 180 ? 'chart-axis step-label' : 'chart-axis'}>{t}</text>
         </g>)}
-        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
-        <path d={band(base) ?? ''} fill="var(--color-forecast)" fillOpacity={0.12} />
-        <path d={band(scen) ?? ''} fill="none" stroke="var(--color-projection)" strokeOpacity={0.4} strokeWidth={1} strokeDasharray="3 3" />
-        <path d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
-        <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} fill="none" stroke="var(--color-forecast)" strokeWidth={2.5} />
-        <path d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-surface)" strokeWidth={6} strokeOpacity={0.85} aria-hidden="true" />
-        <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={2.5} strokeDasharray="6 4" />
-        {baseTwin.length > 0 && <path data-testid="whatif-twin-base-line" d={twinLine([...startTwin, ...baseTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={1.75} strokeOpacity={0.6} />}
-        {scenTwin.length > 0 && <path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={twinFirst ? 2.5 : 1.75} strokeDasharray="6 4" />}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className={t === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{t === 0 ? formatTime(result.pinned_as_of) : `+${t / 60} h`}</text>)}
+        <HatchDefs id="whatif-hatch" />
+        <path d={band(scen) ?? ''} className="wf-band-scen" />
+        {baseTwin.length > 0 && <path data-testid="whatif-twin-base-line" d={twinLine([...startTwin, ...baseTwin]) ?? ''} className="fig-ghost-twin" />}
+        <path data-testid="whatif-baseline-line" d={line([...start, ...base]) ?? ''} className="fig-ghost" />
+        {scenTwin.length > 1 && <path data-testid="whatif-wedge" d={d3Shape.area<{ min: number; v: number; p50: number }>().x(p => x(p.min)).y0(p => y(p.v)).y1(p => y(p.p50))([...(result.current_mg_dl != null ? [{ min: 0, v: result.current_mg_dl, p50: result.current_mg_dl }] : []), ...scen.filter(p => p.twin_p50 != null).map(p => ({ min: p.min, v: p.twin_p50 as number, p50: p.p50 }))]) ?? ''} fill="url(#whatif-hatch)" className="fig-wedge" />}
+        {scenTwin.length > 0 && <><path d={twinLine([...startTwin, ...scenTwin]) ?? ''} className="fig-halo" aria-hidden="true" /><path data-testid="whatif-twin-line" d={twinLine([...startTwin, ...scenTwin]) ?? ''} className={'fig-twin' + (twinFirst ? ' wf-emphasis' : '')} /></>}
+        <path d={line([...start, ...scen]) ?? ''} className="fig-halo" aria-hidden="true" />
+        <path data-testid="whatif-scenario-line" d={line([...start, ...scen]) ?? ''} className="fig-median" />
         {change && <g data-testid="whatif-change-marker" aria-hidden="true">
-          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
-          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
+          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} className="wf-change-window" />}
+          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} className="wf-change-line" />
           <text x={x(change.start) + 5} y={m.top + 11} className="chart-axis change-label">{change.label} · +{change.start} min</text>
         </g>}
         {labelled && (() => {
           const last = <T,>(a: T[]) => a[a.length - 1];
           const lb = last(base), ls = last(scen), lt = last(scenTwin);
           const raw = [
-            lb && { key: 'base', y: y(lb.p50), text: 'Unchanged', cls: 'lbl-base' },
-            ls && { key: 'scen', y: y(ls.p50), text: 'With change', cls: 'lbl-scen' },
+            lb && { key: 'base', y: y(lb.p50), text: 'Forecast, unchanged', cls: 'lbl-base' },
+            ls && { key: 'scen', y: y(ls.p50), text: 'Forecast + change', cls: 'lbl-scen' },
             lt && { key: 'twin', y: y(lt.v), text: 'Twin + change', cls: 'lbl-twin' },
-            baseTwin.length > 0 && { key: 'twinBase', y: y(baseTwin[baseTwin.length - 1].v), text: 'Twin, unchanged', cls: 'lbl-twin' },
+            baseTwin.length > 0 && { key: 'twinBase', y: y(baseTwin[baseTwin.length - 1].v), text: 'Twin, unchanged', cls: 'lbl-base' },
           ].filter(Boolean) as Array<{ key: string; y: number; text: string; cls: string }>;
-          return <g aria-hidden="true">{spreadLabels(raw, 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
+          return <g aria-hidden="true">{spreadLabels(raw, 18, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>;
+        })()}
+        {(() => {
+          const b = learnedBlip([{ min: 0, final: 0, twin: 0 }, ...changeSeries(result)]);
+          const p = b ? scen.find(q => Math.round(q.min) === b.min) : null;
+          if (!b || !p || (step && step.offset === b.min)) return null;
+          return <g data-testid="whatif-blip-marker" aria-hidden="true">
+            <circle cx={x(p.min)} cy={y(p.p50)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
+            <text x={x(p.min) + 9} y={y(p.p50) + 18} className="chart-axis step-label">5-min blip</text>
+          </g>;
         })()}
         {step && (() => {
           const p = scen.find(q => Math.round(q.min) === step.offset);
@@ -219,12 +231,13 @@ export function ScenarioComparisonChart({ result, step = null, change = null, tw
           </g>;
         })()}
       </svg>
-      <div className="whatif-legend" aria-hidden="true">
-        <span><i className="whatif-swatch baseline" />Unchanged plan (blue shading: its P10–P90)</span>
-        <span><i className="whatif-swatch scenario" />With this change (dotted outline: its P10–P90)</span>
-        {baseTwin.length > 0 && <span><i className="whatif-swatch twin solid thin" />Physiology twin, unchanged plan</span>}
-        {scenTwin.length > 0 && <span><i className="whatif-swatch twin" />Physiology twin with this change</span>}
-        <span><i className="whatif-swatch threshold" />Spike level 180 mg/dL</span>
+      <div className="whatif-legend fig-legend" aria-hidden="true">
+        <span><Glyph kind="ghost" />Forecast, unchanged plan (median)</span>
+        <span><Glyph kind="median" />Forecast with this change (blue shading: its P10–P90)</span>
+        {baseTwin.length > 0 && <span><Glyph kind="ghost-twin" />Physiology twin, unchanged plan</span>}
+        {scenTwin.length > 0 && <span><Glyph kind="twin" />Physiology twin with this change</span>}
+        {scenTwin.length > 1 && <span><Glyph kind="wedge" />Learned adjustment with this change</span>}
+        <span><Glyph kind="threshold" />180 mg/dL level</span>
       </div>
     </div>
   );
@@ -251,8 +264,8 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const rows = changeSeries(result);
   const labelled = width >= 520;
-  const height = width < 420 ? 150 : 170;
-  const m = { left: 40, right: labelled ? 100 : 12, top: 12, bottom: 24 };
+  const height = width < 420 ? 170 : 190;
+  const m = { left: 40, right: labelled ? 134 : 12, top: 12, bottom: 24 };
   // Both plans start from the same reading, so the change is zero at the anchor.
   const series = [{ min: 0, final: 0, twin: rows.some(r => r.twin != null) ? 0 : null }, ...rows];
   const vals = series.flatMap(r => [r.final, r.twin ?? 0]);
@@ -279,30 +292,32 @@ export function ScenarioChangeChart({ result, change = null, step = null, twinFi
           <text x={m.left - 6} y={y(t) + 4} textAnchor="end" className="chart-axis">{t > 0 ? '+' + t : t === 0 ? '0' : '−' + Math.abs(t)}</text>
         </g>)}
         {change && <g aria-hidden="true">
-          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} fill="var(--color-projection)" opacity={0.1} />}
-          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} stroke="var(--color-projection)" strokeOpacity={0.8} strokeDasharray="2 3" />
+          {change.end != null && <rect x={x(change.start)} y={m.top} width={Math.max(2, x(change.end) - x(change.start))} height={height - m.bottom - m.top} className="wf-change-window" />}
+          <line x1={x(change.start)} x2={x(change.start)} y1={m.top} y2={height - m.bottom} className="wf-change-line" />
         </g>}
-        {twinRows.length > 1 && <path data-testid="change-gap" d={gap(twinRows) ?? ''} fill="var(--color-ink)" fillOpacity={0.08} />}
-        {twinRows.length > 1 && <path data-testid="change-twin-line" d={twinLine(twinRows) ?? ''} fill="none" stroke="var(--color-physics)" strokeWidth={twinFirst ? 2.75 : 1.75} strokeDasharray={twinFirst ? undefined : '2 3'} />}
-        <path data-testid="change-final-line" d={finalLine(series) ?? ''} fill="none" stroke="var(--color-projection)" strokeWidth={twinFirst ? 2 : 2.5} strokeDasharray={twinFirst ? '6 4' : undefined} strokeLinejoin="round" />
+        <HatchDefs id="change-hatch" />
+        {twinRows.length > 1 && <path data-testid="change-gap" d={gap(twinRows) ?? ''} fill="url(#change-hatch)" className="fig-wedge" />}
+        {twinRows.length > 1 && <path data-testid="change-twin-line" d={twinLine(twinRows) ?? ''} className={'fig-twin' + (twinFirst ? ' wf-emphasis' : '')} />}
+        <path data-testid="change-final-line" d={finalLine(series) ?? ''} className="fig-median" />
         {step && (() => {
           const r = series.find(q => q.min === step.offset);
           return r ? <circle cx={x(r.min)} cy={y(r.final)} r={5} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} aria-hidden="true" /> : null;
         })()}
         {blip && <g data-testid="change-blip" aria-hidden="true">
           <circle cx={x(blip.min)} cy={y(blip.final)} r={6} fill="none" stroke="var(--color-amber)" strokeWidth={1.5} />
-          <text x={x(blip.min) + (blip.min > 60 ? -10 : 10)} y={y(blip.final) + (y(blip.final) < height - m.bottom - 24 ? 20 : -10)} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '1-step blip' : 'single 5-min blip in the learned adjustment'}</text>
+          <line x1={x(blip.min)} x2={x(blip.min)} y1={y(blip.final) - 7} y2={m.top + 14} stroke="var(--color-amber)" strokeWidth={1} />
+          <text x={x(blip.min) + (blip.min > 60 ? -6 : 6)} y={m.top + 10} textAnchor={blip.min > 60 ? 'end' : 'start'} className="chart-axis blip-label">{width < 420 ? '5-min blip' : '5-min blip in the learned adjustment'}</text>
         </g>}
         {labelled && <g aria-hidden="true">{spreadLabels([
           { key: 'f', y: y(lastFinal.final), text: 'Final forecast', cls: 'lbl-scen' },
           ...(lastTwin ? [{ key: 't', y: y(lastTwin.twin), text: 'Twin alone', cls: 'lbl-twin' }] : []),
-        ], 15, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>}
-        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className="chart-axis">{t === 0 ? 'now' : `+${t}m`}</text>)}
+        ], 17, m.top + 6, height - m.bottom).map(l => <text key={l.key} x={width - m.right + 8} y={l.y + 4} className={'chart-axis end-label ' + l.cls}>{l.text}</text>)}</g>}
+        {(width < 420 ? [0, 60, 120] : [0, 30, 60, 90, 120]).map(t => <text key={t} x={x(t)} y={height - 8} textAnchor={t === 0 ? 'start' : t === 120 ? 'end' : 'middle'} className={t === 0 ? 'chart-axis fig-axis-now' : 'chart-axis'}>{t === 0 ? formatTime(result.pinned_as_of) : `+${t / 60} h`}</text>)}
       </svg>
-      <div className="whatif-legend" aria-hidden="true">
-        <span><i className={'whatif-swatch scenario' + (twinFirst ? '' : ' solid')} />Final forecast: with change minus unchanged</span>
-        {twinRows.length > 1 && <span><i className={'whatif-swatch twin' + (twinFirst ? ' solid' : '')} />Physiology twin alone: same difference{twinFirst ? ' (shown first: the input is outside the network\u2019s training range)' : ''}</span>}
-        {twinRows.length > 1 && <span><i className="whatif-swatch gap" />Gap: what the learned adjustment adds or removes</span>}
+      <div className="whatif-legend fig-legend" aria-hidden="true">
+        <span><Glyph kind="median" />Final forecast: with change minus unchanged</span>
+        {twinRows.length > 1 && <span><Glyph kind="twin" />Physiology twin alone: same difference{twinFirst ? ' (read this first: the input is outside the network\u2019s training range)' : ''}</span>}
+        {twinRows.length > 1 && <span><Glyph kind="wedge" />Gap: what the learned adjustment adds or removes</span>}
       </div>
     </div>
   );
@@ -359,6 +374,7 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
   const outOfRange = warnings.find(w => w.code === 'SCENARIO_OUT_OF_RANGE');
   const moved = liveAsOf != null && Date.parse(liveAsOf) !== Date.parse(state.asOf);
   const change = changeWindow(state.input);
+  const gapPoint = state.result.scenario_forecast.find(p => Math.round((Date.parse(p.timestamp) - Date.parse(state.asOf)) / 60000) === sum.largestDiffMin) ?? null;
   return (
     <div ref={resultRef} className="whatif-result stage" data-testid="scenario-result">
       <h3 ref={titleRef} tabIndex={-1} className="whatif-result-title">Result: {describeInput(state.input)} · from <time dateTime={state.asOf}>{formatTime(state.asOf)} UTC</time></h3>
@@ -371,40 +387,44 @@ function Readout({ state, liveAsOf }: { state: Extract<ScenarioState, { status: 
         <p>{state.input.kind === 'skip_habitual_meal' ? `No usual ${state.input.meal_slot} is expected between ${formatTime(state.asOf)} and ${formatTime(new Date(Date.parse(state.asOf) + 7200000).toISOString())} UTC, so skipping it leaves the forecast as it is.` : 'The backend returned the same forecast for this change at every time point.'} Try a meal or some activity instead.</p>
       </div> : <>
       <figure className="whatif-figure">
-        <figcaption><strong>Glucose under each plan</strong><span>Forecast median with its 80% band, next 2 h from {formatTime(state.asOf)} UTC</span></figcaption>
+        <figcaption><strong>Figure 2. Glucose under each plan</strong><span>Next 2 h from {formatTime(state.asOf)} UTC. Grey: unchanged plan (median). Colour: with this change, with its 80% band.</span></figcaption>
         <ScenarioComparisonChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <figure className="whatif-figure">
-        <figcaption><strong>What the change does, and when</strong><span>With the change minus the unchanged plan, at each time{outOfRange ? ' · green: physiology twin alone, pink dashed: final forecast' : ''}</span></figcaption>
+        <figcaption><strong>Figure 3. What the change does, and when</strong><span>With the change minus the unchanged plan, at each time. Blue: final forecast; rust dashed: physiology twin alone; hatched: the learned adjustment&apos;s share. A circled 5-min blip is a known single-step artefact of the learned adjustment; it is flagged, never smoothed.</span></figcaption>
         <ScenarioChangeChart result={state.result} step={sum.isolatedStep} change={change} twinFirst={!!outOfRange} />
       </figure>
       <dl className="whatif-metrics">
+        <div className="lead">
+          <dt>Biggest gap between the two forecast curves</dt>
+          <dd data-testid="scenario-largest-diff"><span className="num t-final">{signed(sum.largestDiff, 1, ' mg/dL')}</span> <small>at +{sum.largestDiffMin} min{gapPoint ? ` (${formatTime(gapPoint.timestamp)} UTC)` : ''} · the service returns bands for each plan, not for their difference, so this gap has no interval</small>
+            {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
+        </div>
+        {sum.twinLargestDiff != null && <div>
+          <dt>Same gap, physiology twin alone</dt>
+          <dd data-testid="scenario-twin-diff"><span className="num t-twin">{signed(sum.twinLargestDiff, 1, ' mg/dL')}</span> <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
+        </div>}
         <div>
           <dt>New-spike onset risk, 2 h (calibrated on the validation split)</dt>
           <dd data-testid="scenario-risk">
             {riskAvailable
-              ? <>{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)} <strong>({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
+              ? <><span className="num">{pct(metrics.baseline_probability)} → {pct(metrics.new_probability)}</span> <strong className="nowrap">({signed(sum.deltaPoints ?? 0, 1, ' pts')})</strong></>
               : <>Unavailable{fallback_used === 'twin_only' ? ' (physics-only fallback; no calibrated risk)' : ''}</>}
           </dd>
         </div>
-        <div>
-          <dt>Largest change at the same time · final forecast</dt>
-          <dd data-testid="scenario-largest-diff">{signed(sum.largestDiff, 1, ' mg/dL')} <small>at +{sum.largestDiffMin} min</small>
-            {sum.isolatedStep && sum.isolatedStep.offset === sum.largestDiffMin && <small className="step-flag" data-testid="scenario-diff-on-step">Falls on the same single 5-min step.</small>}</dd>
-        </div>
-        {sum.twinLargestDiff != null && <div>
-          <dt>Same, physiology twin alone</dt>
-          <dd data-testid="scenario-twin-diff">{signed(sum.twinLargestDiff, 1, ' mg/dL')} <small>at +{sum.twinLargestDiffMin} min · mechanistic rollout, no learned adjustment</small></dd>
-        </div>}
-        <div className="secondary">
+      </dl>
+      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.8 * Math.abs(sum.twinLargestDiff) && <p className="whatif-gap" data-testid="scenario-twin-gap"><strong>Why the numbers differ.</strong> The final forecast moves by {signed(sum.largestDiff, 1, ' mg/dL')} at most, smaller than the physiology twin alone ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): the learned adjustment offsets part of the twin&apos;s response to this change (the hatched wedge).{outOfRange ? ' Because this input is outside the training range, the size of that offset is not reliable.' : ''} Neither size is validated.</p>}
+      <details className="whatif-more">
+        <summary>Highest values under each plan</summary>
+        <dl className="whatif-metrics secondary-metrics"><div className="secondary">
           <dt>Highest median glucose in the next 2 h</dt>
           <dd data-testid="scenario-peak">{sum.baselinePeak.toFixed(1)} → {sum.scenarioPeak.toFixed(1)} mg/dL <strong>({signed(sum.deltaPeak, 1)})</strong>
             <small data-testid="scenario-peak-timing">at +{sum.baselinePeakMin} min → at +{sum.scenarioPeakMin} min</small>
             {sum.isolatedStep && sum.isolatedStep.offset === sum.scenarioPeakMin && <small className="step-flag" data-testid="scenario-peak-on-step">This highest value is a single 5-min step, not a sustained level.</small>}</dd>
-        </div>
-      </dl>
-      {sum.twinLargestDiff != null && Math.abs(sum.largestDiff) < 0.8 * Math.abs(sum.twinLargestDiff) && <p className="whatif-gap" data-testid="scenario-twin-gap"><strong>Why the numbers differ.</strong> The final forecast moves by {signed(sum.largestDiff, 1, ' mg/dL')} at most, smaller than the physiology twin alone ({signed(sum.twinLargestDiff, 1, ' mg/dL')}): the learned adjustment offsets part of the twin&apos;s response to this change.{outOfRange ? ' Because this input is outside the training range, the size of that offset is not reliable.' : ''} The change in the highest value ({signed(sum.deltaPeak, 1)}) is smaller again because the highest values are compared whenever they occur, while the largest same-time difference falls at +{sum.largestDiffMin} min. Neither size is validated.</p>}
-      <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. The highest values can fall at different times, so the largest same-time difference is shown too. Synthetic-model outputs, not a measured or validated treatment effect.</p>
+        </div></dl>
+        <p className="fine-print">The highest values are compared whenever they occur, so their difference ({signed(sum.deltaPeak, 1)}) is not the same as the largest difference at the same time ({signed(sum.largestDiff, 1)} at +{sum.largestDiffMin} min). Read the curves, not one extreme point.</p>
+      </details>
+      <p className="fine-print" data-testid="scenario-definitions">Both curves come from one backend response at the same anchor. Synthetic-model outputs, not a measured or validated treatment effect.</p>
       <ChangeTable result={state.result} />
       </>}
       {warnings.filter(w => w.code !== 'SCENARIO_OUT_OF_RANGE').map(w => <p key={w.code + w.title} className="fine-print" data-testid="scenario-warning"><strong>{w.title}.</strong> {w.detail}</p>)}
@@ -428,7 +448,7 @@ function ErrorPanel({ state }: { state: Extract<ScenarioState, { status: 'error'
     <div ref={ref} tabIndex={-1} className={`whatif-error ${error.kind === 'unsupported' ? 'neutral' : ''}`} data-testid="scenario-error" data-kind={error.kind}>
       <strong>{error.title}</strong>
       <p>{body}</p>
-      {error.detail && <p className="fine-print">Service detail ({error.code}): {error.detail}</p>}
+      {error.detail && <details className="whatif-tech"><summary>Technical detail</summary><p className="fine-print">Service detail ({error.code}): {error.detail}</p></details>}
     </div>
   );
 }
@@ -463,15 +483,19 @@ export function announce(state: ScenarioState): string {
   const risk = m.baseline_probability != null && m.new_probability != null ? ` Spike onset risk ${pct(m.baseline_probability)} to ${pct(m.new_probability)}.` : '';
   const warn = state.result.warnings.some(w => w.code === 'SCENARIO_OUT_OF_RANGE') ? ' Inputs are outside the training range.' : '';
   if (sum.noChange) return `Result ready: ${describeInput(state.input)}. Nothing changes in the next 2 hours.`;
-  return `Result ready: ${describeInput(state.input)}. Largest change at the same time ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
+  return `Result ready: ${describeInput(state.input)}. Biggest gap between the two forecast curves ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
 }
 
-export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast?: ForecastResponse | null }) {
+export function ScenarioEditor({ patientId, currentForecast, onStateChange }: { patientId: string; currentForecast?: ForecastResponse | null; onStateChange?: (state: ScenarioState, plate: string | null) => void }) {
   const liveAsOf = currentForecast?.as_of ?? null;
   const settling = useSettlingAnchor(liveAsOf);
   const asOf = settling ? null : liveAsOf;
   const { state, run, clear } = useScenario(patientId, asOf);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  // The plate behind the carbohydrate figure, until the figure is edited by hand.
+  const [plate, setPlate] = useState<string | null>(null);
+  useEffect(() => { onStateChange?.(state, state.status === 'result' && state.input.kind === 'meal' ? plate : null); }, [state, plate, onStateChange]);
   const medClass: MedClass = currentForecast?.ehr_context?.med_classes?.[0] ?? 'metformin';
   const built = buildScenarioInput(form, medClass);
   const loading = state.status === 'loading';
@@ -483,34 +507,47 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
     if ('input' in b && asOf && !loading) void run(b.input);
   };
 
+  const runPreset = (p: typeof PRESETS[number]) => { setPlate(null); const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); };
+  const medicationPreset = PRESETS.find(p => p.id === 'medication');
+
   return (
     <section className="whatif-panel" aria-labelledby="simulation-heading">
       <div className="section-heading">
         <h2 id="simulation-heading"><FlaskConical size={16} aria-hidden="true" /> What-if simulation</h2>
         <span className="status-badge">Live backend model</span>
       </div>
-      <p className="whatif-intro">Change this patient&apos;s plan and the twin re-forecasts the next 2 hours from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of the current forecast</> : 'the moment of the current forecast'}.</p>
+      <ol className="fig-notes whatif-key" aria-label="What each result shows">
+        <li className="n-twin"><b className="n">1</b><span>the physiology twin&apos;s own response</span></li>
+        <li className="n-adj"><b className="n">2</b><span>the learned adjustment&apos;s share</span></li>
+        <li className="n-final"><b className="n">3</b><span>the final forecast and its risk</span></li>
+      </ol>
+      <p className="whatif-intro">Choose a meal or some activity and the backend re-runs the twin and the network from {liveAsOf ? <><time dateTime={liveAsOf}>{formatTime(liveAsOf)} UTC</time>, the moment of Figure 1&apos;s forecast</> : 'the moment of Figure 1\'s forecast'}. Compare the whole curve, not one number.</p>
       <p className="whatif-disclaimer" data-testid="scenario-disclaimer"><strong>{SCENARIO_DISCLAIMER}</strong> The size of the change has not been validated against human data.</p>
 
       <p className="whatif-step-label" id="whatif-presets-label">Try a common change</p>
       <div className="whatif-presets" role="group" aria-labelledby="whatif-presets-label">
-        {PRESETS.map(p => {
+        {PRESETS.filter(p => p.id !== 'medication').map(p => {
           const Icon = PRESET_ICONS[p.id];
-          const refused = p.id === 'medication';
           return (
-            <button key={p.id} type="button" className={refused ? 'secondary-button preset preset-refused' : 'secondary-button preset'} disabled={!asOf || loading}
-              aria-label={refused ? p.label : undefined}
-              title={refused ? 'Not modelled: the backend refuses medication changes rather than guessing' : undefined}
-              onClick={() => { const next = { ...form, ...p.form }; setForm(next); submit(next); }}>
-              {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>{refused && <small aria-hidden="true">not modelled</small>}
+            <button key={p.id} type="button" className="secondary-button preset" disabled={!asOf || loading}
+              aria-pressed={activePreset === p.id}
+              onClick={() => runPreset(p)}>
+              {Icon && <Icon size={16} aria-hidden={true} />}<span>{p.label}</span>
             </button>
           );
         })}
       </div>
       <p className="whatif-preset-note" data-testid="whatif-preset-note">Any added meal is outside the network&apos;s training range, so meal results come with a warning: read them against the physiology twin&apos;s response.</p>
+      {medicationPreset && <p className="whatif-med-note">The twin has no drug terms, so the backend refuses medication changes rather than guessing.{' '}
+        <button type="button" className="preset-refused-link" disabled={!asOf || loading}
+          aria-label={`${medicationPreset.label} (not modelled)`} aria-pressed={activePreset === medicationPreset.id}
+          onClick={() => runPreset(medicationPreset)}>
+          {medicationPreset.label} <small aria-hidden="true">not modelled</small>
+        </button>
+      </p>}
       <p className="whatif-step-label">Or set your own</p>
 
-      <form className="whatif-form" onSubmit={e => { e.preventDefault(); submit(form); }}>
+      <form className="whatif-form" onSubmit={e => { e.preventDefault(); setActivePreset(null); submit(form); }}>
         <label>Change
           <select value={form.kind} disabled={loading} onChange={e => set({ kind: e.target.value as Kind })}>
             <option value="meal">Add a meal</option>
@@ -520,7 +557,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           </select>
         </label>
         {form.kind === 'meal' && <label>Carbohydrate (g)
-          <input type="number" inputMode="decimal" min={0} max={250} value={form.carbs} disabled={loading} onChange={e => set({ carbs: e.target.value })} />
+          <input type="number" inputMode="decimal" min={0} max={250} step={0.1} value={form.carbs} disabled={loading} onChange={e => { setPlate(null); set({ carbs: e.target.value }); }} />
         </label>}
         {form.kind === 'activity' && <>
           <label>Duration (min)
@@ -547,10 +584,12 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         </label>}
         <div className="whatif-actions">
           <button type="submit" className="primary-button" disabled={!canRun}>{loading ? 'Simulating…' : 'Run simulation'}</button>
-          {state.status !== 'idle' && <button type="button" className="secondary-button" onClick={clear}>{loading ? 'Cancel' : 'Clear'}</button>}
+          {state.status !== 'idle' && <button type="button" className="secondary-button" onClick={() => { setActivePreset(null); clear(); }}>{loading ? 'Cancel' : 'Clear'}</button>}
         </div>
         {'error' in built && <p role="alert" className="whatif-invalid">{built.error}</p>}
       </form>
+      {form.kind === 'meal' && <MealBuilder disabled={loading} onUse={(carbs, description) => { setActivePreset(null); setPlate(description); set({ carbs: String(carbs) }); }} />}
+      {form.kind === 'meal' && plate && <p className="fine-print meal-applied" data-testid="meal-applied">Carbohydrate set from the plate: {plate} = {form.carbs} g. Press Run simulation to compare.</p>}
 
       <p className="sr-only" aria-live="polite" data-testid="scenario-announcement">{announce(state)}</p>
       <div aria-busy={loading} className="whatif-output">

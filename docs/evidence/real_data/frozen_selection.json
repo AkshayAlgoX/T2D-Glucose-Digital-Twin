@@ -1,0 +1,250 @@
+{
+  "timestamp": "2026-10-22 00:09:14",
+  "protocol": "PREREGISTRATION.md v1",
+  "selected_model": "Physiological Residual Ensemble",
+  "validation_metrics": {
+    "rmse60": 28.861657708380648,
+    "mae60": 20.680220146083055,
+    "event_sensitivity": 0.41919191919191917,
+    "event_sensitivity_30m": 0.16666666666666666,
+    "alert_precision": 0.6693548387096774,
+    "false_alerts_per_day": 0.42506929695093415,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 198.0,
+    "detected_onsets": 83.0,
+    "detected_30m": 33.0,
+    "total_alerts": 124.0,
+    "false_alerts": 41.0,
+    "per_patient_stats": {
+      "BIGIDEAS-002": {
+        "onsets": 6,
+        "det": 0,
+        "det_30m": 0,
+        "alerts": 0,
+        "fa": 0,
+        "days": 6.864583333333333,
+        "lead_times": []
+      },
+      "BIGIDEAS-012": {
+        "onsets": 7,
+        "det": 0,
+        "det_30m": 0,
+        "alerts": 0,
+        "fa": 0,
+        "days": 6.579861111111111,
+        "lead_times": []
+      },
+      "BIGIDEAS-014": {
+        "onsets": 4,
+        "det": 0,
+        "det_30m": 0,
+        "alerts": 0,
+        "fa": 0,
+        "days": 6.701388888888889,
+        "lead_times": []
+      },
+      "CGMacros-005": {
+        "onsets": 20,
+        "det": 11,
+        "det_30m": 6,
+        "alerts": 19,
+        "fa": 8,
+        "days": 8.840277777777779,
+        "lead_times": [
+          90,
+          70,
+          15,
+          10,
+          50,
+          5,
+          110,
+          5,
+          65,
+          95,
+          15
+        ]
+      },
+      "CGMacros-007": {
+        "onsets": 0,
+        "det": 0,
+        "det_30m": 0,
+        "alerts": 0,
+        "fa": 0,
+        "days": 6.03125,
+        "lead_times": []
+      },
+      "CGMacros-011": {
+        "onsets": 9,
+        "det": 5,
+        "det_30m": 0,
+        "alerts": 10,
+        "fa": 5,
+        "days": 8.840277777777779,
+        "lead_times": [
+          10,
+          10,
+          5,
+          10,
+          10
+        ]
+      },
+      "CGMacros-013": {
+        "onsets": 5,
+        "det": 1,
+        "det_30m": 0,
+        "alerts": 4,
+        "fa": 3,
+        "days": 8.840277777777779,
+        "lead_times": [
+          10
+        ]
+      },
+      "CGMacros-020": {
+        "onsets": 33,
+        "det": 21,
+        "det_30m": 8,
+        "alerts": 28,
+        "fa": 7,
+        "days": 8.836805555555555,
+        "lead_times": [
+          5,
+          70,
+          10,
+          5,
+          25,
+          30,
+          5,
+          10,
+          5,
+          115,
+          15,
+          120,
+          40,
+          10,
+          75,
+          40,
+          10,
+          15,
+          10,
+          5,
+          80
+        ]
+      },
+      "CGMacros-023": {
+        "onsets": 29,
+        "det": 1,
+        "det_30m": 0,
+        "alerts": 1,
+        "fa": 0,
+        "days": 8.840277777777779,
+        "lead_times": [
+          5
+        ]
+      },
+      "CGMacros-036": {
+        "onsets": 19,
+        "det": 0,
+        "det_30m": 0,
+        "alerts": 0,
+        "fa": 0,
+        "days": 8.840277777777779,
+        "lead_times": []
+      },
+      "CGMacros-041": {
+        "onsets": 31,
+        "det": 21,
+        "det_30m": 8,
+        "alerts": 28,
+        "fa": 7,
+        "days": 8.815972222222221,
+        "lead_times": [
+          30,
+          10,
+          60,
+          65,
+          5,
+          15,
+          50,
+          35,
+          5,
+          70,
+          5,
+          75,
+          10,
+          25,
+          5,
+          25,
+          90,
+          5,
+          5,
+          5,
+          5
+        ]
+      },
+      "CGMacros-045": {
+        "onsets": 35,
+        "det": 23,
+        "det_30m": 11,
+        "alerts": 34,
+        "fa": 11,
+        "days": 8.42361111111111,
+        "lead_times": [
+          5,
+          115,
+          10,
+          5,
+          5,
+          5,
+          35,
+          120,
+          20,
+          95,
+          30,
+          120,
+          70,
+          80,
+          55,
+          5,
+          5,
+          10,
+          15,
+          5,
+          70,
+          25,
+          55
+        ]
+      }
+    }
+  },
+  "validation_ci_95": {
+    "rmse60": [
+      28.776,
+      24.245,
+      33.385
+    ],
+    "event_sensitivity_30m": [
+      0.162,
+      0.053,
+      0.246
+    ],
+    "false_alerts_per_day": [
+      0.423,
+      0.171,
+      0.691
+    ],
+    "median_lead_time_min": [
+      15.0,
+      10.0,
+      20.0
+    ]
+  },
+  "primary_threshold": 0.35,
+  "cooldown_min": 120,
+  "normalization_medians": {
+    "age": 51.0,
+    "bmi": 30.94674189,
+    "weight_kg": 88.813386046,
+    "hba1c": 5.8
+  },
+  "frozen": true
+}
