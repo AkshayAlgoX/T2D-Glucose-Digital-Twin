@@ -20,3 +20,6 @@ node_modules
 # Licensed real participant records, split assignments and derived individual artifacts.
 data/real/
 runs/real_masked_*/
+
+# Local scratch work (never committed)
+scratch/
