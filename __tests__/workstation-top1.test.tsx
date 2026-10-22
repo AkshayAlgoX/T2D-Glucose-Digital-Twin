@@ -160,7 +160,27 @@ describe('FHIR R4 export', () => {
     expect(fc[11]).toMatchObject({ valueQuantity: { value: 181, unit: 'mg/dL' }, referenceRange: [{ low: { value: 155 }, high: { value: 201 } }] });
     const risk = res.find(r => r.resourceType === 'RiskAssessment');
     expect(risk.prediction[0].probabilityDecimal).toBe(0.42);
-    expect(res.find(r => r.resourceType === 'Patient').meta.tag[0].code).toBe('synthetic');
+    expect(res.every(r => r.meta.security[0].system === 'http://terminology.hl7.org/CodeSystem/v3-ActReason' && r.meta.security[0].code === 'HTEST')).toBe(true);
+  });
+
+  it('is semantically consistent: references resolve, units are UCUM, codes carry their systems', () => {
+    const res = fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z').entry.map(e => e.resource as Record<string, any>);
+    const ids = new Set(res.map(r => `${r.resourceType}/${r.id}`));
+    expect(new Set(res.map(r => r.id)).size).toBe(res.length);
+    res.filter(r => r.subject).forEach(r => expect(ids.has(r.subject.reference)).toBe(true));
+    const obs = res.filter(r => r.resourceType === 'Observation');
+    obs.forEach(o => {
+      expect(o.code.coding[0]).toMatchObject({ system: 'http://loinc.org', code: '99504-3' });
+      expect(o.valueQuantity).toMatchObject({ system: 'http://unitsofmeasure.org', code: 'mg/dL' });
+      expect(o.category[0].coding[0]).toMatchObject({ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory' });
+    });
+    // Measured readings are at or before the forecast moment; forecasts strictly after it.
+    const asOf = Date.parse(anchor);
+    obs.filter(o => o.status === 'final').forEach(o => expect(Date.parse(o.effectiveDateTime)).toBeLessThanOrEqual(asOf));
+    obs.filter(o => o.status === 'preliminary').forEach(o => expect(Date.parse(o.effectiveDateTime)).toBeGreaterThan(asOf));
+    const risk = res.find(r => r.resourceType === 'RiskAssessment');
+    expect(risk.prediction[0].probabilityDecimal).toBeGreaterThanOrEqual(0);
+    expect(risk.prediction[0].probabilityDecimal).toBeLessThanOrEqual(1);
   });
 });
 
@@ -237,5 +257,29 @@ describe('Bilingual patient note', () => {
     expect(screen.getByTestId('patient-note')).toHaveTextContent('160 mg/dL');
     expect(screen.getByTestId('patient-note')).toHaveTextContent('42%');
     expect(screen.getByTestId('hindi-review-note')).toHaveTextContent('not yet reviewed');
+  });
+});
+
+describe('Accessibility of the new surfaces (axe)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { axe, toHaveNoViolations } = require('jest-axe');
+  expect.extend(toHaveNoViolations);
+
+  it('clinician summary dialog, in English and in Hindi, has no axe violations', async () => {
+    const { container } = render(<ClinicianReport forecast={forecastFixture()} cache={cache} baseline={null} record="42-year-old female" partition="Validation partition" scenario={null} plate={null} onClose={() => {}} />);
+    expect(await axe(container)).toHaveNoViolations();
+    fireEvent.click(screen.getByRole('button', { name: 'हिन्दी' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('meal builder with a plate and a weighed item has no axe violations', async () => {
+    const { container } = render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    const builder = screen.getByTestId('meal-builder');
+    builder.setAttribute('open', '');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'dal' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Dal/ }));
+    fireEvent.change(within(builder).getByLabelText('Portion'), { target: { value: '-1' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

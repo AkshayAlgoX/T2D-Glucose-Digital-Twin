@@ -4,7 +4,7 @@
 
 ## Question
 
-The locked hybrid caught 6.0% of spikes at least 30 min ahead, with a 10-min median lead, at 0.11 false alerts per patient-day. The budget was 1.0. Four candidate causes were tested: the two below, an explicit ≥30-min target, and missing daily routine (section 3).
+The locked hybrid caught 6.0% of spikes at least 30 min ahead, with a 10-min median lead, at 0.11 false alerts per patient-day. The budget was 1.0. Four candidate causes were tested: the two below, an explicit ≥30-min target, and missing daily routine (section 3). Sections 4–5 test threshold transfer across patients and online personalization.
 
 1. **Operating point.** The policy alerts at a fixed calibrated risk of 0.35 and never uses the false-alert budget.
 2. **No meal information.** The preregistration set meal carbohydrate to zero for every model.
@@ -59,9 +59,37 @@ In the validation rows the threshold is swept on validation, so they describe th
 
 The explicit ≥30-min target lengthens lead but loses more spikes than it gains, so H1 is rejected.
 
+**4. Why the routine threshold breaks the budget, and a per-patient fix** (`transfer_and_personalization.py` → `transfer_personalization_results.json`, part A). Every parameter was chosen on training OOF; validation was scored once per rule.
+
+| Rule (routine model) | Training OOF ≥30 min / false alerts | Validation ≥30 min [95% CI] | Validation false alerts/day [95% CI] | Per-patient false alerts/day (validation) | Precision |
+|---|---|---|---|---|---|
+| Global threshold 0.245 | 26.9% / 1.00 | 38.4% [24.3–49.1] | **1.55** [0.82–2.33] | 0.15 – **3.85** | 48.8% |
+| Own-rate (99th percentile of own past 3 days) | 16.2% / 0.87 | 22.2% [17.4–27.3] | 0.65 [0.46–0.83] | 0.11 – 1.13 | 60.1% |
+| Own-rate 97th percentile, floor 0.2 | 21.5% / 0.96 | 23.7% [17.9–28.5] | **0.90** [0.70–1.10] | 0.34 – 1.58 | 55.6% |
+
+- **Root cause:** patients' risk scales differ. Under one pooled threshold, four validation patients reached 2.5–3.9 false alerts/day.
+- **What the fix does:** per-patient rate control with a floor holds the budget on new patients and narrows the per-patient spread, and no patient goes alert-free.
+- **What it costs:** it gives up the routine model's sensitivity gain. 23.7% at 0.90/day is level with the CGM-only baseline (22.7% at 0.98/day, section 1).
+- The routine features improve ranking (section 3), but no training-chosen operating rule tested here keeps both the budget and the gain on new patients.
+
+**5. Online per-patient personalization of the 60-min forecast** (same script, part B). The online correction adds β × the exponentially weighted mean of the patient's own realised 60-min errors, using each error only after its outcome is observed. α and β were chosen on training OOF.
+
+| 60-min RMSE (mg/dL) | Training OOF | Validation | Validation difference [95% CI] |
+|---|---|---|---|
+| Persistence | 26.41 | 31.82 | |
+| Reduced twin prior | 27.56 | 31.50 | |
+| LightGBM direct | 22.85 | 26.74 | |
+| Twin + online (α 0.02, β 0.75) | 24.84 | 29.69 | vs twin −5.9 to +1.2; vs LightGBM **+1.9 to +3.9** (worse) |
+| LightGBM + online (α 0.1, β 0.25) | 22.53 | 26.60 | vs LightGBM −0.6 to +0.3 |
+
+Online bias personalization does not beat the strongest baseline, so no model change is made. The twin prior alone is no better than persistence on validation, which is why the shipped model learns a residual on top of it.
+
 ## Conclusion
 
-- **Routine is the best-supported candidate.** The patient's own previous days are the one input tested here that raises ≥30-min sensitivity at a matched false-alert rate on training OOF (CI excludes zero), with the same direction and larger size on validation. It is exploratory. Adopting it needs a new preregistration and an evaluation on patients not yet used, because the locked test partition cannot be reused. The threshold must also be re-set per deployment or per patient, since it does not transfer.
+
+
+- **Routine improves ranking, not yet a deployable operating point.** The patient's own previous days raise ≥30-min sensitivity at matched false-alert rates (training OOF +5.4 points, CI excludes zero). But a training-chosen global threshold overshoots the budget on new patients (1.55/day). Per-patient rate control holds the budget (0.90/day) at 23.7%, level with the CGM-only baseline. An operating rule that keeps both is still open. Any adoption needs a new preregistration on patients not yet used; the locked test partition cannot be reused.
+- **Online personalization of the forecast is not justified** by these data. It does not beat LightGBM (section 5).
 - **The operating point and logged meals do not explain the gap on their own.** A budget-matched threshold raises sensitivity a little, and its intervals overlap the fixed threshold's. Logged meals raise precision and median lead and keep false alerts nearer the budget. Their ≥30-min sensitivity gain is inside the confidence intervals, and on training OOF the meal arm is no better (23.7% vs 25.3%).
 - **Transfer is weak.** The CGM-only threshold chosen on training overshoots the budget on validation (1.49/day), so a fixed false-alert budget does not carry across patients reliably.
 - **What this means.** Recent CGM alone gives warnings mostly 5–25 min ahead. The patient's own daily pattern is what moves warnings past 30 min on these datasets. Retrospective meal logs added little here; prospectively time-stamped meals remain untested. A confirmatory test needs new patients; the locked test partition must not be reused for it.
@@ -73,6 +101,7 @@ python budget_operating_point.py --data-dir <repo>/data/real
 python meal_information_arm.py   --data-dir <repo>/data/real
 python routine_target_arms.py    --data-dir <repo>/data/real
 python routine_iso_fa.py         --data-dir <repo>/data/real
+python transfer_and_personalization.py --data-dir <repo>/data/real
 ```
 
 Data: CGMacros and BIG IDEAs raw files as described in [`../real_data/DATA_CARD.md`](../real_data/DATA_CARD.md). Both are under their own licences and are not redistributed here.
