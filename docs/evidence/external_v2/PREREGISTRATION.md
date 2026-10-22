@@ -42,3 +42,8 @@ Validation results:
 - AZT1D is type 1 diabetes under closed-loop insulin, a different physiology from the type 2 development cohorts. The check tests transfer, not type 2 performance.
 - Neither cohort has EHR fields.
 - The locked multi-model hybrid ensemble is not re-trained here. P0 is its LightGBM hazard component.
+
+## Amendment 1 (before any outcome was computed)
+The first run of `external_evaluate.py` stopped while loading AZT1D, before any decision, prediction or metric existed. One of the 25 CSV files has no `CGM` column. It has only `Readings (CGM / BGM)`, which mixes fingerstick readings, so its CGM cannot be isolated. That participant is excluded and listed in `results.json` (`azt1d_excluded_amendment_1`). The other 24 files use `CGM` as preregistered. Nothing else changed.
+
+Correction to the development table above: the T row is "trend projection ≥ 210 mg/dL at +60 min, cap 2". "220" was a typo; `frozen_policy.json` holds the true value, 210.

@@ -26,6 +26,7 @@ from transfer_and_personalization import REG, rmse  # noqa: E402
 
 SHA = {"azt1d": "2c6b4183fdc729c708c1b3230ab1988d2c9006dd35729537f2de07f649f0d113",
        "broll_csv": "4f632b6d70cece144c9f30bc363f4a7dcf5ca0e291972fe940db5bdb1ffa5d20"}
+EXCLUDED: list[str] = []
 STATIC = {"age": np.nan, "bmi": np.nan, "weight_kg": np.nan, "hba1c": np.nan, "male": np.nan}
 
 
@@ -47,7 +48,11 @@ def load_azt1d(path):
     recs = []
     with zipfile.ZipFile(path) as z:
         for name in sorted(n for n in z.namelist() if n.startswith("AZT1D 2025/CGM Records/") and n.endswith(".csv")):
-            df = pd.read_csv(io.BytesIO(z.read(name)), usecols=["EventDateTime", "CGM"])
+            df = pd.read_csv(io.BytesIO(z.read(name)))
+            if "CGM" not in df.columns:
+                # Amendment 1: one file has only "Readings (CGM / BGM)", mixing fingersticks; CGM cannot be isolated.
+                EXCLUDED.append(Path(name).stem)
+                continue
             recs.append(to_record("AZT1D-" + Path(name).stem.replace(" ", ""), "azt1d", df["EventDateTime"], df["CGM"]))
     return recs
 
@@ -127,6 +132,7 @@ def main():
            "primary_AZT1D": evaluate_cohort(load_azt1d(a.azt1d_zip), ctx, frozen, a.n_boot),
            "secondary_Broll_T2D": evaluate_cohort(load_broll(a.broll_csv), ctx, frozen, a.n_boot)}
     out["primary_success"] = out["primary_AZT1D"]["success"]
+    out["azt1d_excluded_amendment_1"] = EXCLUDED
     (HERE / "results.json").write_text(json.dumps(out, indent=1) + "\n")
     for c in ("primary_AZT1D", "secondary_Broll_T2D"):
         o = out[c]
