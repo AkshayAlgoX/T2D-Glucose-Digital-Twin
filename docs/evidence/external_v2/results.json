@@ -1,0 +1,592 @@
+{
+ "phase": "single preregistered external evaluation",
+ "seed": 20260930,
+ "input_sha256": {
+  "azt1d": "2c6b4183fdc729c708c1b3230ab1988d2c9006dd35729537f2de07f649f0d113",
+  "broll_csv": "4f632b6d70cece144c9f30bc363f4a7dcf5ca0e291972fe940db5bdb1ffa5d20"
+ },
+ "selected": "P0",
+ "comparators": [
+  "T",
+  "C1"
+ ],
+ "primary_AZT1D": {
+  "patients": 24,
+  "decisions": 273119,
+  "patient_days": 988.6111111111111,
+  "onsets": 2814,
+  "policies": {
+   "P0": {
+    "event_sensitivity": 0.32196162046908317,
+    "event_sensitivity_30m": 0.12508884150675195,
+    "alert_precision": 0.5067114093959731,
+    "false_alerts_per_day": 0.8921607193031751,
+    "median_lead_time_min": 20.0,
+    "total_onsets": 2814.0,
+    "detected_onsets": 906.0,
+    "detected_30m": 352.0,
+    "total_alerts": 1788.0,
+    "false_alerts": 882.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.09955368410113277,
+      0.14973599118845876
+     ],
+     "false_alerts_per_day": [
+      0.7309940986177927,
+      1.0543518699588519
+     ]
+    },
+    "lead_time_quartiles_min": [
+     5.0,
+     20.0,
+     50.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.22099447513812154,
+     "median": 0.8570908202653531,
+     "max": 1.9250984342093216
+    },
+    "per_patient_sens30": [
+     0.013,
+     0.03,
+     0.041,
+     0.045,
+     0.058,
+     0.066,
+     0.075,
+     0.078,
+     0.087,
+     0.094,
+     0.096,
+     0.109,
+     0.111,
+     0.122,
+     0.128,
+     0.134,
+     0.138,
+     0.159,
+     0.165,
+     0.177,
+     0.188,
+     0.189,
+     0.19,
+     0.253
+    ]
+   },
+   "P1": {
+    "event_sensitivity": 0.39445628997867804,
+    "event_sensitivity_30m": 0.20966595593461265,
+    "alert_precision": 0.4483037156704362,
+    "false_alerts_per_day": 1.3817364428210173,
+    "median_lead_time_min": 30.0,
+    "total_onsets": 2814.0,
+    "detected_onsets": 1110.0,
+    "detected_30m": 590.0,
+    "total_alerts": 2476.0,
+    "false_alerts": 1366.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.1829663877332334,
+      0.2339244718603867
+     ],
+     "false_alerts_per_day": [
+      1.261211132344928,
+      1.5028032232197446
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     30.0,
+     75.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.8397790055248618,
+     "median": 1.4146781597716074,
+     "max": 1.8723560113542717
+    },
+    "per_patient_sens30": [
+     0.079,
+     0.081,
+     0.088,
+     0.123,
+     0.14,
+     0.144,
+     0.158,
+     0.169,
+     0.174,
+     0.178,
+     0.195,
+     0.2,
+     0.222,
+     0.224,
+     0.23,
+     0.236,
+     0.236,
+     0.252,
+     0.253,
+     0.255,
+     0.263,
+     0.27,
+     0.284,
+     0.336
+    ]
+   },
+   "T": {
+    "event_sensitivity": 0.3304904051172708,
+    "event_sensitivity_30m": 0.1499644633972992,
+    "alert_precision": 0.5619335347432024,
+    "false_alerts_per_day": 0.7333520651868503,
+    "median_lead_time_min": 25.0,
+    "total_onsets": 2814.0,
+    "detected_onsets": 930.0,
+    "detected_30m": 422.0,
+    "total_alerts": 1655.0,
+    "false_alerts": 725.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.1328046249090187,
+      0.16769166442474118
+     ],
+     "false_alerts_per_day": [
+      0.650058990818015,
+      0.8153043800916637
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     25.0,
+     45.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.29005676616004394,
+     "median": 0.6979172894075504,
+     "max": 1.1202784317739791
+    },
+    "per_patient_sens30": [
+     0.074,
+     0.088,
+     0.091,
+     0.118,
+     0.125,
+     0.134,
+     0.135,
+     0.137,
+     0.154,
+     0.154,
+     0.154,
+     0.156,
+     0.16,
+     0.16,
+     0.162,
+     0.167,
+     0.168,
+     0.172,
+     0.185,
+     0.192,
+     0.197,
+     0.218,
+     0.222,
+     0.232
+    ]
+   },
+   "C1": {
+    "event_sensitivity": 0.30987917555081734,
+    "event_sensitivity_30m": 0.1517412935323383,
+    "alert_precision": 0.5147579693034239,
+    "false_alerts_per_day": 0.8314695139084013,
+    "median_lead_time_min": 25.0,
+    "total_onsets": 2814.0,
+    "detected_onsets": 872.0,
+    "detected_30m": 427.0,
+    "total_alerts": 1694.0,
+    "false_alerts": 822.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.13997871519363358,
+      0.16442343616497604
+     ],
+     "false_alerts_per_day": [
+      0.7688063592611958,
+      0.8926914107398546
+     ]
+    },
+    "lead_time_quartiles_min": [
+     15.0,
+     25.0,
+     55.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.4553719661633331,
+     "median": 0.8433625198890975,
+     "max": 1.2382024772238716
+    },
+    "per_patient_sens30": [
+     0.099,
+     0.103,
+     0.117,
+     0.121,
+     0.125,
+     0.14,
+     0.144,
+     0.144,
+     0.145,
+     0.145,
+     0.148,
+     0.151,
+     0.151,
+     0.155,
+     0.156,
+     0.157,
+     0.165,
+     0.168,
+     0.174,
+     0.179,
+     0.18,
+     0.183,
+     0.209,
+     0.22
+    ]
+   },
+   "C2": {
+    "event_sensitivity": 0.6211798152096659,
+    "event_sensitivity_30m": 0.26439232409381663,
+    "alert_precision": 0.5842245989304813,
+    "false_alerts_per_day": 1.2583309918516437,
+    "median_lead_time_min": 20.0,
+    "total_onsets": 2814.0,
+    "detected_onsets": 1748.0,
+    "detected_30m": 744.0,
+    "total_alerts": 2992.0,
+    "false_alerts": 1244.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.2434222496165038,
+      0.28526770754995384
+     ],
+     "false_alerts_per_day": [
+      1.1515977860889262,
+      1.3734870312141654
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     20.0,
+     45.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.6855887200146493,
+     "median": 1.2407931949024087,
+     "max": 1.9752277612856999
+    },
+    "per_patient_sens30": [
+     0.169,
+     0.17,
+     0.192,
+     0.192,
+     0.198,
+     0.216,
+     0.231,
+     0.237,
+     0.246,
+     0.252,
+     0.255,
+     0.261,
+     0.263,
+     0.264,
+     0.268,
+     0.275,
+     0.284,
+     0.285,
+     0.298,
+     0.308,
+     0.318,
+     0.32,
+     0.322,
+     0.381
+    ]
+   }
+  },
+  "sens30_difference_selected_minus": {
+   "T": {
+    "point": -0.024875621890547265,
+    "ci95": [
+     -0.06417450822327529,
+     0.014304767886228536
+    ]
+   },
+   "C1": {
+    "point": -0.026652452025586353,
+    "ci95": [
+     -0.05671662737403813,
+     0.005099562862882879
+    ]
+   }
+  },
+  "success": false,
+  "rmse_mg_dl": {
+   "30": {
+    "persistence": 23.780059814453125,
+    "linear_trend": 30.872150421142578,
+    "reduced_twin": 26.176759719848633,
+    "lightgbm": 24.175995879544715
+   },
+   "60": {
+    "persistence": 37.873992919921875,
+    "linear_trend": 59.620018005371094,
+    "reduced_twin": 39.51212692260742,
+    "lightgbm": 36.870897374673255
+   },
+   "120": {
+    "persistence": 54.12320327758789,
+    "linear_trend": 117.03666687011719,
+    "reduced_twin": 51.56106948852539,
+    "lightgbm": 46.36851818513244
+   }
+  }
+ },
+ "secondary_Broll_T2D": {
+  "patients": 5,
+  "decisions": 10618,
+  "patient_days": 51.19444444444444,
+  "onsets": 104,
+  "policies": {
+   "P0": {
+    "event_sensitivity": 0.3557692307692308,
+    "event_sensitivity_30m": 0.11538461538461539,
+    "alert_precision": 0.5441176470588235,
+    "false_alerts_per_day": 0.6055344546934346,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 104.0,
+    "detected_onsets": 37.0,
+    "detected_30m": 12.0,
+    "total_alerts": 68.0,
+    "false_alerts": 31.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.04,
+      0.20565021654889423
+     ],
+     "false_alerts_per_day": [
+      0.2213063220398184,
+      1.2203389830508473
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     15.0,
+     30.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.08465608465608465,
+     "median": 0.5223068552774756,
+     "max": 1.785557986870897
+    },
+    "per_patient_sens30": [
+     0.0,
+     0.077,
+     0.083,
+     0.1,
+     0.269
+    ]
+   },
+   "P1": {
+    "event_sensitivity": 0.375,
+    "event_sensitivity_30m": 0.17307692307692307,
+    "alert_precision": 0.5,
+    "false_alerts_per_day": 0.7618014107433533,
+    "median_lead_time_min": 20.0,
+    "total_onsets": 104.0,
+    "detected_onsets": 39.0,
+    "detected_30m": 18.0,
+    "total_alerts": 78.0,
+    "false_alerts": 39.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.04411764705882353,
+      0.2357142857142857
+     ],
+     "false_alerts_per_day": [
+      0.49465648854961836,
+      1.263042485153038
+     ]
+    },
+    "lead_time_quartiles_min": [
+     15.0,
+     20.0,
+     60.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.42328042328042326,
+     "median": 0.6267682263329707,
+     "max": 1.4911242603550294
+    },
+    "per_patient_sens30": [
+     0.0,
+     0.059,
+     0.1,
+     0.231,
+     0.269
+    ]
+   },
+   "T": {
+    "event_sensitivity": 0.3076923076923077,
+    "event_sensitivity_30m": 0.11538461538461539,
+    "alert_precision": 0.5818181818181818,
+    "false_alerts_per_day": 0.449267498643516,
+    "median_lead_time_min": 25.0,
+    "total_onsets": 104.0,
+    "detected_onsets": 32.0,
+    "detected_30m": 12.0,
+    "total_alerts": 55.0,
+    "false_alerts": 23.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.050359712230215826,
+      0.22058823529411764
+     ],
+     "false_alerts_per_day": [
+      0.13115500654636533,
+      0.8453322462291073
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     25.0,
+     36.25
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.0,
+     "median": 0.4178454842219804,
+     "max": 1.0650887573964496
+    },
+    "per_patient_sens30": [
+     0.026,
+     0.1,
+     0.115,
+     0.235,
+     0.25
+    ]
+   },
+   "C1": {
+    "event_sensitivity": 0.3173076923076923,
+    "event_sensitivity_30m": 0.16346153846153846,
+    "alert_precision": 0.5076923076923077,
+    "false_alerts_per_day": 0.6250678241996744,
+    "median_lead_time_min": 30.0,
+    "total_onsets": 104.0,
+    "detected_onsets": 33.0,
+    "detected_30m": 17.0,
+    "total_alerts": 65.0,
+    "false_alerts": 32.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.11304347826086956,
+      0.22316543174693632
+     ],
+     "false_alerts_per_day": [
+      0.37674894778751,
+      0.9815646785437646
+     ]
+    },
+    "lead_time_quartiles_min": [
+     15.0,
+     30.0,
+     45.0
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.2565130260521042,
+     "median": 0.7352297592997812,
+     "max": 1.4911242603550294
+    },
+    "per_patient_sens30": [
+     0.1,
+     0.103,
+     0.176,
+     0.231,
+     0.25
+    ]
+   },
+   "C2": {
+    "event_sensitivity": 0.46153846153846156,
+    "event_sensitivity_30m": 0.11538461538461539,
+    "alert_precision": 0.6,
+    "false_alerts_per_day": 0.6250678241996744,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 104.0,
+    "detected_onsets": 48.0,
+    "detected_30m": 12.0,
+    "total_alerts": 80.0,
+    "false_alerts": 32.0,
+    "ci95": {
+     "event_sensitivity_30m": [
+      0.07091768631813126,
+      0.17243037135278508
+     ],
+     "false_alerts_per_day": [
+      0.23624432104997478,
+      1.1679033649698014
+     ]
+    },
+    "lead_time_quartiles_min": [
+     10.0,
+     15.0,
+     27.5
+    ],
+    "per_patient_fa_per_day": {
+     "min": 0.1044613710554951,
+     "median": 0.9312169312169312,
+     "max": 1.4911242603550294
+    },
+    "per_patient_sens30": [
+     0.051,
+     0.083,
+     0.154,
+     0.176,
+     0.2
+    ]
+   }
+  },
+  "sens30_difference_selected_minus": {
+   "T": {
+    "point": 0.0,
+    "ci95": [
+     -0.16901408450704225,
+     0.09919421487603294
+    ]
+   },
+   "C1": {
+    "point": -0.04807692307692308,
+    "ci95": [
+     -0.14285714285714285,
+     0.009009009009009009
+    ]
+   }
+  },
+  "success": false,
+  "rmse_mg_dl": {
+   "30": {
+    "persistence": 20.49222183227539,
+    "linear_trend": 24.498598098754883,
+    "reduced_twin": 27.454505920410156,
+    "lightgbm": 24.604107090639356
+   },
+   "60": {
+    "persistence": 33.51780700683594,
+    "linear_trend": 48.824623107910156,
+    "reduced_twin": 43.659873962402344,
+    "lightgbm": 39.139552686728834
+   },
+   "120": {
+    "persistence": 49.25501251220703,
+    "linear_trend": 98.33262634277344,
+    "reduced_twin": 60.674922943115234,
+    "lightgbm": 52.24694733629032
+   }
+  }
+ },
+ "primary_success": false,
+ "azt1d_excluded_amendment_1": [
+  "Subject 14"
+ ]
+}

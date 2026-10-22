@@ -3,7 +3,7 @@
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
 [![Frontend Tests](https://img.shields.io/badge/frontend%20tests-47%20suites%20%7C%20443%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-129%20passed-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-160%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -27,6 +27,7 @@
 | **Clinical Workstation** | `/cohort` → `/patients/[id]` | Ward triage ranked by served 2-h spike risk; What-if with 29 Indian dishes from USDA FNDDS (public domain), survey portions or weighed grams; printable clinician summary with an English/Hindi patient note (Hindi not yet reviewed by a native-speaking clinician); FHIR R4 Bundle export validated in tests against the official HL7 R4 JSON schema, plus semantic checks (references resolve, LOINC/UCUM codes, HTEST test-data label); FHIRPath invariants, profiles and terminology-server validation not checked |
 | **Early-Warning Root-Cause Study** | [`docs/evidence/operating_point/README.md`](docs/evidence/operating_point/README.md) | **Exploratory** (train/validation only, test not loaded): the patient's own previous-day CGM in the upcoming clock window raises ≥30-min warning sensitivity at matched false-alert rates (training patient-grouped OOF +5.4 points [+0.7, +10.1]; validation at ≤1 false alert/day 22.7% → 30.8%, median lead 15 → 30 min). A budget-matched threshold, logged meals and an explicit ≥30-min target do not. The training threshold does not hold the budget on new patients (1.55/day). Per-patient rate control holds it (0.90/day) but only at baseline-level sensitivity (23.7%). Online forecast personalization does not beat LightGBM. Locked results unchanged; adopting any of this needs a new preregistered evaluation |
 | **External Check (Hall 2018)** | [`docs/evidence/external_hall/RESULTS.md`](docs/evidence/external_hall/RESULTS.md) | Preregistered (freeze commit `d1a2d887`), 57 unused participants, CC BY 4.0. Routine-model policy vs baseline, sensitivity ≥30 min: **+7.8 points [0.0, +13.2], not confirmed** (lower bound not above 0); false alerts 0.03/day. A simple linear-trend reference did better on this cohort (32.8% ≥30 min at 0.38 false alerts/day). 60-min RMSE: LightGBM 19.0, persistence 19.6, twin 20.6 mg/dL |
+| **External Check 2 (AZT1D, Broll)** | [`docs/evidence/external_v2/RESULTS.md`](docs/evidence/external_v2/RESULTS.md) | Preregistered (freeze `3f1d7350`; amendment 1 before any outcome). Learned policy vs trend and trend+risk on 24 unused adults with type 1 diabetes (2,814 onsets): **not met** (−2.5 [−6.4, +1.4] and −2.7 [−5.7, +0.5] points at ≥30 min). A risk-gated trend policy doubles ≥30-min sensitivity (26.4%) but at 1.26 false alerts/day, over budget |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---
@@ -153,7 +154,7 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 # Run all 45 Jest test suites (424 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run the backend tests from the repository root: provenance, contracts, causality, safety, sealed-split access, twin counterfactual plausibility (129 passed on 2026-10-22; without RUN_DIR two serving tests skip):
+# Run the backend tests from the repository root: provenance, contracts, causality, safety, sealed-split access, twin counterfactual plausibility, alert-policy mechanics (160 passed with RUN_DIR set on 2026-10-22; without RUN_DIR, 132 tests are collected and the serving tests skip):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
