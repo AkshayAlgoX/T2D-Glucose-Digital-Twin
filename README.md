@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-47%20suites%20%7C%20443%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-48%20suites%20%7C%20449%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-160%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
@@ -28,6 +28,7 @@
 | **Early-Warning Root-Cause Study** | [`docs/evidence/operating_point/README.md`](docs/evidence/operating_point/README.md) | **Exploratory** (train/validation only, test not loaded): the patient's own previous-day CGM in the upcoming clock window raises ≥30-min warning sensitivity at matched false-alert rates (training patient-grouped OOF +5.4 points [+0.7, +10.1]; validation at ≤1 false alert/day 22.7% → 30.8%, median lead 15 → 30 min). A budget-matched threshold, logged meals and an explicit ≥30-min target do not. The training threshold does not hold the budget on new patients (1.55/day). Per-patient rate control holds it (0.90/day) but only at baseline-level sensitivity (23.7%). Online forecast personalization does not beat LightGBM. Locked results unchanged; adopting any of this needs a new preregistered evaluation |
 | **External Check (Hall 2018)** | [`docs/evidence/external_hall/RESULTS.md`](docs/evidence/external_hall/RESULTS.md) | Preregistered (freeze commit `d1a2d887`), 57 unused participants, CC BY 4.0. Routine-model policy vs baseline, sensitivity ≥30 min: **+7.8 points [0.0, +13.2], not confirmed** (lower bound not above 0); false alerts 0.03/day. A simple linear-trend reference did better on this cohort (32.8% ≥30 min at 0.38 false alerts/day). 60-min RMSE: LightGBM 19.0, persistence 19.6, twin 20.6 mg/dL |
 | **External Check 2 (AZT1D, Broll)** | [`docs/evidence/external_v2/RESULTS.md`](docs/evidence/external_v2/RESULTS.md) | Preregistered (freeze `3f1d7350`; amendment 1 before any outcome). Learned policy vs trend and trend+risk on 24 unused adults with type 1 diabetes (2,814 onsets): **not met** (−2.5 [−6.4, +1.4] and −2.7 [−5.7, +0.5] points at ≥30 min). A risk-gated trend policy doubles ≥30-min sensitivity (26.4%) but at 1.26 false alerts/day, over budget |
+| **Early Warning Within Budget** | [`docs/evidence/fa_controller/README.md`](docs/evidence/fa_controller/README.md) | **Exploratory**, training-only selection. A risk-gated trend policy, with thresholds chosen so the worst training fold stays within 1 false alert/day, holds the budget on validation (0.87/day) at 27.3% ≥30 min and 69.7% any lead. Paired vs the learned baseline: +4.5 points [−2.5, +12.8], not established. A per-patient feedback controller was null. Frozen as the candidate for an unused type 2 cohort (none openly available) |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---

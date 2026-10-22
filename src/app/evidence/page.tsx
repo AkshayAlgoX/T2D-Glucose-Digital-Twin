@@ -21,6 +21,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
+import { EXTERNAL_CHECKS } from '@/lib/external-evidence';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,7 +332,7 @@ export default async function EvidencePage() {
             <span className="eyebrow">Scientific evidence and governance</span>
             <h1>Evidence &amp; validation</h1>
             <p>How well the forecast does on 44 synthetic validation patients, against the physiology twin alone and against persistence, and what has not been shown.</p>
-            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> Gate 3, the realism check, failed (<a href="#gate3-analysis">Gate 3 analysis</a>) · no real-human validation · the held-out test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator.</p>
+            <p className="evidence-read-first" data-testid="evidence-read-first"><strong>Read first:</strong> for the synthetic-cohort model on this page, Gate 3, the realism check, failed (<a href="#gate3-analysis">Gate 3 analysis</a>) · its held-out synthetic test split has not been run · calibration and interval coverage are measured on the same split that fitted the calibrator. Real-patient and external results, including the checks that failed, are in <a href="#real-and-external">Real patients and external cohorts</a>.</p>
             <p className="evidence-glossary" data-testid="evidence-glossary"><strong>Terms:</strong> <em>PR-TFT</em> is the neural network that makes the learned adjustment; <em>UKF</em> is the filter that keeps the physiology twin in step with the readings; <em>Arm D</em> is the trained configuration evaluated here; <em>persistence</em> assumes glucose stays where it is.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -360,6 +361,33 @@ export default async function EvidencePage() {
             </span>
           </div>
         </header>
+
+        <section className="panel evidence-section external-evidence" id="real-and-external" tabIndex={-1} aria-labelledby="external-heading" data-testid="external-evidence">
+          <span className="eyebrow">Real patients and external cohorts</span>
+          <h2 id="external-heading">What held up on real and unused data, and what did not</h2>
+          <p className="fine-print">Sensitivity is the share of spike onsets warned at least 30 min ahead, or at any lead, with 1-to-1 alert matching and a 120-min cooldown; the false-alert budget is 1.0 per patient-day. External checks were preregistered and frozen in a git commit before the data were read.</p>
+          {EXTERNAL_CHECKS.map(c => (
+            <div key={c.id} className="external-check" data-testid={`external-${c.id}`}>
+              <div className="external-check-head">
+                <h3>{c.title}</h3>
+                <span className={'status-badge external-status ' + c.status}>{c.statusText}</span>
+              </div>
+              <p className="fine-print">{c.cohort}{c.freeze ? <> · protocol frozen at commit <code>{c.freeze}</code></> : null} · <code>{c.artifact}</code></p>
+              <div className="evidence-table-container" tabIndex={0} role="region" aria-label={`${c.title} results`}>
+                <table className="external-table">
+                  <caption className="sr-only">{c.title}: sensitivity at least 30 min ahead, at any lead, false alerts per patient-day and median lead time</caption>
+                  <thead><tr><th scope="col">Policy</th><th scope="col">≥30 min</th><th scope="col">Any lead</th><th scope="col">False alerts / day</th><th scope="col">Median lead</th></tr></thead>
+                  <tbody>{c.rows.map(r => (
+                    <tr key={r.label}><th scope="row">{r.label}</th><td>{(r.sens30 * 100).toFixed(1)}%</td><td>{r.sensAny == null ? '—' : `${(r.sensAny * 100).toFixed(1)}%`}</td>
+                      <td className={r.faPerDay > 1 ? 'over-budget' : undefined}>{r.faPerDay.toFixed(2)}{r.faPerDay > 1 ? ' (over budget)' : ''}</td><td>{r.medianLeadMin == null ? '—' : `${r.medianLeadMin} min`}</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              <p className="fine-print">{c.note}</p>
+            </div>
+          ))}
+          <p className="fine-print">No unused, openly licensed type 2 cohort large enough for confirmation was found (AI-READI and OMIX002493 are controlled-access). Early-warning superiority over simple trend rules has not been shown.</p>
+        </section>
 
         {/* Error State View */}
         {errorState && (

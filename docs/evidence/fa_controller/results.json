@@ -1,0 +1,312 @@
+{
+ "status": "training-only selection (worst-fold false alerts <= 1.0); validation scored once, exploratory; no external cohort",
+ "seed": 20260930,
+ "grid_sizes": {
+  "P0": 5,
+  "C2": 48,
+  "C2ctl": 54
+ },
+ "selected": {
+  "P0": {
+   "param": {
+    "family": "P0",
+    "t": 0.4
+   },
+   "train_oof": {
+    "event_sensitivity": 0.20512820512820512,
+    "event_sensitivity_30m": 0.07435897435897436,
+    "alert_precision": 0.6349206349206349,
+    "false_alerts_per_day": 0.16064802464045796,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 390.0,
+    "detected_onsets": 80.0,
+    "detected_30m": 29.0,
+    "total_alerts": 126.0,
+    "false_alerts": 46.0,
+    "fold_fa_per_day": [
+     0.3690280065897858,
+     0.03358404757740073,
+     0.06367455228830422,
+     0.30151496489715485,
+     0.039462866538777744
+    ],
+    "per_patient_fa_per_day": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.11,
+     0.11,
+     0.11,
+     0.11,
+     0.11,
+     0.12,
+     0.2,
+     0.23,
+     0.29,
+     0.3,
+     0.34,
+     0.9,
+     1.02,
+     1.36
+    ]
+   }
+  },
+  "C2": {
+   "param": {
+    "family": "C2",
+    "tf": 240,
+    "tg": 0.2,
+    "tr": 0.4762
+   },
+   "train_oof": {
+    "event_sensitivity": 0.5897435897435898,
+    "event_sensitivity_30m": 0.2230769230769231,
+    "alert_precision": 0.5180180180180181,
+    "false_alerts_per_day": 0.7473625494143044,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 390.0,
+    "detected_onsets": 230.0,
+    "detected_30m": 87.0,
+    "total_alerts": 444.0,
+    "false_alerts": 214.0,
+    "fold_fa_per_day": [
+     0.8259198242723778,
+     0.4365926185062095,
+     0.9391996462524873,
+     0.8158640226628895,
+     0.7103315976979995
+    ],
+    "per_patient_fa_per_day": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.14,
+     0.14,
+     0.14,
+     0.23,
+     0.24,
+     0.26,
+     0.34,
+     0.45,
+     0.45,
+     0.57,
+     0.59,
+     0.59,
+     0.68,
+     0.78,
+     0.86,
+     0.9,
+     0.91,
+     0.91,
+     1.02,
+     1.07,
+     1.13,
+     1.13,
+     1.13,
+     1.13,
+     1.24,
+     1.33,
+     1.36,
+     1.58,
+     1.58,
+     1.92
+    ]
+   }
+  },
+  "C2ctl": {
+   "param": {
+    "family": "C2ctl",
+    "tf": 220,
+    "tg": 0.15,
+    "tr": 0.424,
+    "eta": 0.03,
+    "target": 0.75,
+    "lo": -0.1,
+    "hi": 0.5
+   },
+   "train_oof": {
+    "event_sensitivity": 0.6358974358974359,
+    "event_sensitivity_30m": 0.2153846153846154,
+    "alert_precision": 0.49206349206349204,
+    "false_alerts_per_day": 0.894041180607766,
+    "median_lead_time_min": 15.0,
+    "total_onsets": 390.0,
+    "detected_onsets": 248.0,
+    "detected_30m": 84.0,
+    "total_alerts": 504.0,
+    "false_alerts": 256.0,
+    "fold_fa_per_day": [
+     0.9840746842394288,
+     0.7220570229141158,
+     0.9710369223966394,
+     0.8513363714743195,
+     0.9471087969306659
+    ],
+    "per_patient_fa_per_day": [
+     0.13,
+     0.34,
+     0.45,
+     0.45,
+     0.45,
+     0.57,
+     0.58,
+     0.59,
+     0.63,
+     0.74,
+     0.77,
+     0.79,
+     0.79,
+     0.83,
+     0.86,
+     0.87,
+     0.91,
+     0.91,
+     0.91,
+     0.98,
+     1.02,
+     1.02,
+     1.07,
+     1.09,
+     1.13,
+     1.13,
+     1.13,
+     1.13,
+     1.13,
+     1.24,
+     1.24,
+     1.36,
+     1.36,
+     1.47
+    ]
+   }
+  }
+ },
+ "validation": {
+  "P0": {
+   "event_sensitivity": 0.22727272727272727,
+   "event_sensitivity_30m": 0.03535353535353535,
+   "alert_precision": 0.6521739130434783,
+   "false_alerts_per_day": 0.24882105187371756,
+   "median_lead_time_min": 5.0,
+   "total_onsets": 198.0,
+   "detected_onsets": 45.0,
+   "detected_30m": 7.0,
+   "total_alerts": 69.0,
+   "false_alerts": 24.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.008125241966705382,
+     0.057696280991735516
+    ],
+    "false_alerts_per_day": [
+     0.07168693538848321,
+     0.4589761907510836
+    ]
+   },
+   "per_patient_fa_per_day": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.23,
+    0.34,
+    0.45,
+    0.79,
+    0.95
+   ]
+  },
+  "C2": {
+   "event_sensitivity": 0.696969696969697,
+   "event_sensitivity_30m": 0.2727272727272727,
+   "alert_precision": 0.6216216216216216,
+   "false_alerts_per_day": 0.8708736815580114,
+   "median_lead_time_min": 15.0,
+   "total_onsets": 198.0,
+   "detected_onsets": 138.0,
+   "detected_30m": 54.0,
+   "total_alerts": 222.0,
+   "false_alerts": 84.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.15765238642898216,
+     0.3640782922579039
+    ],
+    "false_alerts_per_day": [
+     0.6313832928834259,
+     1.0863418298961933
+    ]
+   },
+   "per_patient_fa_per_day": [
+    0.0,
+    0.29,
+    0.45,
+    0.46,
+    0.79,
+    0.79,
+    1.02,
+    1.02,
+    1.13,
+    1.19,
+    1.24,
+    1.47
+   ]
+  },
+  "C2ctl": {
+   "event_sensitivity": 0.7171717171717171,
+   "event_sensitivity_30m": 0.25757575757575757,
+   "alert_precision": 0.5748987854251012,
+   "false_alerts_per_day": 1.0885921019475142,
+   "median_lead_time_min": 15.0,
+   "total_onsets": 198.0,
+   "detected_onsets": 142.0,
+   "detected_30m": 51.0,
+   "total_alerts": 247.0,
+   "false_alerts": 105.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.17643382352941178,
+     0.3333333333333333
+    ],
+    "false_alerts_per_day": [
+     0.9202902729311914,
+     1.2206517150566658
+    ]
+   },
+   "per_patient_fa_per_day": [
+    0.33,
+    0.6,
+    0.9,
+    1.02,
+    1.06,
+    1.13,
+    1.13,
+    1.24,
+    1.25,
+    1.31,
+    1.36,
+    1.36
+   ]
+  }
+ }
+}

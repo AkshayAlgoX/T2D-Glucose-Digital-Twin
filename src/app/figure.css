@@ -1283,3 +1283,20 @@ body.report-open { overflow: hidden; }
   .report-sheet { max-width: none; padding: 0; border-radius: 0; }
   body.report-open .app-shell, body.report-open .twin-workstation { display: block; min-height: 0; height: auto; padding: 0; margin: 0; overflow: visible; }
 }
+
+/* ---- Evidence: real-patient and external results ---- */
+.external-evidence { margin-bottom: 24px; display: grid; gap: 12px; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.external-evidence > *, .external-check > * { min-width: 0; }
+.external-check .evidence-table-container { overflow-x: auto; max-width: 100%; }
+.external-evidence h2 { margin: 2px 0 0; font-size: 18px; }
+.external-check { border-top: 1px solid var(--color-line); padding-top: 12px; display: grid; gap: 6px; }
+.external-check-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.external-check-head h3 { margin: 0; font-size: 15px; }
+.external-check .status-badge.external-status { white-space: normal; text-align: left; max-width: 100%; height: auto; line-height: 1.4; overflow-wrap: anywhere; }
+.external-status.not-met, .external-status.not-confirmed { border-color: var(--color-alert-edge); color: var(--color-alert-ink); background: var(--color-alert-bg); }
+.external-status.locked { border-color: var(--color-line-control); color: var(--color-ink-2); }
+.external-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.external-table th, .external-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-line); }
+.external-table thead th { color: var(--color-ink-3); font-weight: 500; }
+.external-table td.over-budget { color: var(--color-alert-ink); font-weight: 600; }
+.external-check code { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
