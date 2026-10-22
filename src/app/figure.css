@@ -1174,3 +1174,102 @@ details[open] > summary .repro-hint { display: none; }
 .g3-implication { font-size: 15px; line-height: 1.5; color: var(--color-ink-2); margin: 8px 0 4px; max-width: 70ch; }
 .g3-more > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--color-accent); padding: 6px 0; }
 .fig-home .landing-evidence .failed dd { color: var(--color-ink); }
+
+/* Ward view: who needs attention, ranked by the served 2-hour onset risk. */
+.ward-triage { margin: 0 0 24px; padding: 16px 0 12px; border: 0; border-top: 2px solid var(--color-rule, var(--color-ink)); border-radius: 0; background: transparent; box-shadow: none; }
+.ward-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 32px; flex-wrap: wrap; margin-bottom: 10px; }
+.ward-head h2 { font-family: var(--font-display); font-size: 24px; margin: 4px 0 4px; }
+.ward-head .fine-print { max-width: 70ch; margin: 0; }
+.ward-count { margin: 0; font-size: 14.5px; color: var(--color-ink-2); }
+.ward-count b { font-family: var(--font-display); font-size: 26px; color: var(--color-ink); margin-right: 4px; }
+.ward-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.ward-table thead th { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink-3); text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--color-ink); }
+.ward-table tbody th, .ward-table tbody td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--color-line); font-size: 14.5px; text-align: left; vertical-align: middle; font-weight: 400; }
+.ward-table small { display: block; font-size: 12px; color: var(--color-ink-3); }
+.ward-table td.numeric small { display: inline; }
+.ward-table .numeric { font-variant-numeric: tabular-nums; }
+.ward-patient { font-weight: 600; color: var(--color-accent); }
+.ward-risk { display: inline-block; width: 72px; height: 6px; margin-right: 8px; background: var(--color-surface-2, #eef0f2); vertical-align: middle; }
+.ward-risk i { display: block; height: 100%; background: var(--color-ink-3); }
+.tier-watch .ward-risk i { background: var(--color-amber); }
+.tier-high .ward-risk i { background: var(--color-danger); }
+.ward-alert { display: inline-block; padding: 1px 7px; border: 1px solid; border-radius: 2px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ward-alert.watch { color: var(--color-amber); }
+.ward-alert.warning { color: var(--color-danger); }
+.ward-foot { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-top: 10px; }
+.ward-loading { display: grid; gap: 8px; }
+.ward-skeleton { display: block; height: 28px; }
+.ward-error { margin: 6px 0; font-size: 14.5px; color: var(--color-ink-2); }
+
+/* ---- Meal builder (What-if): catalogued dishes reduced to carbohydrate grams ---- */
+.meal-builder { margin-top: 14px; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-surface); }
+.meal-builder > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 14px; color: var(--color-ink); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.meal-builder > summary small { font-weight: 400; font-size: 12px; color: var(--color-ink-3); }
+.meal-builder-body { padding: 0 14px 14px; display: grid; gap: 8px; }
+.meal-builder-body > label { font-size: 13px; font-weight: 500; color: var(--color-ink-2); }
+.meal-builder input, .meal-builder select { min-height: 40px; border: 1px solid var(--color-line-control); background: var(--color-surface); color: var(--color-ink); padding: 0 10px; font-size: 14.5px; max-width: 100%; }
+.meal-matches { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.meal-match { width: 100%; display: flex; justify-content: space-between; gap: 12px; text-align: left; padding: 8px 10px; border: 1px solid var(--color-line); background: var(--color-surface-2); color: var(--color-ink); border-radius: 6px; font-size: 14px; cursor: pointer; }
+.meal-match small { color: var(--color-ink-3); white-space: nowrap; }
+.meal-match:hover { border-color: var(--color-accent); }
+.meal-pick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding: 10px; border-left: 3px solid var(--color-projection); background: var(--color-surface-2); }
+.meal-pick strong { flex-basis: 100%; font-size: 14px; }
+.meal-pick label { display: grid; gap: 4px; font-size: 13px; color: var(--color-ink-2); }
+.meal-pick input[type=number] { width: 80px; }
+.meal-plate { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.meal-plate th, .meal-plate td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-line); vertical-align: top; }
+.meal-plate .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.meal-plate tbody th small { display: block; font-weight: 400; color: var(--color-ink-3); font-size: 11.5px; }
+.meal-plate tfoot th, .meal-plate tfoot td { font-weight: 700; border-bottom: 0; }
+.meal-remove { border: 0; background: transparent; color: var(--color-ink-3); cursor: pointer; padding: 4px; min-width: 32px; min-height: 32px; }
+.meal-remove:hover { color: var(--color-danger); }
+.meal-source { margin: 2px 0 0; }
+.meal-applied { margin-top: 8px; padding: 8px 10px; border-left: 3px solid var(--color-projection); background: var(--color-surface-2); }
+.meal-builder button:focus-visible, .meal-builder input:focus-visible, .meal-builder select:focus-visible, .meal-builder > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ---- Clinician summary: on-screen preview and print sheet ---- */
+.report-button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; }
+.report-overlay { position: fixed; inset: 0; z-index: 100; overflow: auto; background: rgb(22 25 28 / 0.55); padding: 16px; }
+.report-toolbar { position: sticky; top: 0; z-index: 1; max-width: 860px; margin: 0 auto 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; background: #fcfbf8; border-radius: var(--radius-md); color: #16191c; }
+.report-toolbar > span { flex: 1 1 160px; font-size: 13px; color: #5f656b; }
+.report-toolbar button { display: inline-flex; align-items: center; gap: 6px; }
+.report-sheet { max-width: 860px; margin: 0 auto; background: #fff; color: #16191c; padding: 36px 40px; border-radius: 4px; font-size: 13px; line-height: 1.5; }
+.report-sheet h1 { font-family: var(--font-display); font-size: 24px; margin: 2px 0 4px; }
+.report-sheet h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: #444a50; margin: 0 0 6px; }
+.report-sheet .eyebrow { color: #8f5e0b; }
+.report-head { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; padding-bottom: 14px; border-bottom: 2px solid #16191c; }
+.report-meta, .report-kv { margin: 0; display: grid; gap: 6px; }
+.report-meta div, .report-kv div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; }
+.report-meta dt, .report-kv dt { color: #5f656b; }
+.report-meta dd, .report-kv dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.report-kv small { font-weight: 400; color: #5f656b; }
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 16px 0; border-bottom: 1px solid #e2ddd1; break-inside: avoid; }
+.report-figure { margin: 0; }
+.report-figure svg { width: 100%; height: auto; border: 1px solid #e2ddd1; }
+.report-figure figcaption { font-size: 11.5px; color: #5f656b; margin-top: 4px; }
+.report-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-variant-numeric: tabular-nums; break-inside: avoid; }
+.report-table caption { text-align: left; font-weight: 600; padding-bottom: 6px; }
+.report-table th, .report-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #e2ddd1; }
+.report-table thead th { color: #5f656b; font-weight: 500; border-bottom: 1px solid #16191c; }
+.report-note { color: #444a50; font-size: 12px; }
+.report-foot { padding-top: 12px; font-size: 11.5px; color: #444a50; break-inside: avoid; }
+.report-ids { font-family: var(--font-mono); font-size: 10.5px; color: #5f656b; word-break: break-all; }
+body.report-open { overflow: hidden; }
+@media (max-width: 640px) {
+  .report-overlay { padding: 8px; }
+  .report-sheet { padding: 20px 16px; }
+  .report-head, .report-grid { grid-template-columns: 1fr; }
+  .report-table { font-size: 12px; }
+  .report-table th:nth-child(5), .report-table td:nth-child(5) { display: none; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body.report-open > *:not(:has(.report-overlay)) { display: none !important; }
+  body.report-open .app-shell > *:not(:has(.report-overlay)):not(.report-overlay),
+  body.report-open .twin-workstation > *:not(.report-overlay) { display: none !important; }
+  body.report-open { overflow: visible; background: #fff; }
+  .report-overlay { position: static; background: none; padding: 0; overflow: visible; }
+  .report-toolbar { display: none !important; }
+  .report-sheet { max-width: none; padding: 0; border-radius: 0; }
+  body.report-open .app-shell, body.report-open .twin-workstation { display: block; min-height: 0; height: auto; padding: 0; margin: 0; overflow: visible; }
+}
