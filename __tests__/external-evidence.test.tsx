@@ -37,7 +37,14 @@ describe('Evidence page external results match committed artifacts', () => {
     expect(r.primary_AZT1D.onsets).toBe(2814);
   });
 
-  it('locked real-data figures appear in the locked RESULTS.md', () => {
+  it('locked real-data figures match the locked aggregate record', () => {
+    const agg = JSON.parse(read('docs/evidence/real_data/results.json'));
+    expect(agg.test_results.rmse60).toBe(23.11);
+    expect(agg.test_results.rmse60_ci95).toEqual([18.75, 28.12]);
+    expect(agg.test_results.false_alerts_per_patient_day).toBe(0.11);
+    expect(agg.cohort.test_patients_pooled).toBe(11);
+    expect(check('real-data-v1').note).toContain('23.11 mg/dL [18.75–28.12]');
+    expect(check('real-data-v1').cohort).toContain('11 held-out test patients');
     const md = read('docs/evidence/real_data/RESULTS.md');
     expect(md).toContain('**6.0%**');
     expect(md).toContain('**0.11**');

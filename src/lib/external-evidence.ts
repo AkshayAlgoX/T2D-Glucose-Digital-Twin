@@ -26,7 +26,7 @@ export const EXTERNAL_CHECKS: ExternalCheck[] = [
   {
     id: 'real-data-v1',
     title: 'Preregistered real-patient evaluation (locked)',
-    cohort: '161 real patients: CGMacros, BIG IDEAs and ShanghaiT2DM; patient-level train / validation / test',
+    cohort: '161 nominal participants across CGMacros, BIG IDEAs and ShanghaiT2DM (patient-level split); the 5-min headline metrics come from 11 held-out test patients, and the 20 ShanghaiT2DM test patients were not estimable at 15-min cadence',
     status: 'locked',
     statusText: 'Single authorized test evaluation, finalized and locked',
     artifact: 'docs/evidence/real_data/RESULTS.md',
@@ -35,7 +35,7 @@ export const EXTERNAL_CHECKS: ExternalCheck[] = [
       { label: 'Masked physiological hybrid (ours)', sens30: 0.06, sensAny: null, faPerDay: 0.11, medianLeadMin: 10 },
       { label: 'Linear trend (30 min)', sens30: 0.45, sensAny: null, faPerDay: 3.83, medianLeadMin: 25 },
     ],
-    note: '60-min RMSE 23.04 mg/dL [18.7–28.1] against 26.15 for persistence; alert precision 65.5%. Early warning is the weak point: 6% of spikes caught at least 30 min ahead.',
+    note: '60-min RMSE 23.11 mg/dL [18.75–28.12] (results.json; the RESULTS.md table prints 23.04), against 26.27 for persistence; alert precision 65.5%. Early warning is the weak point: 6.0% of spikes caught at least 30 min ahead (RESULTS.md; results.json records 6.9%, 95% CI 0.0–13.9).',
   },
   {
     id: 'hall-2018',

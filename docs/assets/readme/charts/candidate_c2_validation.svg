@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 218" width="900" height="218" role="img" aria-label="Exploratory candidate C2 on development validation (not confirmed)">
+<rect width="900" height="218" fill="#ffffff"/>
+<style>text{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}</style>
+<text x="24" y="32" font-size="18" font-weight="600" fill="#16191c">Exploratory candidate C2 on development validation (not confirmed)</text>
+<text x="24" y="54" font-size="13" fill="#5f656b">12 validation patients (used in earlier work); paired difference +4.5 points [-2.5, +12.8]</text>
+<line x1="300.0" y1="70" x2="300.0" y2="154" stroke="#e2ddd1"/>
+<text x="300.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">0</text>
+<line x1="378.0" y1="70" x2="378.0" y2="154" stroke="#e2ddd1"/>
+<text x="378.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">10</text>
+<line x1="456.0" y1="70" x2="456.0" y2="154" stroke="#e2ddd1"/>
+<text x="456.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">20</text>
+<line x1="534.0" y1="70" x2="534.0" y2="154" stroke="#e2ddd1"/>
+<text x="534.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">30</text>
+<line x1="612.0" y1="70" x2="612.0" y2="154" stroke="#e2ddd1"/>
+<text x="612.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">40</text>
+<line x1="690.0" y1="70" x2="690.0" y2="154" stroke="#e2ddd1"/>
+<text x="690.0" y="172" font-size="12" fill="#5f656b" text-anchor="middle">50</text>
+<text x="495.0" y="192" font-size="12" fill="#5f656b" text-anchor="middle">Spike onsets warned at least 30 min ahead (%)</text>
+<text x="286" y="101.0" font-size="13" fill="#16191c" text-anchor="end">Risk-gated trend C2 (candidate)</text>
+<line x1="423.0" y1="97.0" x2="584.0" y2="97.0" stroke="#0f6e74" stroke-width="2.5"/>
+<line x1="423.0" y1="91.0" x2="423.0" y2="103.0" stroke="#0f6e74" stroke-width="2"/>
+<line x1="584.0" y1="91.0" x2="584.0" y2="103.0" stroke="#0f6e74" stroke-width="2"/>
+<circle cx="512.7" cy="97.0" r="6" fill="#0f6e74"/>
+<text x="522.7" y="89.0" font-size="12" fill="#0f6e74" font-weight="600">27.3%</text>
+<text x="704" y="101.0" font-size="12" fill="#5f656b">0.87 false alerts/day</text>
+<text x="286" y="139.0" font-size="13" fill="#16191c" text-anchor="end">Learned baseline, threshold 0.2715</text>
+<circle cx="477.3" cy="135.0" r="6" fill="#5f656b"/>
+<text x="487.3" y="127.0" font-size="12" fill="#5f656b" font-weight="600">22.7%</text>
+<text x="704" y="139.0" font-size="12" fill="#5f656b">0.98 false alerts/day</text>
+<text x="24" y="208" font-size="11" fill="#5f656b">Source: docs/evidence/fa_controller/results.json, paired_validation.json · whiskers: 95% patient-bootstrap CI where computed</text>
+</svg>
