@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CohortPage from '../src/app/cohort/page';
 
 jest.mock('next/navigation', () => ({ usePathname: () => '/cohort' }));
+// The ward makes its own request and has its own suite (ward.test.tsx); these tests cover the directory's request.
+jest.mock('../src/components/digital-twin/WardTriage', () => ({ WardTriage: () => null }));
 
 // Explicit unit-test subject directory; not application data or evaluation evidence.
 const subjects = [

@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { FileText, ArrowRight, Pause, Play, Radio, ShieldCheck, UserRound, Activity, Database, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { SubjectIdentifier } from './SubjectIdentifier';
 import { ForecastCanvas } from './ForecastCanvas';
 import { ScenarioEditor } from './ScenarioEditor';
 import { RiskPanel } from './RiskPanel';
 import { RiskStrip } from './RiskStrip';
+import { ClinicianReport } from './ClinicianReport';
+import type { ScenarioState } from '@/hooks/useScenario';
 import { MiniTwin } from '@/components/figure/MiniTwin';
 import type { HeroForecast } from '@/lib/hero';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -265,6 +267,10 @@ export function PatientWorkspace({
   const [contextExpanded, setContextExpanded] = useState(false);
   // Phone and tablet show one workspace view at a time (CSS applies it up to 1024 px); desktop shows all three.
   const [section, setSection] = useState<WorkspaceSection>('forecast');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [scenario, setScenario] = useState<{ state: ScenarioState; plate: string | null } | null>(null);
+  const onScenario = useCallback((state: ScenarioState, plate: string | null) => setScenario({ state, plate }), []);
+  const closeReport = useCallback(() => setReportOpen(false), []);
   const tabsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const fromHash = sectionFromHash(window.location.hash);
@@ -329,6 +335,7 @@ export function PatientWorkspace({
             {replay.paused ? <><Play size={13} aria-hidden="true" />Resume replay</> : <><Pause size={13} aria-hidden="true" />Pause replay</>}
           </button>}
           {qualityLabel && <span className={'tw-quality ' + (forecast?.data_quality?.status ?? '')}>{qualityLabel}</span>}
+          {forecast && <button type="button" className="secondary-button report-button" data-testid="open-report" onClick={() => setReportOpen(true)}><FileText size={13} aria-hidden="true" />Clinician summary</button>}
         </div>
       </header>
       {error && (
@@ -428,7 +435,7 @@ export function PatientWorkspace({
                 <MiniTwin data={baseline} id="whatif-baseline" />
                 <figcaption><strong>Baseline · Figure 1 at {formatTime(baseline.asOf)} UTC.</strong> {(() => { const p = baseline.points.find(q => q.offset_min === 60); return p ? <>At +60 min: {p.twin_p50 != null ? <><span className="t-twin">{p.twin_p50}</span> + <span className="t-learn">({(p.p50 - p.twin_p50).toFixed(1).replace('-', '−')})</span> = </> : null}<span className="t-final">{p.p50}</span> mg/dL.</> : null; })()}</figcaption>
               </figure>}
-              <ScenarioEditor patientId={patientId} currentForecast={forecast} />
+              <ScenarioEditor patientId={patientId} currentForecast={forecast} onStateChange={onScenario} />
             </div>
 
           <section id="history" className="tw-details" data-view="record" aria-labelledby="details-heading">
@@ -441,6 +448,9 @@ export function PatientWorkspace({
           </div>
         </>
       )}
+      {reportOpen && forecast && <ClinicianReport forecast={forecast} cache={cache} baseline={baseline} record={summary}
+        partition={getCohortDetails(forecast.subject?.cohort)?.roleDescription ?? null}
+        scenario={scenario?.state ?? null} plate={scenario?.plate ?? null} onClose={closeReport} />}
       <footer className="research-footer"><ShieldCheck size={15} aria-hidden="true" /><span>Research Only (Not for clinical decisions)</span><span>Synthetic data · no clinical validation claimed</span></footer>
     </main>
   );

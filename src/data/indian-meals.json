@@ -1,0 +1,390 @@
+{
+ "source": "USDA FoodData Central, Food and Nutrient Database for Dietary Studies (FNDDS) 2021-2023",
+ "release": "2024-10-31",
+ "license": "Public domain (CC0 1.0)",
+ "url": "https://fdc.nal.usda.gov/",
+ "nutrient": "Carbohydrate, by difference (g per 100 g, FDC nutrient 205)",
+ "note": "US dietary-survey recipes for dishes of Indian origin; home recipes and portions vary. Not a complete Indian food composition table.",
+ "foods": [
+  {
+   "fdcId": 2706538,
+   "name": "Biryani with chicken",
+   "carbsPer100g": 13.6,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 196
+    }
+   ],
+   "category": "Rice mixed dishes"
+  },
+  {
+   "fdcId": 2706490,
+   "name": "Biryani with meat",
+   "carbsPer100g": 12.2,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 196
+    }
+   ],
+   "category": "Rice mixed dishes"
+  },
+  {
+   "fdcId": 2708985,
+   "name": "Biryani with vegetables",
+   "carbsPer100g": 17.9,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 172
+    }
+   ],
+   "category": "Rice mixed dishes"
+  },
+  {
+   "fdcId": 2707713,
+   "name": "Bread, chappatti or roti",
+   "carbsPer100g": 46.1,
+   "portions": [
+    {
+     "label": "1 large chappatti or roti (8\")",
+     "grams": 52
+    },
+    {
+     "label": "1 medium chappatti or roti (7\")",
+     "grams": 40
+    },
+    {
+     "label": "1 small chappatti or roti (6\")",
+     "grams": 27
+    }
+   ],
+   "category": "Yeast breads"
+  },
+  {
+   "fdcId": 2707613,
+   "name": "Bread, naan",
+   "carbsPer100g": 50.2,
+   "portions": [
+    {
+     "label": "1 piece (1/4 of 10\" dia)",
+     "grams": 44
+    },
+    {
+     "label": "1 Naan (10\" dia)",
+     "grams": 177
+    }
+   ],
+   "category": "Yeast breads"
+  },
+  {
+   "fdcId": 2707715,
+   "name": "Bread, paratha",
+   "carbsPer100g": 45.4,
+   "portions": [
+    {
+     "label": "1 paratha",
+     "grams": 70
+    }
+   ],
+   "category": "Yeast breads"
+  },
+  {
+   "fdcId": 2707714,
+   "name": "Bread, puri",
+   "carbsPer100g": 39.2,
+   "portions": [
+    {
+     "label": "1 puri (approx 4-4/5\" dia)",
+     "grams": 36
+    }
+   ],
+   "category": "Yeast breads"
+  },
+  {
+   "fdcId": 2709632,
+   "name": "Channa Saag",
+   "carbsPer100g": 8.79,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 245
+    }
+   ],
+   "category": "Vegetable dishes"
+  },
+  {
+   "fdcId": 2706437,
+   "name": "Chicken curry",
+   "carbsPer100g": 6.54,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 240
+    }
+   ],
+   "category": "Poultry mixed dishes"
+  },
+  {
+   "fdcId": 2706438,
+   "name": "Chicken curry with rice",
+   "carbsPer100g": 15.1,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 200
+    }
+   ],
+   "category": "Poultry mixed dishes"
+  },
+  {
+   "fdcId": 2707427,
+   "name": "Dal",
+   "carbsPer100g": 19.2,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 240
+    }
+   ],
+   "category": "Beans, peas, legumes"
+  },
+  {
+   "fdcId": 2708347,
+   "name": "Dosa, plain",
+   "carbsPer100g": 37.0,
+   "portions": [
+    {
+     "label": "1 small",
+     "grams": 35
+    },
+    {
+     "label": "1 large",
+     "grams": 155
+    },
+    {
+     "label": "1 medium",
+     "grams": 80
+    }
+   ],
+   "category": "Pancakes, waffles, French toast"
+  },
+  {
+   "fdcId": 2709129,
+   "name": "Dosa, with filling",
+   "carbsPer100g": 30.8,
+   "portions": [
+    {
+     "label": "1 large",
+     "grams": 523
+    },
+    {
+     "label": "1 medium",
+     "grams": 267
+    },
+    {
+     "label": "1 small",
+     "grams": 113
+    }
+   ],
+   "category": "Pancakes, waffles, French toast"
+  },
+  {
+   "fdcId": 2706460,
+   "name": "Fish curry",
+   "carbsPer100g": 6.65,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 240
+    }
+   ],
+   "category": "Seafood mixed dishes"
+  },
+  {
+   "fdcId": 2708346,
+   "name": "Idli",
+   "carbsPer100g": 25.0,
+   "portions": [
+    {
+     "label": "1 item",
+     "grams": 38
+    }
+   ],
+   "category": "Rice mixed dishes"
+  },
+  {
+   "fdcId": 2710351,
+   "name": "Ladoo, round ball",
+   "carbsPer100g": 46.7,
+   "portions": [
+    {
+     "label": "1 piece",
+     "grams": 60
+    }
+   ],
+   "category": "Candy not containing chocolate"
+  },
+  {
+   "fdcId": 2707431,
+   "name": "Lentil curry",
+   "carbsPer100g": 12.3,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 240
+    }
+   ],
+   "category": "Bean, pea, legume dishes"
+  },
+  {
+   "fdcId": 2707432,
+   "name": "Lentil curry with rice",
+   "carbsPer100g": 18.6,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 200
+    }
+   ],
+   "category": "Bean, pea, legume dishes"
+  },
+  {
+   "fdcId": 2710066,
+   "name": "Pakora",
+   "carbsPer100g": 16.2,
+   "portions": [
+    {
+     "label": "1 pakora",
+     "grams": 12
+    }
+   ],
+   "category": "Fried vegetables"
+  },
+  {
+   "fdcId": 2709631,
+   "name": "Palak Paneer",
+   "carbsPer100g": 4.28,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 200
+    }
+   ],
+   "category": "Vegetable dishes"
+  },
+  {
+   "fdcId": 2707429,
+   "name": "Papad, grilled or broiled",
+   "carbsPer100g": 59.9,
+   "portions": [
+    {
+     "label": "1 papad",
+     "grams": 9
+    }
+   ],
+   "category": "Beans, peas, legumes"
+  },
+  {
+   "fdcId": 2709077,
+   "name": "Rice pilaf",
+   "carbsPer100g": 24.1,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 206
+    }
+   ],
+   "category": "Rice mixed dishes"
+  },
+  {
+   "fdcId": 2708408,
+   "name": "Rice, white, cooked, no added fat",
+   "carbsPer100g": 28.0,
+   "portions": [
+    {
+     "label": "1 cup, cooked",
+     "grams": 158
+    }
+   ],
+   "category": "Rice"
+  },
+  {
+   "fdcId": 2707430,
+   "name": "Sambar, vegetable stew",
+   "carbsPer100g": 11.8,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 248
+    }
+   ],
+   "category": "Vegetable dishes"
+  },
+  {
+   "fdcId": 2708730,
+   "name": "Samosa",
+   "carbsPer100g": 33.2,
+   "portions": [
+    {
+     "label": "1 small/individual",
+     "grams": 25
+    },
+    {
+     "label": "1 regular/large",
+     "grams": 100
+    }
+   ],
+   "category": "Turnovers and other grain-based items"
+  },
+  {
+   "fdcId": 2709128,
+   "name": "Upma",
+   "carbsPer100g": 13.8,
+   "portions": [
+    {
+     "label": "1 cup, cooked",
+     "grams": 170
+    }
+   ],
+   "category": "Grits and other cooked cereals"
+  },
+  {
+   "fdcId": 2709130,
+   "name": "Vada",
+   "carbsPer100g": 33.2,
+   "portions": [
+    {
+     "label": "1 item, any size",
+     "grams": 30
+    }
+   ],
+   "category": "Turnovers and other grain-based items"
+  },
+  {
+   "fdcId": 2710067,
+   "name": "Vegetable curry",
+   "carbsPer100g": 8.81,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 240
+    }
+   ],
+   "category": "Vegetable dishes"
+  },
+  {
+   "fdcId": 2710068,
+   "name": "Vegetable curry with rice",
+   "carbsPer100g": 16.5,
+   "portions": [
+    {
+     "label": "1 cup",
+     "grams": 200
+    }
+   ],
+   "category": "Vegetable dishes"
+  }
+ ]
+}

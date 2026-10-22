@@ -4,6 +4,7 @@ import * as d3Shape from 'd3-shape';
 import { FlaskConical, Footprints, Pill, Utensils, UtensilsCrossed } from 'lucide-react';
 import { formatTime } from '@/lib/formatters/date';
 import { Glyph, HatchDefs } from '@/components/figure/marks';
+import { MealBuilder } from './MealBuilder';
 import { useScenario, type ScenarioComparison, type ScenarioCurvePoint, type ScenarioState } from '@/hooks/useScenario';
 import type { ForecastResponse, MedClass, ScenarioInput } from '@/types/forecast-response';
 
@@ -485,13 +486,16 @@ export function announce(state: ScenarioState): string {
   return `Result ready: ${describeInput(state.input)}. Biggest gap between the two forecast curves ${signed(sum.largestDiff, 1, ' mg/dL')} at +${sum.largestDiffMin} min.${risk}${warn}`;
 }
 
-export function ScenarioEditor({ patientId, currentForecast }: { patientId: string; currentForecast?: ForecastResponse | null }) {
+export function ScenarioEditor({ patientId, currentForecast, onStateChange }: { patientId: string; currentForecast?: ForecastResponse | null; onStateChange?: (state: ScenarioState, plate: string | null) => void }) {
   const liveAsOf = currentForecast?.as_of ?? null;
   const settling = useSettlingAnchor(liveAsOf);
   const asOf = settling ? null : liveAsOf;
   const { state, run, clear } = useScenario(patientId, asOf);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  // The plate behind the carbohydrate figure, until the figure is edited by hand.
+  const [plate, setPlate] = useState<string | null>(null);
+  useEffect(() => { onStateChange?.(state, state.status === 'result' && state.input.kind === 'meal' ? plate : null); }, [state, plate, onStateChange]);
   const medClass: MedClass = currentForecast?.ehr_context?.med_classes?.[0] ?? 'metformin';
   const built = buildScenarioInput(form, medClass);
   const loading = state.status === 'loading';
@@ -503,7 +507,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
     if ('input' in b && asOf && !loading) void run(b.input);
   };
 
-  const runPreset = (p: typeof PRESETS[number]) => { const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); };
+  const runPreset = (p: typeof PRESETS[number]) => { setPlate(null); const next = { ...form, ...p.form }; setForm(next); setActivePreset(p.id); submit(next); };
   const medicationPreset = PRESETS.find(p => p.id === 'medication');
 
   return (
@@ -553,7 +557,7 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
           </select>
         </label>
         {form.kind === 'meal' && <label>Carbohydrate (g)
-          <input type="number" inputMode="decimal" min={0} max={250} value={form.carbs} disabled={loading} onChange={e => set({ carbs: e.target.value })} />
+          <input type="number" inputMode="decimal" min={0} max={250} step={0.1} value={form.carbs} disabled={loading} onChange={e => { setPlate(null); set({ carbs: e.target.value }); }} />
         </label>}
         {form.kind === 'activity' && <>
           <label>Duration (min)
@@ -584,6 +588,8 @@ export function ScenarioEditor({ patientId, currentForecast }: { patientId: stri
         </div>
         {'error' in built && <p role="alert" className="whatif-invalid">{built.error}</p>}
       </form>
+      {form.kind === 'meal' && <MealBuilder disabled={loading} onUse={(carbs, description) => { setActivePreset(null); setPlate(description); set({ carbs: String(carbs) }); }} />}
+      {form.kind === 'meal' && plate && <p className="fine-print meal-applied" data-testid="meal-applied">Carbohydrate set from the plate: {plate} = {form.carbs} g. Press Run simulation to compare.</p>}
 
       <p className="sr-only" aria-live="polite" data-testid="scenario-announcement">{announce(state)}</p>
       <div aria-busy={loading} className="whatif-output">
