@@ -2,7 +2,7 @@
 
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-45%20suites%20%7C%20424%20tests-brightgreen.svg)]()
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-47%20suites%20%7C%20443%20tests-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/backend%20tests-140%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
@@ -24,6 +24,8 @@
 | **Demonstration Video** | **DEFERRED — PENDING RECORDING** | Deferred by owner; demonstration video on hold |
 | **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
 | **Real-Data Generalization Study** | [`docs/evidence/real_data/RESULTS.md`](docs/evidence/real_data/RESULTS.md) | Preregistered 161-patient benchmark: 60-min RMSE **23.11 mg/dL** [18.75–28.12], alert precision **65.5%**, median lead time **10.0 min**, **0.11** false alerts/day under verified 1-to-1 matching; Shanghai 15-min cadence non-estimable |
+| **Clinical Workstation** | `/cohort` → `/patients/[id]` | Ward triage ranked by served 2-h spike risk; What-if with 29 Indian dishes from USDA FNDDS (public domain), survey portions or weighed grams; printable clinician summary with an English/Hindi patient note (Hindi not yet reviewed by a native-speaking clinician); FHIR R4 Bundle export validated in tests against the official HL7 R4 JSON schema (structure only: no FHIR invariants or terminology checks) |
+| **Early-Warning Root-Cause Study** | [`docs/evidence/operating_point/README.md`](docs/evidence/operating_point/README.md) | **Exploratory** (train/validation only, test not loaded): a budget-matched threshold and logged-meal features each give small gains inside their confidence intervals; locked results unchanged |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---

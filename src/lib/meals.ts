@@ -26,5 +26,5 @@ export function plateCarbs(plate: ReadonlyArray<PlateItem>): number {
 }
 
 export function describePlate(plate: ReadonlyArray<PlateItem>): string {
-  return plate.map(i => `${i.count} × ${i.food.name} (${i.portion.label})`).join(' + ');
+  return plate.map(i => (i.portion.label === 'weighed' ? `${i.portion.grams} g ${i.food.name}` : `${i.count} × ${i.food.name} (${i.portion.label})`)).join(' + ');
 }

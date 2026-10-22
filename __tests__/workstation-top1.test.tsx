@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import catalog from '../src/data/indian-meals.json';
 import { MEAL_FOODS, MEAL_SOURCE, plateCarbs, searchFoods } from '../src/lib/meals';
 import { fhirBundle } from '../src/lib/fhir';
+import { patientNote } from '../src/lib/patient-note';
 import { ScenarioEditor } from '../src/components/digital-twin/ScenarioEditor';
 import { ClinicianReport } from '../src/components/digital-twin/ClinicianReport';
 import { PatientWorkspace } from '../src/components/digital-twin/PatientWorkspace';
@@ -160,5 +161,81 @@ describe('FHIR R4 export', () => {
     const risk = res.find(r => r.resourceType === 'RiskAssessment');
     expect(risk.prediction[0].probabilityDecimal).toBe(0.42);
     expect(res.find(r => r.resourceType === 'Patient').meta.tag[0].code).toBe('synthetic');
+  });
+});
+
+describe('FHIR export against the official HL7 R4 JSON schema', () => {
+  // hl7.org/fhir/R4/fhir.schema.json (sha256 2230406893b4cf002a4ee1e5e2bbeca22ac5d2d4931b3e9ef7b9594bbc376a01), gzipped.
+  // JSON-schema validation checks structure, types and value sets in the schema; it does not check FHIR invariants or terminology bindings.
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const zlib = require('zlib');
+  const fs = require('fs');
+  const path = require('path');
+  const Ajv = require('ajv');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'fhir-r4.schema.json.gz'))).toString());
+  const { id, ...rest } = raw;
+  const ajv = new Ajv({ strict: false, allErrors: true, validateSchema: false });
+  ajv.addMetaSchema(require('ajv/dist/refs/json-schema-draft-06.json'));
+  const validate = ajv.compile({ ...rest, $id: id });
+
+  it('accepts the exported bundle', () => {
+    const ok = validate(fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z'));
+    expect(validate.errors ?? []).toEqual([]);
+    expect(ok).toBe(true);
+  });
+
+  it('rejects an invalid status code and an unknown property (the validator is not a no-op)', () => {
+    const b = fhirBundle(forecastFixture(), cache, '2026-10-04T12:01:00Z') as any;
+    const badStatus = JSON.parse(JSON.stringify(b)); badStatus.entry[1].resource.status = 'measured';
+    expect(validate(badStatus)).toBe(false);
+    const extra = JSON.parse(JSON.stringify(b)); extra.entry[1].resource.confidence = 0.9;
+    expect(validate(extra)).toBe(false);
+  });
+});
+
+describe('Weighed portions', () => {
+  it('adds a weighed amount of a catalogued dish and bounds it to 1–1000 g', () => {
+    const rice = searchFoods('rice white')[0];
+    render(<ScenarioEditor patientId="test-subject" currentForecast={forecastFixture()} />);
+    const builder = screen.getByTestId('meal-builder');
+    fireEvent.change(within(builder).getByLabelText('Find a dish'), { target: { value: 'rice white' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /^Rice, white/ }));
+    fireEvent.change(within(builder).getByLabelText('Portion'), { target: { value: '-1' } });
+    fireEvent.change(within(builder).getByLabelText('Weight (g)'), { target: { value: '0' } });
+    expect(within(builder).getByRole('alert')).toHaveTextContent('1–1000 g');
+    fireEvent.change(within(builder).getByLabelText('Weight (g)'), { target: { value: '150' } });
+    fireEvent.click(within(builder).getByRole('button', { name: /Add to plate/ }));
+    expect(screen.getByTestId('plate-total')).toHaveTextContent(`${(rice.carbsPer100g * 1.5).toFixed(1)} g`);
+    expect(builder).toHaveTextContent('150 g, weighed');
+  });
+});
+
+describe('Bilingual patient note', () => {
+  const input = { time: '08:00 UTC', glucose: 143, risk: 0.747, scenario: { change: '2 × Idli (1 item)', from: 0.747, to: 0.907 } };
+  it('has the same sentences, in order, with the same numbers, in English and Hindi', () => {
+    const en = patientNote('en', input);
+    const hi = patientNote('hi', input);
+    expect(hi).toHaveLength(en.length);
+    // Hindi puts the verb last, so numbers can appear in another order; compare them as a sorted list.
+    const nums = (s: string) => (s.match(/\d+(\.\d+)?%?/g) ?? []).sort().join(' ');
+    en.forEach((line, i) => expect(nums(hi[i])).toBe(nums(line)));
+    expect(hi.join(' ')).toMatch(/[ऀ-ॿ]/);
+    expect(en[en.length - 1]).toMatch(/talk to your doctor/);
+  });
+
+  it('omits sentences whose values were not served', () => {
+    expect(patientNote('hi', { time: '08:00 UTC', glucose: null, risk: null, scenario: null })).toHaveLength(2);
+  });
+
+  it('switches the summary note to Hindi with lang="hi" and states it is unreviewed', () => {
+    render(<PatientWorkspace patientId="test-subject" forecast={forecastFixture()} cache={cache} isConnected isStale={false} />);
+    fireEvent.click(screen.getByTestId('open-report'));
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('Your glucose at');
+    fireEvent.click(screen.getByRole('button', { name: 'हिन्दी' }));
+    expect(screen.getByTestId('patient-note')).toHaveAttribute('lang', 'hi');
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('160 mg/dL');
+    expect(screen.getByTestId('patient-note')).toHaveTextContent('42%');
+    expect(screen.getByTestId('hindi-review-note')).toHaveTextContent('not yet reviewed');
   });
 });

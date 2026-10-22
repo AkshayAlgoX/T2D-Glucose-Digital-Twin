@@ -1,0 +1,159 @@
+{
+ "status": "EXPLORATORY (CGMacros train/val only; validation previously used; test not loaded)",
+ "seed": 20260930,
+ "budget_false_alerts_per_day": 1.0,
+ "patients": {
+  "train": 25,
+  "val": 9
+ },
+ "decisions": {
+  "train": 62742,
+  "val": 20982
+ },
+ "meals_logged": {
+  "train": 884,
+  "val": 325
+ },
+ "decisions_with_meal_in_past_120min": {
+  "train": 0.27780434158936596,
+  "val": 0.3017348203221809
+ },
+ "cgm_only": {
+  "threshold_budget": 0.2643,
+  "train_oof_at_budget": {
+   "event_sensitivity": 0.48746518105849584,
+   "event_sensitivity_30m": 0.25348189415041783,
+   "alert_precision": 0.4430379746835443,
+   "false_alerts_per_day": 0.9975282207912847,
+   "median_lead_time_min": 30.0,
+   "total_onsets": 359.0,
+   "detected_onsets": 175.0,
+   "detected_30m": 91.0,
+   "total_alerts": 395.0,
+   "false_alerts": 220.0
+  },
+  "val_at_0.35": {
+   "event_sensitivity": 0.39226519337016574,
+   "event_sensitivity_30m": 0.12154696132596685,
+   "alert_precision": 0.6513761467889908,
+   "false_alerts_per_day": 0.4979751558447467,
+   "median_lead_time_min": 10.0,
+   "total_onsets": 181.0,
+   "detected_onsets": 71.0,
+   "detected_30m": 22.0,
+   "total_alerts": 109.0,
+   "false_alerts": 38.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.05583051325437113,
+     0.1794871794871795
+    ],
+    "false_alerts_per_day": [
+     0.2670321166407594,
+     0.7416877443090365
+    ]
+   },
+   "lead_time_quartiles_min": [
+    5.0,
+    10.0,
+    50.0
+   ]
+  },
+  "val_at_budget": {
+   "event_sensitivity": 0.6795580110497238,
+   "event_sensitivity_30m": 0.2541436464088398,
+   "alert_precision": 0.5189873417721519,
+   "false_alerts_per_day": 1.4939254675342402,
+   "median_lead_time_min": 15.0,
+   "total_onsets": 181.0,
+   "detected_onsets": 123.0,
+   "detected_30m": 46.0,
+   "total_alerts": 237.0,
+   "false_alerts": 114.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.1404494382022472,
+     0.34118615347373515
+    ],
+    "false_alerts_per_day": [
+     0.8798688077388298,
+     2.2006168818085348
+    ]
+   },
+   "lead_time_quartiles_min": [
+    5.0,
+    15.0,
+    55.0
+   ]
+  }
+ },
+ "cgm_plus_logged_meals": {
+  "threshold_budget": 0.3157,
+  "train_oof_at_budget": {
+   "event_sensitivity": 0.4233983286908078,
+   "event_sensitivity_30m": 0.23676880222841226,
+   "alert_precision": 0.46060606060606063,
+   "false_alerts_per_day": 0.8070910150038576,
+   "median_lead_time_min": 30.0,
+   "total_onsets": 359.0,
+   "detected_onsets": 152.0,
+   "detected_30m": 85.0,
+   "total_alerts": 330.0,
+   "false_alerts": 178.0
+  },
+  "val_at_0.35": {
+   "event_sensitivity": 0.3259668508287293,
+   "event_sensitivity_30m": 0.09944751381215469,
+   "alert_precision": 0.7468354430379747,
+   "false_alerts_per_day": 0.2620921872867088,
+   "median_lead_time_min": 10.0,
+   "total_onsets": 181.0,
+   "detected_onsets": 59.0,
+   "detected_30m": 18.0,
+   "total_alerts": 79.0,
+   "false_alerts": 20.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.038673365895321214,
+     0.16456925156691649
+    ],
+    "false_alerts_per_day": [
+     0.09125888370829749,
+     0.4981853636493397
+    ]
+   },
+   "lead_time_quartiles_min": [
+    5.0,
+    10.0,
+    30.0
+   ]
+  },
+  "val_at_budget": {
+   "event_sensitivity": 0.6353591160220995,
+   "event_sensitivity_30m": 0.27624309392265195,
+   "alert_precision": 0.5867346938775511,
+   "false_alerts_per_day": 1.0614733585111706,
+   "median_lead_time_min": 25.0,
+   "total_onsets": 181.0,
+   "detected_onsets": 115.0,
+   "detected_30m": 50.0,
+   "total_alerts": 196.0,
+   "false_alerts": 81.0,
+   "ci95": {
+    "event_sensitivity_30m": [
+     0.13142857142857142,
+     0.3892759640541462
+    ],
+    "false_alerts_per_day": [
+     0.5738090925556966,
+     1.6302666716934544
+    ]
+   },
+   "lead_time_quartiles_min": [
+    10.0,
+    25.0,
+    55.0
+   ]
+  }
+ }
+}

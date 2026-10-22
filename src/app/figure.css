@@ -1252,11 +1252,21 @@ details[open] > summary .repro-hint { display: none; }
 .report-table th, .report-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #e2ddd1; }
 .report-table thead th { color: #5f656b; font-weight: 500; border-bottom: 1px solid #16191c; }
 .report-note { color: #444a50; font-size: 12px; }
+.report-note-patient { padding: 14px 0; border-bottom: 1px solid #e2ddd1; break-inside: avoid; }
+.report-note-patient p { margin: 0 0 6px; }
+.report-note-patient [lang=hi] p, .report-lang [lang=hi] { font-family: 'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', sans-serif; line-height: 1.7; }
+.report-note-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.report-lang { display: inline-flex; border: 1px solid #8a8577; border-radius: 6px; overflow: hidden; }
+.report-lang button { border: 0; background: #fff; color: #16191c; padding: 4px 12px; min-height: 32px; font-size: 13px; cursor: pointer; }
+.report-lang button[aria-pressed=true] { background: #16191c; color: #fff; }
+.report-lang button:focus-visible { outline: 2px solid #3d52d5; outline-offset: -2px; }
+@media print { .report-lang { display: none; } }
 .report-foot { padding-top: 12px; font-size: 11.5px; color: #444a50; break-inside: avoid; }
 .report-ids { font-family: var(--font-mono); font-size: 10.5px; color: #5f656b; word-break: break-all; }
 body.report-open { overflow: hidden; }
 @media (max-width: 640px) {
   .report-overlay { padding: 8px; }
+  .report-toolbar > span { flex-basis: 100%; }
   .report-sheet { padding: 20px 16px; }
   .report-head, .report-grid { grid-template-columns: 1fr; }
   .report-table { font-size: 12px; }

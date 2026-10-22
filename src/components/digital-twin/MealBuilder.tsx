@@ -9,17 +9,22 @@ export function MealBuilder({ disabled, onUse }: { disabled?: boolean; onUse: (c
   const [food, setFood] = useState<MealFood | null>(null);
   const [portion, setPortion] = useState(0);
   const [count, setCount] = useState('1');
+  // Portion index WEIGHED means grams weighed by the user instead of a survey measure.
+  const [grams, setGrams] = useState('100');
   const [plate, setPlate] = useState<PlateItem[]>([]);
   const matches = query.trim() ? searchFoods(query).slice(0, 8) : [];
   const n = Number(count);
-  const countOk = Number.isInteger(n) && n >= 1 && n <= 10;
+  const weighed = portion === WEIGHED;
+  const g = Number(grams);
+  const countOk = weighed ? grams.trim() !== '' && Number.isFinite(g) && g >= 1 && g <= 1000 : Number.isInteger(n) && n >= 1 && n <= 10;
   const total = plateCarbs(plate);
 
   const choose = (f: MealFood) => { setFood(f); setPortion(0); setQuery(''); };
   const add = () => {
-    if (!food || !countOk || !food.portions[portion]) return;
-    setPlate(p => [...p, { food, portion: food.portions[portion], count: n }]);
-    setFood(null); setCount('1');
+    if (!food || !countOk || (!weighed && !food.portions[portion])) return;
+    const item = weighed ? { food, portion: { label: 'weighed', grams: g }, count: 1 } : { food, portion: food.portions[portion], count: n };
+    setPlate(p => [...p, item]);
+    setFood(null); setCount('1'); setGrams('100');
   };
 
   return (
@@ -39,13 +44,16 @@ export function MealBuilder({ disabled, onUse }: { disabled?: boolean; onUse: (c
           <label>Portion
             <select value={portion} disabled={disabled} onChange={e => setPortion(Number(e.target.value))}>
               {food.portions.map((p, i) => <option key={p.label} value={i}>{p.label} · {p.grams} g</option>)}
+              <option value={WEIGHED}>Weighed amount (grams)</option>
             </select>
           </label>
-          <label>Count
+          {weighed ? <label>Weight (g)
+            <input type="number" min={1} max={1000} step={1} inputMode="decimal" value={grams} disabled={disabled} onChange={e => setGrams(e.target.value)} />
+          </label> : <label>Count
             <input type="number" min={1} max={10} step={1} value={count} disabled={disabled} onChange={e => setCount(e.target.value)} />
-          </label>
+          </label>}
           <button type="button" className="secondary-button" onClick={add} disabled={disabled || !countOk}><Plus size={14} aria-hidden="true" />Add to plate</button>
-          {!countOk && <span role="alert" className="whatif-invalid">Count must be a whole number from 1 to 10</span>}
+          {!countOk && <span role="alert" className="whatif-invalid">{weighed ? 'Weight must be 1–1000 g' : 'Count must be a whole number from 1 to 10'}</span>}
         </div>}
         {plate.length > 0 && <>
           <table className="meal-plate">
@@ -53,7 +61,7 @@ export function MealBuilder({ disabled, onUse }: { disabled?: boolean; onUse: (c
             <thead><tr><th scope="col">Dish</th><th scope="col">Portion</th><th scope="col" className="numeric">Carbohydrate</th><th scope="col"><span className="sr-only">Remove</span></th></tr></thead>
             <tbody>{plate.map((item, i) => <tr key={i}>
               <th scope="row">{item.food.name}<small> FDC {item.food.fdcId}</small></th>
-              <td>{item.count} × {item.portion.label} ({item.portion.grams} g)</td>
+              <td>{item.portion.label === 'weighed' ? `${item.portion.grams} g, weighed` : `${item.count} × ${item.portion.label} (${item.portion.grams} g)`}</td>
               <td className="numeric">{itemCarbs(item).toFixed(1)} g</td>
               <td><button type="button" className="meal-remove" aria-label={`Remove ${item.food.name}`} onClick={() => setPlate(p => p.filter((_, j) => j !== i))}><X size={14} aria-hidden="true" /></button></td>
             </tr>)}</tbody>
@@ -67,6 +75,8 @@ export function MealBuilder({ disabled, onUse }: { disabled?: boolean; onUse: (c
     </details>
   );
 }
+
+const WEIGHED = -1;
 
 function searchHint(query: string, found: number) {
   if (!query.trim()) return `${MEAL_SOURCE_COUNT} dishes catalogued.`;

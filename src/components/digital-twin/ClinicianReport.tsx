@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, Printer, X } from 'lucide-react';
 import { MiniTwin } from '@/components/figure/MiniTwin';
 import { formatDate, formatTime } from '@/lib/formatters/date';
 import { fhirBundle } from '@/lib/fhir';
+import { patientNote, type NoteLang } from '@/lib/patient-note';
 import type { HeroForecast } from '@/lib/hero';
 import type { ScenarioState } from '@/hooks/useScenario';
 import type { SubjectStore } from '@/lib/types';
@@ -27,6 +28,7 @@ export interface ReportProps {
 /** A printable one-page summary of what the workspace shows at the forecast moment; no field is filled in. */
 export function ClinicianReport({ forecast, cache, baseline, record, partition, scenario, plate, onClose }: ReportProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [lang, setLang] = useState<NoteLang>('en');
   useEffect(() => {
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -42,6 +44,10 @@ export function ClinicianReport({ forecast, cache, baseline, record, partition, 
   const result = scenario?.status === 'result' ? scenario : null;
   const summary = result ? summarizeComparison(result.result) : null;
   const name = forecast.subject.simulator?.param_set_id ?? 'Subject';
+  const note = patientNote(lang, {
+    time: `${formatTime(forecast.current.measured_at)} UTC`, glucose: forecast.current.value_mg_dl ?? null, risk: risk?.probability_120m ?? null,
+    scenario: result ? { change: plate ?? describeInput(result.input), from: result.result.metrics.baseline_probability, to: result.result.metrics.new_probability } : null,
+  });
 
   const download = () => {
     const blob = new Blob([JSON.stringify(fhirBundle(forecast, cache, new Date().toISOString()), null, 2)], { type: 'application/fhir+json' });
@@ -114,6 +120,18 @@ export function ClinicianReport({ forecast, cache, baseline, record, partition, 
               <p className="report-note">{SCENARIO_DISCLAIMER}</p>
             </> : <p className="report-note">No scenario was run in this session. Run one in What-if to include it here.</p>}
           </div>
+        </section>
+
+        <section className="report-note-patient" aria-labelledby="patient-note-heading">
+          <div className="report-note-head">
+            <h2 id="patient-note-heading">Note for the patient</h2>
+            <div role="group" aria-label="Note language" className="report-lang">
+              <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
+              <button type="button" aria-pressed={lang === 'hi'} onClick={() => setLang('hi')} lang="hi">हिन्दी</button>
+            </div>
+          </div>
+          <div lang={lang} data-testid="patient-note">{note.map(line => <p key={line}>{line}</p>)}</div>
+          {lang === 'hi' && <p className="report-note" data-testid="hindi-review-note">Hindi text: fixed sentences filled with the values above; not yet reviewed by a native-speaking clinician.</p>}
         </section>
 
         <footer className="report-foot">
