@@ -3,7 +3,7 @@
 **A research prototype combining observable patient context, wearable history, and mechanistic physiological modeling to forecast glucose trajectories and estimate adverse spike risk.**
 
 [![Frontend Tests](https://img.shields.io/badge/frontend%20tests-47%20suites%20%7C%20443%20tests-brightgreen.svg)]()
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-140%20passed-brightgreen.svg)]()
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-129%20passed-brightgreen.svg)]()
 [![Typecheck](https://img.shields.io/badge/typescript-zero%20errors-blue.svg)]()
 [![Release Candidate](https://img.shields.io/badge/release-release%2Fcandidate--clean-blue.svg)]()
 [![Intended Use](https://img.shields.io/badge/intended%20use-research%20prototype%20only-important.svg)]()
@@ -25,7 +25,7 @@
 | **Open-Source License** | [`Apache-2.0`](LICENSE) | Complete unmodified Apache License 2.0; see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) |
 | **Real-Data Generalization Study** | [`docs/evidence/real_data/RESULTS.md`](docs/evidence/real_data/RESULTS.md) | Preregistered 161-patient benchmark: 60-min RMSE **23.11 mg/dL** [18.75–28.12], alert precision **65.5%**, median lead time **10.0 min**, **0.11** false alerts/day under verified 1-to-1 matching; Shanghai 15-min cadence non-estimable |
 | **Clinical Workstation** | `/cohort` → `/patients/[id]` | Ward triage ranked by served 2-h spike risk; What-if with 29 Indian dishes from USDA FNDDS (public domain), survey portions or weighed grams; printable clinician summary with an English/Hindi patient note (Hindi not yet reviewed by a native-speaking clinician); FHIR R4 Bundle export validated in tests against the official HL7 R4 JSON schema (structure only: no FHIR invariants or terminology checks) |
-| **Early-Warning Root-Cause Study** | [`docs/evidence/operating_point/README.md`](docs/evidence/operating_point/README.md) | **Exploratory** (train/validation only, test not loaded): a budget-matched threshold and logged-meal features each give small gains inside their confidence intervals; locked results unchanged |
+| **Early-Warning Root-Cause Study** | [`docs/evidence/operating_point/README.md`](docs/evidence/operating_point/README.md) | **Exploratory** (train/validation only, test not loaded): the patient's own previous-day CGM in the upcoming clock window raises ≥30-min warning sensitivity at matched false-alert rates (training patient-grouped OOF +5.4 points [+0.7, +10.1]; validation at ≤1 false alert/day 22.7% → 30.8%, median lead 15 → 30 min). A budget-matched threshold, logged meals and an explicit ≥30-min target do not. Locked results unchanged; adopting the routine features needs a new preregistered evaluation |
 | **Claim–Evidence Ledger** | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) | Multi-tier evidence separation (Verified vs. Historical vs. Excluded) |
 
 ---
@@ -152,7 +152,7 @@ Open `http://localhost:3000/` (overview and a direct link to the demonstration t
 # Run all 45 Jest test suites (424 tests: unit, integration, contracts, safety invariants):
 npm test -- --runInBand --silent --no-cache
 
-# Run all 140 backend tests (provenance, contracts, causality, safety, sealed-split access):
+# Run the backend tests from the repository root: provenance, contracts, causality, safety, sealed-split access, twin counterfactual plausibility (129 passed on 2026-10-22; without RUN_DIR two serving tests skip):
 RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -v
 
 # Run TypeScript typecheck:
