@@ -69,3 +69,32 @@ export const EXTERNAL_CHECKS: ExternalCheck[] = [
     note: 'Different physiology from the type 2 development cohorts. Forecast RMSE at 60 min: LightGBM 36.9, persistence 37.9 mg/dL.',
   },
 ];
+
+/** The frozen early-warning candidate: training-only selection, exploratory validation, awaiting an unused cohort. */
+export const C2_CANDIDATE = {
+  title: 'Exploratory candidate: risk-gated trend with worst-fold threshold selection',
+  rule: '(30-min trend projects ≥ 240 mg/dL at +60 min AND routine risk ≥ 0.20) OR routine risk ≥ 0.476',
+  artifact: 'docs/evidence/fa_controller/README.md',
+  confirmation: 'docs/evidence/aireadi_confirmation/PREREGISTRATION.md',
+  rows: [
+    { label: 'Risk-gated trend C2 (candidate)', sens30: 0.2727, sensAny: 0.6970, faPerDay: 0.871, medianLeadMin: 15 },
+    { label: 'Learned baseline (best training-chosen threshold)', sens30: 0.2273, sensAny: 0.5808, faPerDay: 0.985, medianLeadMin: 15 },
+  ] as ExternalRow[],
+  pairedSens30: { point: 0.0455, lo: -0.0249, hi: 0.1278 },
+  note: 'Validation patients were used in earlier work, so this is not independent. Confirmation is preregistered for AI-READI and has not been run: data access is not yet approved.',
+};
+
+/** How each kind of statement on this site is supported. */
+export const CLAIM_TIERS = {
+  proven: [
+    'Ward → patient → forecast → What-if → clinician summary → evidence workflow, verified in a production browser on desktop and mobile',
+    'FHIR R4 export validated in tests against the official HL7 R4 JSON schema, plus semantic checks',
+    'Preregistered real-patient evaluation on 161 patients, single locked run (results as reported, including 6% early warning)',
+    'Two preregistered external checks on unused cohorts, run once each and published whatever the outcome',
+  ],
+  exploratory: [
+    'Daily-routine features improve risk ranking (training OOF +5.4 points ≥30 min)',
+    'Risk-gated trend C2 stays within the false-alert budget on validation (+4.5 points, CI includes 0)',
+  ],
+  confirmed: [] as string[],
+};

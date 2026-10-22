@@ -21,7 +21,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { NavigationRail } from '@/components/digital-twin/NavigationRail';
-import { EXTERNAL_CHECKS } from '@/lib/external-evidence';
+import { C2_CANDIDATE, CLAIM_TIERS, EXTERNAL_CHECKS } from '@/lib/external-evidence';
 
 export const dynamic = 'force-dynamic';
 
@@ -365,6 +365,11 @@ export default async function EvidencePage() {
         <section className="panel evidence-section external-evidence" id="real-and-external" tabIndex={-1} aria-labelledby="external-heading" data-testid="external-evidence">
           <span className="eyebrow">Real patients and external cohorts</span>
           <h2 id="external-heading">What held up on real and unused data, and what did not</h2>
+          <div className="claim-tiers" data-testid="claim-tiers">
+            <div><h3>Proven</h3><ul>{CLAIM_TIERS.proven.map(t => <li key={t}>{t}</li>)}</ul></div>
+            <div><h3>Exploratory, not established</h3><ul>{CLAIM_TIERS.exploratory.map(t => <li key={t}>{t}</li>)}</ul></div>
+            <div><h3>Independently confirmed</h3>{CLAIM_TIERS.confirmed.length ? <ul>{CLAIM_TIERS.confirmed.map(t => <li key={t}>{t}</li>)}</ul> : <p data-testid="confirmed-none">None yet. No early-warning improvement has been confirmed on an unused cohort.</p>}</div>
+          </div>
           <p className="fine-print">Sensitivity is the share of spike onsets warned at least 30 min ahead, or at any lead, with 1-to-1 alert matching and a 120-min cooldown; the false-alert budget is 1.0 per patient-day. External checks were preregistered and frozen in a git commit before the data were read.</p>
           {EXTERNAL_CHECKS.map(c => (
             <div key={c.id} className="external-check" data-testid={`external-${c.id}`}>
@@ -386,6 +391,21 @@ export default async function EvidencePage() {
               <p className="fine-print">{c.note}</p>
             </div>
           ))}
+          <div className="external-check external-candidate" data-testid="external-c2-candidate">
+            <div className="external-check-head">
+              <h3>{C2_CANDIDATE.title}</h3>
+              <span className="status-badge external-status not-confirmed">Exploratory: paired +{(C2_CANDIDATE.pairedSens30.point * 100).toFixed(1)} points [{(C2_CANDIDATE.pairedSens30.lo * 100).toFixed(1)}, +{(C2_CANDIDATE.pairedSens30.hi * 100).toFixed(1)}] at ≥30 min, validation</span>
+            </div>
+            <p className="fine-print">{C2_CANDIDATE.rule} · <code>{C2_CANDIDATE.artifact}</code></p>
+            <div className="evidence-table-container" tabIndex={0} role="region" aria-label="Exploratory candidate validation results">
+              <table className="external-table">
+                <caption className="sr-only">Exploratory candidate on development validation: sensitivity, false alerts per patient-day and median lead</caption>
+                <thead><tr><th scope="col">Policy</th><th scope="col">≥30 min</th><th scope="col">Any lead</th><th scope="col">False alerts / day</th><th scope="col">Median lead</th></tr></thead>
+                <tbody>{C2_CANDIDATE.rows.map(r => <tr key={r.label}><th scope="row">{r.label}</th><td>{(r.sens30 * 100).toFixed(1)}%</td><td>{r.sensAny == null ? '—' : `${(r.sensAny * 100).toFixed(1)}%`}</td><td>{r.faPerDay.toFixed(2)}</td><td>{r.medianLeadMin} min</td></tr>)}</tbody>
+              </table>
+            </div>
+            <p className="fine-print">{C2_CANDIDATE.note} Protocol: <code>{C2_CANDIDATE.confirmation}</code>.</p>
+          </div>
           <p className="fine-print">No unused, openly licensed type 2 cohort large enough for confirmation was found (AI-READI and OMIX002493 are controlled-access). Early-warning superiority over simple trend rules has not been shown.</p>
         </section>
 

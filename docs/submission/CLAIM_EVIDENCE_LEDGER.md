@@ -36,6 +36,14 @@ Paths below are repository-relative. Source functions are cited so line drift do
 | C26 | “The learned alert policy beats a linear-trend rule and a trend + risk policy on unused external cohorts.” | `docs/evidence/external_v2/` (PREREGISTRATION.md, freeze `3f1d7350`, amendment `b81afcf5`; RESULTS.md; results.json) | NOT MET (AZT1D −2.5 [−6.4, +1.4] and −2.7 [−5.7, +0.5] points) | Must not be claimed. Across Hall and AZT1D, simple trend rules match or beat the learned risk at ≥30-min warning; the risk-gated trend policy ranks best but exceeds the 1.0 false-alert budget (1.26/day). |
 | C27 | “A risk-gated trend policy with worst-fold threshold selection gives more early warnings within the false-alert budget.” | `docs/evidence/fa_controller/` (README.md; results.json; paired_validation.json) | EXPLORATORY, NOT ESTABLISHED (validation +4.5 points [−2.5, +12.8] at ≥30 min, 0.87 false alerts/day) | Validation was used in earlier work; no unused type 2 cohort is openly available. Frozen candidate for confirmation; must not be stated as a result. |
 | C28 | “The Evidence page shows real-patient and external results, including failed checks.” | `src/app/evidence/page.tsx` (#real-and-external); `src/lib/external-evidence.ts`; `__tests__/external-evidence.test.tsx` checks every number against the committed artifacts | VERIFIED implementation | Shows exactly the committed results; no new evaluation. |
+| C29 | “Confirmation of the C2 candidate on AI-READI is preregistered.” | `docs/evidence/aireadi_confirmation/` (PREREGISTRATION.md, aireadi_evaluate.py); `backend/tests/test_aireadi_confirmation.py` (synthetic AI-READI-layout release) | VERIFIED protocol and harness; NOT RUN | AI-READI access is not approved; no AI-READI data are held. No confirmation may be claimed until the frozen run meets its primary endpoint. |
+
+## Claim tiers (2026-10-22)
+
+- **Proven (product and protocol):** C01–C07, C21, C22, C28, C29 (harness). The locked real-patient evaluation is reported as run, including its 6% early-warning result.
+- **Exploratory, not established:** C24 (daily routine), C27 (risk-gated trend C2 within budget). C23 is implemented, but the Hindi translation is unreviewed.
+- **Not confirmed or not met (kept visible):** C25 (Hall), C26 (AZT1D).
+- **Independently confirmed improvements:** none.
 
 ## Historical result provenance
 

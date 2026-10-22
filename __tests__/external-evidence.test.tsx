@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { EXTERNAL_CHECKS } from '../src/lib/external-evidence';
+import { C2_CANDIDATE, CLAIM_TIERS, EXTERNAL_CHECKS } from '../src/lib/external-evidence';
 
 // The Evidence page's real-patient and external numbers must match the committed artifacts.
 const root = path.join(__dirname, '..');
@@ -45,5 +45,24 @@ describe('Evidence page external results match committed artifacts', () => {
     expect(md).toContain('45.0%');
     expect(md).toContain('3.83');
     expect(check('real-data-v1').rows[0]).toMatchObject({ sens30: 0.06, faPerDay: 0.11, medianLeadMin: 10 });
+  });
+});
+
+describe('Exploratory candidate and claim tiers', () => {
+  it('candidate numbers match fa_controller artifacts and are not presented as confirmed', () => {
+    const r = JSON.parse(read('docs/evidence/fa_controller/results.json'));
+    const pv = JSON.parse(read('docs/evidence/fa_controller/paired_validation.json'));
+    const [c2, p0] = C2_CANDIDATE.rows;
+    expect(c2.sens30).toBeCloseTo(r.validation.C2.event_sensitivity_30m, 3);
+    expect(c2.sensAny).toBeCloseTo(r.validation.C2.event_sensitivity, 3);
+    expect(c2.faPerDay).toBeCloseTo(r.validation.C2.false_alerts_per_day, 3);
+    expect(p0.sens30).toBeCloseTo(pv.p0.event_sensitivity_30m, 3);
+    expect(p0.faPerDay).toBeCloseTo(pv.p0.false_alerts_per_day, 3);
+    expect(C2_CANDIDATE.pairedSens30.point).toBeCloseTo(pv.diff_sens30.point, 3);
+    expect(C2_CANDIDATE.pairedSens30.lo).toBeCloseTo(pv.diff_sens30.ci95[0], 3);
+    expect(C2_CANDIDATE.pairedSens30.hi).toBeCloseTo(pv.diff_sens30.ci95[1], 3);
+    expect(C2_CANDIDATE.pairedSens30.lo).toBeLessThan(0);
+    expect(CLAIM_TIERS.confirmed).toHaveLength(0);
+    expect(fs.existsSync(path.join(root, 'docs/evidence/aireadi_confirmation/results.json'))).toBe(false);
   });
 });
