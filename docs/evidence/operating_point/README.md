@@ -4,7 +4,7 @@
 
 ## Question
 
-The locked hybrid caught 6.0% of spikes at least 30 min ahead, with a 10-min median lead, at 0.11 false alerts per patient-day. The budget was 1.0. Four candidate causes were tested: the two below, an explicit ≥30-min target, and missing daily routine (section 3). Sections 4–5 test threshold transfer across patients and online personalization.
+The locked hybrid caught 6.9% of spikes at least 30 min ahead (point estimate; the RESULTS.md table prints the 6.0% bootstrap mean), with a 10-min median lead, at 0.11 false alerts per patient-day. The budget was 1.0. Four candidate causes were tested: the two below, an explicit ≥30-min target, and missing daily routine (section 3). Sections 4–5 test threshold transfer across patients and online personalization.
 
 1. **Operating point.** The policy alerts at a fixed calibrated risk of 0.35 and never uses the false-alert budget.
 2. **No meal information.** The preregistration set meal carbohydrate to zero for every model.

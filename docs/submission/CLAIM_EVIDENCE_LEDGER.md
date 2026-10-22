@@ -37,10 +37,11 @@ Paths below are repository-relative. Source functions are cited so line drift do
 | C27 | “A risk-gated trend policy with worst-fold threshold selection gives more early warnings within the false-alert budget.” | `docs/evidence/fa_controller/` (README.md; results.json; paired_validation.json) | EXPLORATORY, NOT ESTABLISHED (validation +4.5 points [−2.5, +12.8] at ≥30 min, 0.87 false alerts/day) | Validation was used in earlier work; no unused type 2 cohort is openly available. Frozen candidate for confirmation; must not be stated as a result. |
 | C28 | “The Evidence page shows real-patient and external results, including failed checks.” | `src/app/evidence/page.tsx` (#real-and-external); `src/lib/external-evidence.ts`; `__tests__/external-evidence.test.tsx` checks every number against the committed artifacts | VERIFIED implementation | Shows exactly the committed results; no new evaluation. |
 | C29 | “Confirmation of the C2 candidate on AI-READI is preregistered.” | `docs/evidence/aireadi_confirmation/` (PREREGISTRATION.md, aireadi_evaluate.py); `backend/tests/test_aireadi_confirmation.py` (synthetic AI-READI-layout release) | VERIFIED protocol and harness; NOT RUN | AI-READI access is not approved; no AI-READI data are held. No confirmation may be claimed until the frozen run meets its primary endpoint. |
+| C30 | “Locked real-data headline: RMSE₆₀ 23.11 mg/dL [18.75–28.12], sensitivity ≥30 min 6.9% [0.0–13.9], 0.11 false alerts/day, on 11 held-out test patients.” | `docs/evidence/real_data/results.json` (point estimates); `docs/submission/LOCKED_RESULTS_RECONCILIATION.md` | VERIFIED from the locked aggregate record | The `RESULTS.md` headline table prints bootstrap means (23.04, 6.0%) from the same run. The median lead-time band (5–15 min) is a fixed ±5 min, not a CI. |
 
 ## Claim tiers (2026-10-22)
 
-- **Proven (product and protocol):** C01–C07, C21, C22, C28, C29 (harness). The locked real-patient evaluation is reported as run, including its 6% early-warning result.
+- **Proven (product and protocol):** C01–C07, C21, C22, C28, C29 (harness). The locked real-patient evaluation is reported as run, including its 6.9% early-warning point estimate (C30).
 - **Exploratory, not established:** C24 (daily routine), C27 (risk-gated trend C2 within budget). C23 is implemented, but the Hindi translation is unreviewed.
 - **Not confirmed or not met (kept visible):** C25 (Hall), C26 (AZT1D).
 - **Independently confirmed improvements:** none.

@@ -45,13 +45,17 @@ describe('Evidence page external results match committed artifacts', () => {
     expect(agg.cohort.test_patients_pooled).toBe(11);
     expect(check('real-data-v1').note).toContain('23.11 mg/dL [18.75–28.12]');
     expect(check('real-data-v1').cohort).toContain('11 held-out test patients');
+    const [hybrid, trend] = check('real-data-v1').rows;
+    expect(hybrid.sens30 * 100).toBeCloseTo(agg.test_results.event_sensitivity_30m, 6);
+    expect(hybrid.sensAny! * 100).toBeCloseTo(agg.test_results.event_sensitivity, 6);
+    expect(hybrid).toMatchObject({ faPerDay: agg.test_results.false_alerts_per_patient_day, medianLeadMin: agg.test_results.median_lead_time_min });
+    expect(trend.sens30 * 100).toBeCloseTo(agg.baselines_test.linear_trend.sens_30m, 6);
+    expect(trend.faPerDay).toBe(agg.baselines_test.linear_trend.fa_per_day);
+    // RESULTS.md's headline table prints bootstrap means; the page quotes them only by name.
     const md = read('docs/evidence/real_data/RESULTS.md');
-    expect(md).toContain('**6.0%**');
-    expect(md).toContain('**0.11**');
     expect(md).toContain('**23.04**');
-    expect(md).toContain('45.0%');
-    expect(md).toContain('3.83');
-    expect(check('real-data-v1').rows[0]).toMatchObject({ sens30: 0.06, faPerDay: 0.11, medianLeadMin: 10 });
+    expect(md).toContain('**6.0%**');
+    expect(check('real-data-v1').note).toContain('bootstrap means (23.04, 6.0%)');
   });
 });
 

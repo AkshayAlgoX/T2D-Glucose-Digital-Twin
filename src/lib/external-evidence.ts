@@ -32,10 +32,10 @@ export const EXTERNAL_CHECKS: ExternalCheck[] = [
     artifact: 'docs/evidence/real_data/RESULTS.md',
     freeze: null,
     rows: [
-      { label: 'Masked physiological hybrid (ours)', sens30: 0.06, sensAny: null, faPerDay: 0.11, medianLeadMin: 10 },
-      { label: 'Linear trend (30 min)', sens30: 0.45, sensAny: null, faPerDay: 3.83, medianLeadMin: 25 },
+      { label: 'Masked physiological hybrid (ours)', sens30: 0.069, sensAny: 0.264, faPerDay: 0.11, medianLeadMin: 10 },
+      { label: 'Linear trend (30 min)', sens30: 0.444, sensAny: null, faPerDay: 3.84, medianLeadMin: 25 },
     ],
-    note: '60-min RMSE 23.11 mg/dL [18.75–28.12] (results.json; the RESULTS.md table prints 23.04), against 26.27 for persistence; alert precision 65.5%. Early warning is the weak point: 6.0% of spikes caught at least 30 min ahead (RESULTS.md; results.json records 6.9%, 95% CI 0.0–13.9).',
+    note: 'Point estimates on the full test set (results.json): 60-min RMSE 23.11 mg/dL [18.75–28.12] against 26.27 for persistence; alert precision 65.5%; 6.9% of spikes caught at least 30 min ahead [0.0–13.9]. The RESULTS.md headline table prints bootstrap means (23.04, 6.0%); see docs/submission/LOCKED_RESULTS_RECONCILIATION.md.',
   },
   {
     id: 'hall-2018',
@@ -89,7 +89,7 @@ export const CLAIM_TIERS = {
   proven: [
     'Ward → patient → forecast → What-if → clinician summary → evidence workflow, verified in a production browser on desktop and mobile',
     'FHIR R4 export validated in tests against the official HL7 R4 JSON schema, plus semantic checks',
-    'Preregistered real-patient evaluation on 161 patients, single locked run (results as reported, including 6% early warning)',
+    'Preregistered real-patient evaluation on 161 patients, single locked run (results as reported, including 6.9% early warning)',
     'Two preregistered external checks on unused cohorts, run once each and published whatever the outcome',
   ],
   exploratory: [
