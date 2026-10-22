@@ -53,8 +53,17 @@ def test_deterministic_split_counts():
     assert len(te_bi) == 4
 
 
-def test_partition_lock_safeguard():
-    """Attempting to access test partition without allow_test=True MUST raise PartitionLockError."""
+def test_partition_lock_safeguard(tmp_path, monkeypatch):
+    """Attempting to access test partition without allow_test=True MUST raise PartitionLockError.
+
+    The loaders read only their metadata table before the lock check, so header-only stand-ins (no patient
+    rows) exercise the real lock on any machine; the licensed raw data are not needed and are never read.
+    """
+    (tmp_path / "cgmacros").mkdir()
+    (tmp_path / "cgmacros" / "bio.csv").write_text("subject,Age,BMI,Body weight,Gender,A1c PDL (Lab)\n")
+    (tmp_path / "bigideas").mkdir()
+    (tmp_path / "bigideas" / "Demographics.csv").write_text("ID,Gender,HbA1c\n")
+    monkeypatch.setattr(develop, "RAW_DIR", tmp_path)
     with pytest.raises(develop.PartitionLockError):
         develop.load_cgmacros(partition_filter={"test"}, allow_test=False)
 

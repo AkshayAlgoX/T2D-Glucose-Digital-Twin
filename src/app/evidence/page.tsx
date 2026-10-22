@@ -228,6 +228,8 @@ function EvidenceDisclosure({ labelledBy, label, defaultOpen = false, children }
 }
 
 export default async function EvidencePage() {
+  // Both reads below are listed in next.config.mjs outputFileTracingIncludes; turbopackIgnore stops the whole run
+  // folder (model weights) from being traced into the deployment.
   const artifactsDir = process.env.ARTIFACTS_DIR || path.join(process.cwd(), 'runs/pr_tft_ablation_arm_d');
   let manifest: z.infer<typeof ManifestSchema> | null = null;
   let report: z.infer<typeof ReportSchema> | null = null;
@@ -237,7 +239,7 @@ export default async function EvidencePage() {
   let reportBytes: Buffer | null = null;
 
   try {
-    manifestBytes = await fs.readFile(path.join(artifactsDir, 'run_manifest.json'));
+    manifestBytes = await fs.readFile(/*turbopackIgnore: true*/ path.join(artifactsDir, 'run_manifest.json'));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
       errorState = 'absent';
@@ -247,7 +249,7 @@ export default async function EvidencePage() {
   }
 
   try {
-    reportBytes = await fs.readFile(path.join(artifactsDir, 'evaluation_report.json'));
+    reportBytes = await fs.readFile(/*turbopackIgnore: true*/ path.join(artifactsDir, 'evaluation_report.json'));
   } catch (error: unknown) {
     if (!errorState) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {

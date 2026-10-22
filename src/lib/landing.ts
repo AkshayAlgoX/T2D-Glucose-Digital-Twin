@@ -21,7 +21,7 @@ export interface LandingEvidence {
 /** Headline numbers, read from the committed evidence artifact at request time; null if it is absent or malformed. */
 export async function readLandingEvidence(file = path.join(process.cwd(), 'docs/evidence/validation_ceiling_results.json')): Promise<LandingEvidence | null> {
   try {
-    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const d = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ file, 'utf8'));
     const m = d.matched_baselines_and_uncertainty['60min'];
     const out: LandingEvidence = {
       rmse60: { hybrid: m.pr_tft.rmse, twin: m.twin_only.rmse, persistence: m.persistence.rmse },
@@ -69,7 +69,7 @@ export interface JumpExperiment {
 /** The pre-registered isolated-step experiment (docs/evidence/jump_experiment); null if absent or malformed. */
 export async function readJumpExperiment(file = path.join(process.cwd(), 'docs/evidence/jump_experiment/results.json')): Promise<JumpExperiment | null> {
   try {
-    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const d = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ file, 'utf8'));
     const ok = (v: any): v is JumpVariant => v && ['30min', '60min', '120min'].every(k => Number.isFinite(v.rmse?.[k])) && Number.isFinite(v.share_isolated_step_gt_20) && Number.isFinite(v.share_isolated_step_gt_40) && Number.isFinite(v.p10_p90_coverage);
     const v = d.validation, t = d.train_sample;
     if (!ok(v?.original) || !ok(v?.R3) || !ok(t?.original) || !ok(t?.R3)) return null;
@@ -96,7 +96,7 @@ export interface EventEvaluation { patients: number; groups: Record<string, numb
 export const EVENT_ROWS = ['pr_tft_crossfit@0.35', 'pr_tft_crossfit@0.6', 'pr_tft_median_rule', 'twin_only', 'linear_trend_rule'] as const;
 export async function readEventEvaluation(file = path.join(process.cwd(), 'docs/evidence/event_eval/validation_event_report.json')): Promise<EventEvaluation | null> {
   try {
-    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const d = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ file, 'utf8'));
     if (d.schema !== 'pr_tft_validation_event_evaluation/v1' || d.provenance?.limited_to_patients != null) return null;
     const p = d.populations?.primary;
     const ci = (v: any): v is Ci => v && 'estimate' in v && 'ci_low' in v && 'ci_high' in v;
@@ -127,7 +127,7 @@ export interface Gate3Checks {
 /** Gate 3 checks G3.1–G3.3 as recorded by validation_gates.py; null unless every value shown is present. */
 export async function readGate3Checks(file = path.join(process.cwd(), 'backend/synthetic_v2/validation/validation_report.json')): Promise<Gate3Checks | null> {
   try {
-    const d = JSON.parse(await fs.readFile(file, 'utf8'));
+    const d = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ file, 'utf8'));
     const g = (d.gates ?? []).find((x: any) => x?.gate_id === 'GATE 3');
     const c = (id: string) => (g?.checks ?? []).find((x: any) => x?.check_id === id);
     const g1 = c('G3.1'), g2 = c('G3.2'), g3 = c('G3.3');
@@ -187,7 +187,7 @@ export interface RealDataResults {
 /** Reads preregistered real-data benchmark results from docs/evidence/real_data/results.json. */
 export async function readRealDataResults(file = path.join(process.cwd(), 'docs/evidence/real_data/results.json')): Promise<RealDataResults | null> {
   try {
-    const raw = await fs.readFile(file, 'utf8');
+    const raw = await fs.readFile(/*turbopackIgnore: true*/ file, 'utf8');
     const d = JSON.parse(raw);
     if (!d || !d.test_results || !d.cohort || !d.baselines_test) return null;
     return d as RealDataResults;
