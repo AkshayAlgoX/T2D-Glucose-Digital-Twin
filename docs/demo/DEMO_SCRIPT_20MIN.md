@@ -1,6 +1,6 @@
-# 20-minute demonstration script (round-4 UI)
+# Demonstration script (round-4 UI, 15–20 minute submission target)
 
-> **Release blocker until done:** the challenge requires a demonstration video of **at least 20 minutes**, published as a public or unlisted link that the evaluators can open. This script is ready to record; the video itself must be recorded by the team, checked, uploaded, and linked in `README.md` (row "Demonstration Video").
+> **Submission requirement:** the challenge requires a demonstration video targeting **15–20 minutes**, published as an accessible public or unlisted link. Recorded video: [https://youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) (actual recorded delivery: 23:29). Planned timeline below totals 20:00.
 
 Every number below is what the running prototype shows for the validation-split demonstration subject **P0017** at the 08:00 UTC replay hold (synthetic data). If a number on screen differs, read the screen, not this script.
 
@@ -34,6 +34,6 @@ Every number below is what the running prototype shows for the validation-split 
 - Do not show tokens, home paths, or terminal history.
 
 ## After recording
-- Length ≥ 20:00. Audio clear; text legible at 1080p.
-- Upload as public or unlisted; open the link in a private window to confirm it plays logged-out.
-- Replace "DEFERRED — PENDING RECORDING" in `README.md` with the link.
+- Submission target: 15–20 minutes. Audio clear; text legible at 1080p.
+- Upload as public or unlisted; confirm playback logged-out in a private browser.
+- Recorded link: [https://youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) (23:29 recorded duration linked in `README.md`).

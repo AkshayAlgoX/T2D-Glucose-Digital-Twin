@@ -5,7 +5,7 @@
   <title>T2D Glucose Digital Twin — Presentation</title>
   <style>
     @page {
-      size: 297mm 210mm; /* A4 Landscape */
+      size: 13.333in 7.5in; /* 16:9 widescreen */
       margin: 0;
     }
     * {
@@ -15,617 +15,539 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     body {
-      background: #f8fafc;
-      color: #0f172a;
+      background: #0b1d20;
+      color: #183C42;
+      -webkit-font-smoothing: antialiased;
     }
     .slide {
-      width: 297mm;
-      height: 210mm;
+      width: 13.333in;
+      height: 7.5in;
       page-break-after: always;
       break-after: page;
       position: relative;
-      padding: 24mm 28mm 20mm 28mm;
+      padding: 0.35in 0.7in 0.35in 0.7in;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      background: #ffffff;
-      border-bottom: 1px solid #e2e8f0;
       overflow: hidden;
     }
-    .header {
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
+    .slide.dark {
+      background: #123A40;
+      color: #F5F3EC;
     }
-    .slide-num {
-      font-size: 14pt;
-      font-weight: 700;
-      color: #64748b;
+    .slide.light {
+      background: #F5F3EC;
+      color: #183C42;
     }
-    .slide-title {
-      font-size: 22pt;
-      font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -0.5px;
-    }
-    .slide-subtitle {
-      font-size: 12pt;
-      color: #0284c7;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .content {
-      flex: 1;
+
+    /* Header styling */
+    .slide-header {
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
-      gap: 16px;
-      font-size: 11.5pt;
-      line-height: 1.5;
-      color: #334155;
+      margin-bottom: 0.15in;
     }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+    .presenter-cue {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
     }
-    .grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-    }
-    .card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 14px 18px;
-    }
-    .card h4 {
-      font-size: 12pt;
-      color: #0f172a;
-      margin-bottom: 6px;
-      font-weight: 700;
-    }
-    .card p, .card li {
-      font-size: 10.5pt;
-      color: #475569;
-    }
-    .card ul {
-      padding-left: 18px;
+    .slide.dark .presenter-cue { color: #ABD4CA; }
+    .slide.light .presenter-cue { color: #50676A; }
+
+    .slide-title {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.15;
       margin-top: 4px;
+      letter-spacing: -0.5px;
     }
-    .alert-box {
-      background: #fffbeb;
-      border-left: 4px solid #f59e0b;
-      padding: 10px 14px;
-      border-radius: 4px;
-      font-size: 10.5pt;
-      color: #92400e;
-    }
-    .danger-box {
-      background: #fef2f2;
-      border-left: 4px solid #ef4444;
-      padding: 10px 14px;
-      border-radius: 4px;
-      font-size: 10.5pt;
-      color: #991b1b;
-    }
-    .success-box {
-      background: #f0fdf4;
-      border-left: 4px solid #22c55e;
-      padding: 10px 14px;
-      border-radius: 4px;
-      font-size: 10.5pt;
-      color: #166534;
-    }
-    .footer {
+    .slide.dark .slide-title { color: #F5F3EC; }
+    .slide.light .slide-title { color: #183C42; }
+
+    /* Footer styling */
+    .slide-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 10px;
-      font-size: 9pt;
-      color: #94a3b8;
+      padding-top: 0.1in;
+      font-size: 13px;
+      font-weight: 500;
     }
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 9pt;
+    .slide.dark .slide-footer { color: #ABD4CA; }
+    .slide.light .slide-footer { color: #50676A; }
+    .slide-num {
+      font-size: 16px;
       font-weight: 700;
-      text-transform: uppercase;
     }
-    .badge-research { background: #e0f2fe; color: #0369a1; }
-    .badge-limit { background: #fee2e2; color: #b91c1c; }
-    .badge-verified { background: #dcfce7; color: #15803d; }
 
-    .shot-row { display: grid; grid-template-columns: 2.3fr 1fr; gap: 14px; align-items: start; }
-    .shot { width: 100%; max-height: 128mm; object-fit: contain; object-position: top left; border: 1px solid #dbe3e5; border-radius: 6px; }
-    .shot-notes { display: flex; flex-direction: column; gap: 8px; }
-    .shot-notes .card { padding: 10px 12px; }
-    .shot-notes .card h4 { margin: 0 0 4px; }
-    .shot-notes .card p, .shot-notes .card li { font-size: 11.5px; line-height: 1.45; margin: 0; }
-    .shot-notes .card ul { margin: 0; padding-left: 16px; }
-    .shot-caption { margin: 8px 0 0; font-size: 10.5px; color: #566b73; }
+    /* Content layouts */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Split picture layout for slides 6, 8, 9, 10, 13 */
+    .split-layout {
+      display: grid;
+      grid-template-columns: 7.96in 1fr;
+      gap: 0.35in;
+      align-items: center;
+      flex: 1;
+    }
+    .shot-frame {
+      width: 7.96in;
+      height: 4.97in;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #000;
+    }
+    .shot-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .bullet-column {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      padding-right: 0.2in;
+    }
+    .bullet-item {
+      font-size: 21px;
+      line-height: 1.35;
+      color: #183C42;
+    }
+    .bullet-item strong {
+      font-weight: 700;
+      color: #0d2529;
+    }
+
+    /* Big text cards for non-picture slides */
+    .text-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-width: 11in;
+      margin: auto 0;
+    }
+    .text-card {
+      font-size: 26px;
+      line-height: 1.4;
+    }
+    .slide.light .text-card { color: #183C42; }
+    .slide.dark .text-card { color: #F5F3EC; }
+    .text-card.lead {
+      font-weight: 700;
+      font-size: 28px;
+    }
+
+    /* Title Slide Specifics */
+    .title-subhead {
+      font-size: 28px;
+      font-weight: 400;
+      color: #F5F3EC;
+      margin-top: 10px;
+    }
+    .title-desc {
+      font-size: 24px;
+      color: #ABD4CA;
+      margin-top: 12px;
+    }
+    .presenters-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6in;
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(171, 212, 202, 0.25);
+    }
+    .presenter-box h3 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #F5F3EC;
+    }
+    .presenter-box p {
+      font-size: 18px;
+      color: #ABD4CA;
+      margin-top: 4px;
+    }
+
+    /* Slide 12 Fail Slide Specifics */
+    .fail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6in;
+      align-items: center;
+      flex: 1;
+    }
+    .fail-banner {
+      display: inline-block;
+      font-size: 84px;
+      font-weight: 900;
+      color: #FFD0A8;
+      letter-spacing: 2px;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .fail-left h3 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #F5F3EC;
+      margin-bottom: 8px;
+    }
+    .fail-left p {
+      font-size: 22px;
+      color: #ABD4CA;
+      line-height: 1.4;
+    }
+    .fail-right {
+      background: rgba(0,0,0,0.2);
+      border-left: 4px solid #FFD0A8;
+      padding: 24px 28px;
+      border-radius: 6px;
+    }
+    .fail-right h4 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #F5F3EC;
+      margin-bottom: 10px;
+    }
+    .fail-right p {
+      font-size: 20px;
+      color: #ABD4CA;
+      line-height: 1.5;
+    }
+
+    /* Metric highlight pill */
+    .metric-pill {
+      display: inline-block;
+      background: #e6e2d5;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 700;
+      color: #123A40;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Slide 1: Title -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h1 class="slide-title">T2D Glucose Digital Twin</h1>
-        <p class="slide-subtitle">Predictive Metabolic Monitoring via Physics-Residual Temporal Fusion Transformers</p>
-      </div>
-      <span class="slide-num">01 / 12</span>
+  <!-- Slide 01: Title -->
+  <div class="slide dark">
+    <div class="slide-header">
+      <span class="presenter-cue">00:00–01:30 &nbsp;·&nbsp; Nikhil</span>
+      <h1 class="slide-title">The next two hours</h1>
     </div>
-    <div class="content" style="justify-content: center; gap: 24px;">
-      <div class="card" style="padding: 24px;">
-        <h3 style="font-size: 16pt; color: #0f172a; margin-bottom: 12px;">Happiest Health Digital Twin Challenge — Final Submission</h3>
-        <p style="font-size: 12pt; line-height: 1.6; color: #334155;">
-          <strong>Target Use Case:</strong> Early Warning & Continuous Glucose Forecasting for Prediabetes and Type 2 Diabetes.<br>
-          <strong>Team:</strong> T2D Digital Twin Team (Akshaya R — BGS College of Engineering and Technology; Nikhil VS — East West Institute of Technology)<br>
-          <strong>Target Platform:</strong> Web-based Clinical Workstation & Replay Dashboard.<br>
-          <strong>Release branch:</strong> <code>release/candidate-clean</code>
-        </p>
-      </div>
-      <div class="alert-box">
-        <strong>Investigational Research Prototype Notice:</strong> This software is an engineering research prototype designed to explore physiological modeling and deep learning integration on synthetic cohorts. It has not been clinically evaluated, certified as a medical device, or tested for autonomous therapeutic decisions.
+    <div class="content-area">
+      <h2 class="title-subhead" style="font-size: 32px; font-weight: 700;">T2D Glucose Digital Twin</h2>
+      <p class="title-desc">A synthetic subject. A two-hour forecast. An explicit uncertainty.</p>
+
+      <div class="presenters-row">
+        <div class="presenter-box">
+          <h3>Akshaya R</h3>
+          <p>BGS College of Engineering and Technology</p>
+        </div>
+        <div class="presenter-box">
+          <h3>Nikhil VS</h3>
+          <p>East West Institute of Technology</p>
+        </div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 1</span>
-      <span class="badge badge-research">Research Prototype</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">01</span>
     </div>
   </div>
 
-  <!-- Slide 2: Clinical Problem & Paradigm -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">From a Reactive Reading to a Predictive Trajectory</h2>
-        <p class="slide-subtitle">The Clinical Problem and Monitoring Hypothesis</p>
-      </div>
-      <span class="slide-num">02 / 12</span>
+  <!-- Slide 02: A reading needs context -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">01:30–03:00 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">A reading needs context</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>The Current Standard: Reactive Point Alarms</h4>
-          <ul>
-            <li>Traditional Continuous Glucose Monitors (CGMs) alert after glucose breaches static thresholds (e.g., >180 mg/dL).</li>
-            <li>Post-prandial glucose excursions occur rapidly (30–60 min rise time); threshold alarms leave minimal intervention window.</li>
-            <li>Lack of physiological context leads to alert fatigue and high false alarm rates.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Our Approach: Continuous Forward Visibility</h4>
-          <ul>
-            <li>Forecast future glucose trajectories across a <strong>120-minute horizon</strong> in 5-minute discretizations.</li>
-            <li>Quantify predictive uncertainty via <strong>quantile intervals</strong> (p05 to p95; the P10–P90 interval is conformal-calibrated, the others are not separately evaluated).</li>
-            <li>Estimate cumulative spike hazard and adverse event probability in real-time.</li>
-            <li>Decompose contributing factors into mechanistic and behavioral drivers.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="alert-box">
-        <strong>Clinical Boundary:</strong> The clinical hypothesis is that forward visibility aids timely dietary review; measured patient health outcomes or HbA1c reductions have not yet been evaluated in clinical trials.
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">What may happen next?</div>
+        <div class="text-card">Which context shaped the estimate?</div>
+        <div class="text-card">When should the result be withheld?</div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 2</span>
-      <span>Problem Definition</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">02</span>
     </div>
   </div>
 
-  <!-- Slide 3: Multimodal Data Ingestion -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Two Information Streams, One Patient Context</h2>
-        <p class="slide-subtitle">Observable Static EHR and Dynamic Telemetry Ingestion</p>
-      </div>
-      <span class="slide-num">03 / 12</span>
+  <!-- Slide 03: Our subject is synthetic -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">03:00–04:30 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">Our subject is synthetic</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Stream 1: Static EHR Patient Context</h4>
-          <p>Captured at baseline / onboarding via validated schema:</p>
-          <ul>
-            <li>Demographics: Age, sex, BMI, weight.</li>
-            <li>Metabolic Markers: Baseline HbA1c, eGFR, basal fasting glucose.</li>
-            <li>Clinical History: Diabetes duration, diagnostic status (Healthy, Prediabetes, T2D).</li>
-            <li>Medication Context: Metformin, SGLT2i, GLP-1 RA, DPP-4i, insulin.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Stream 2: Dynamic Telemetry & Wearable Streams</h4>
-          <p>Ingested continuously on a synchronized 5-minute temporal grid:</p>
-          <ul>
-            <li>Continuous Glucose Monitoring (CGM) readings (mg/dL).</li>
-            <li>Cardiorespiratory Wearable Signals: Heart Rate (HR), Heart Rate Variability (HRV).</li>
-            <li>Physical Activity & Sleep: Step counts, sleep stage indicators.</li>
-            <li>Logged Dietary Events: Carbohydrate intake timestamps and meal size.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="card">
-        <h4>Strict Observable-Input Boundary (Contract S3)</h4>
-        <p>The deployed model strictly consumes observable clinical and wearable features. Privileged simulation latents (unannounced meal sizes, true plasma insulin) are isolated to the simulator environment and prohibited from entering model inputs.</p>
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">293 active synthetic subjects</div>
+        <div class="text-card">205 training / 44 validation / 44 test</div>
+        <div class="text-card">Demonstration: training subject only</div>
+        <div class="text-card">Replay is not a live wearable feed</div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 3</span>
-      <span class="badge badge-verified">Verified Input Contract</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">03</span>
     </div>
   </div>
 
-  <!-- Slide 4: Hybrid Architecture -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Hybrid Architecture: Physics Prior + Deep Residuals</h2>
-        <p class="slide-subtitle">Unscented Kalman Filter S3 + Temporal Fusion Transformer</p>
-      </div>
-      <span class="slide-num">04 / 12</span>
+  <!-- Slide 04: The forecasting path -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">04:30–06:00 &nbsp;·&nbsp; Nikhil</span>
+      <h2 class="slide-title">The forecasting path</h2>
     </div>
-    <div class="content">
-      <div class="grid-3">
-        <div class="card">
-          <h4>1. Mechanistic UKF Prior</h4>
-          <p>Two-compartment Bergman minimal glucose-insulin model with gut absorption dynamics:</p>
-          <ul>
-            <li>Tracks unobserved physiological states (insulin sensitivity, carbs-on-board).</li>
-            <li>Provides deterministic physiological rollouts over 120 minutes.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>2. PR-TFT Neural Architecture</h4>
-          <p>Physics-Residual Temporal Fusion Transformer:</p>
-          <ul>
-            <li>Variable Selection Networks (VSN) for static and time-varying inputs.</li>
-            <li>LSTM encoder/decoder capturing temporal dependencies.</li>
-            <li>Causal multi-head self-attention for long-range interactions.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>3. Residual Combination</h4>
-          <p>The neural network learns the <em>residual error</em> over the physics prior:</p>
-          <ul>
-            <li>Final forecast = UKF physiological prior + PR-TFT learned quantile residuals.</li>
-            <li>Predicts 7 quantiles (p05, p10, p25, p50, p75, p90, p95).</li>
-            <li>Separate hazard head predicts spike probability.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="alert-box">
-        <strong>Architectural Finding:</strong> Arm D (PR-TFT + UKF S3) anchors the forecast to a physiology twin and lets the network learn a residual; the residual can still add isolated one-step jumps (19.8% of sampled validation forecasts), which the product flags.
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead"><strong>01</strong> &nbsp;Existing synthetic CGM and EHR</div>
+        <div class="text-card"><strong>02</strong> &nbsp;UKF physiological prior</div>
+        <div class="text-card"><strong>03</strong> &nbsp;PR-TFT forecast and risk</div>
+        <div class="text-card"><strong>04</strong> &nbsp;FastAPI versioned contract</div>
+        <div class="text-card"><strong>05</strong> &nbsp;Next.js validation and workspace</div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 4</span>
-      <span>Model Architecture</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">04</span>
     </div>
   </div>
 
-  <!-- Slide 5: Forecast & Risk Outputs -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">What the Model Returns: Trajectories & Risk</h2>
-        <p class="slide-subtitle">Standardized ForecastResponse v1 API Schema</p>
-      </div>
-      <span class="slide-num">05 / 12</span>
+  <!-- Slide 05: A prior and a learned correction -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">06:00–07:30 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">A prior and a learned correction</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Multi-Horizon Quantile Trajectory</h4>
-          <ul>
-            <li><strong>Temporal Horizon:</strong> 120 minutes forward from current <code>as_of</code> timestamp.</li>
-            <li><strong>Discretization:</strong> 24 discrete 5-minute timesteps.</li>
-            <li><strong>Probabilistic Quantiles:</strong> p05, p10, p25, p50 (median), p75, p90, p95.</li>
-            <li><strong>Conformal Calibration:</strong> Saved conformal interval widening fits the empirical 80% (p10–p90) confidence band with isotonic hazard calibration.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Adverse Event Risk Estimation</h4>
-          <ul>
-            <li><strong>Spike Event Definition:</strong> Glucose rising &ge; 50 mg/dL within 60 min and exceeding 180 mg/dL for &ge; 15 min.</li>
-            <li><strong>Cumulative Risk Curve:</strong> Onset probability evaluated across 5-min to 120-min offsets.</li>
-            <li><strong>Risk Tiers:</strong> Low (&lt;35%), Watch (35–60%), High/Warning (&ge;60%).</li>
-            <li><strong>Stateful Alert Policy:</strong> Hysteresis filtering and 120-min suppression prevent alert flapping.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="success-box">
-        <strong>Verified Contract:</strong> All output packets strictly validate against Zod and Pydantic <code>ForecastResponse</code> schemas before reaching client presentation layers.
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">UKF prior: a simplified physiological trajectory</div>
+        <div class="text-card">PR-TFT: learned forecasting from observable context</div>
+        <div class="text-card">Checkpoint identity does not prove clinical validity</div>
+        <div class="text-card">Training manifest records a dirty working tree</div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 5</span>
-      <span class="badge badge-verified">Output Contract</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">05</span>
     </div>
   </div>
 
-  <!-- Slide 6: Clinician Workstation Workflow -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">The Clinician Workstation (Live Screen)</h2>
-        <p class="slide-subtitle">Validation subject P0017 · EHR record + CGM and wearable streams → 2-hour forecast</p>
-      </div>
-      <span class="slide-num">06 / 12</span>
+  <!-- Slide 06: Reading a forecast (Split with Screenshot) -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">07:30–09:00 &nbsp;·&nbsp; Nikhil</span>
+      <h2 class="slide-title">Reading a forecast</h2>
     </div>
-    <div class="content">
-      <div class="shot-row">
-        <img class="shot" src="screens/workstation.png" alt="Patient workspace for P0017 at 08:00: EHR summary, observed CGM, forecast bands, spike risk and model contributions">
-        <div class="shot-notes">
-          <div class="card"><h4>One record, one time axis</h4><p>EHR summary in the case header; the replay holds at 08:00 with CGM dots, the meal log, steps, heart rate, HRV and sleep under the same axis.</p></div>
-          <div class="card"><h4>A forecast you can take apart</h4><p>① physiology twin (dashed) + ② learned adjustment (hatched wedge) = ③ forecast (line, with 50/80/90% bands), on the chart and in the equation above it.</p></div>
-          <div class="card"><h4>Risk, stated honestly</h4><p>When the median is above 180 mg/dL, and a separate calibrated onset risk; when the two disagree, the product says so.</p></div>
+    <div class="content-area">
+      <div class="split-layout">
+        <div class="shot-frame">
+          <img src="screens/slide6-reading-forecast.png" alt="Clinical workstation reading a forecast">
+        </div>
+        <div class="bullet-column">
+          <div class="bullet-item"><strong>120-minute horizon, five-minute steps</strong></div>
+          <div class="bullet-item">Median and uncertainty answer different questions</div>
+          <div class="bullet-item">Recorded synthetic replay</div>
         </div>
       </div>
-      <p class="shot-caption">Captured from the running prototype (synthetic data, development-validation subject). Not a clinical device.</p>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 6</span>
-      <span class="badge badge-verified">Live UI capture</span>
+    <div class="slide-footer">
+      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">06</span>
     </div>
   </div>
 
-  <!-- Slide 7: Adverse Event Detection & Metrics -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Adverse Event Warning: Beyond Raw AUROC</h2>
-        <p class="slide-subtitle">Balancing Sensitivity, False Alarm Rates, and Decision Windows</p>
-      </div>
-      <span class="slide-num">07 / 12</span>
+  <!-- Slide 07: One subject, successive updates -->
+  <div class="slide dark">
+    <div class="slide-header">
+      <span class="presenter-cue">09:00–11:30 &nbsp;·&nbsp; Nikhil + Akshaya</span>
+      <h2 class="slide-title">One subject, successive updates</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Clinical Evaluation Dimensions</h4>
-          <ul>
-            <li><strong>Event Sensitivity:</strong> Proportion of actual spike episodes detected in advance.</li>
-            <li><strong>False Alerts per Patient-Day (FA/day):</strong> Ensuring alert thresholds do not overwhelm clinical workflows.</li>
-            <li><strong>Effective Lead Time:</strong> Median advance warning window (minutes before glucose breaches threshold).</li>
-            <li><strong>Decision Actionability:</strong> Whether the warning provides sufficient time for dietary adjustment.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Evaluator vs. Serving Policy Disclosures</h4>
-          <ul>
-            <li><strong>Serving Policy:</strong> Employs stateful hysteresis (Watch/Warning) and 120-min suppression for UI display.</li>
-            <li><strong>Scientific Evaluator:</strong> Uses independent, stateless point-in-time scoring rules for benchmark comparisons.</li>
-            <li><strong>Warning Lead Time Limit:</strong> A 120-min prediction horizon does <em>not</em> imply a 120-min warning lead time. Actual lead times depend on event velocity.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="danger-box">
-        <strong>Audit Disclosure:</strong> The formal EW-01 scientific evaluation harness remains unexecuted due to incomplete governance sign-offs; no speculative superiority claims over clinical baselines are made.
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">Connected synthetic application</div>
+        <div class="text-card">Identity &nbsp;/&nbsp; timestamp &nbsp;/&nbsp; quality &nbsp;/&nbsp; forecast</div>
+        <div class="text-card">Forecast updates at recorded timestamps</div>
+        <div class="text-card">Synthetic training subject P0003</div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 7</span>
-      <span class="badge badge-limit">Evaluation Limits</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">07</span>
     </div>
   </div>
 
-  <!-- Slide 8: Model Explainability -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Explaining the Model Without Claiming Causality</h2>
-        <p class="slide-subtitle">Arithmetic Driver Decomposition in the RiskPanel</p>
-      </div>
-      <span class="slide-num">08 / 12</span>
+  <!-- Slide 08: Holding a moment in time (Split with Screenshot) -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">11:30–13:00 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">Holding a moment in time</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Arithmetic Driver Decomposition</h4>
-          <p>The <code>RiskPanel</code> visualizes the relative impact of model features on the predicted glucose trajectory:</p>
-          <ul>
-            <li><strong>Learned Correction:</strong> Deep residual network delta over the physics prior.</li>
-            <li><strong>Expected Habitual Meal:</strong> Population-level meal timing probability.</li>
-            <li><strong>Logged Meals Absorbing:</strong> Mechanistic gut absorption from patient logs.</li>
-            <li><strong>Return to Baseline:</strong> Physiological clearance and insulin action.</li>
-          </ul>
+    <div class="content-area">
+      <div class="split-layout">
+        <div class="shot-frame">
+          <img src="screens/slide8-holding-moment.png" alt="Pinned forecast timeline navigation">
         </div>
-        <div class="card">
-          <h4>Critical Interpretability Guardrails</h4>
-          <ul>
-            <li><strong>Internal Decomposition:</strong> Bars represent the mathematical contribution of components to the model's net output (mg/dL impact).</li>
-            <li><strong>Not Causal Biology:</strong> Feature weights do not establish direct biological causality in a living patient.</li>
-            <li><strong>Unannounced Meal Detection:</strong> Disclosed as a heuristic based on UKF innovation residuals, not verified ground truth.</li>
-          </ul>
+        <div class="bullet-column">
+          <div class="bullet-item"><strong>A pinned view keeps the forecast anchor explicit</strong></div>
+          <div class="bullet-item">Timeline navigation uses received history</div>
+          <div class="bullet-item">Recorded repository state, not a new execution</div>
         </div>
       </div>
-      <div class="alert-box">
-        <strong>UI Notice:</strong> The dashboard includes an explicit disclaimer: <em>&ldquo;Arithmetic of the model&rsquo;s own forecast &mdash; not a causal attribution.&rdquo;</em> The contributions add up to the highest point of the forecast median.
-      </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 8</span>
-      <span>Explainability Guardrails</span>
+    <div class="slide-footer">
+      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">08</span>
     </div>
   </div>
 
-  <!-- Slide 9: What-If Exploration -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">What-If Simulation: Capability & Boundary</h2>
-        <p class="slide-subtitle">Interactive, backend-driven scenarios in the patient workspace (live screen)</p>
-      </div>
-      <span class="slide-num">09 / 12</span>
+  <!-- Slide 09: Scenario projections (Split with Screenshot) -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">13:00–14:30 &nbsp;·&nbsp; Nikhil</span>
+      <h2 class="slide-title">Scenario projections</h2>
     </div>
-    <div class="content">
-      <div class="shot-row">
-        <img class="shot" src="screens/whatif-result.png" alt="What-If result for P0017: baseline and 60 g meal scenario curves, physiology twin line, out-of-range caution and risk change">
-        <div class="shot-notes">
-          <div class="card"><h4>Real backend response</h4><p>The twin re-rolls the plan and the network re-scores it from the same anchor. The panel shows both curves, the twin-alone change and the calibrated risk.</p></div>
-          <div class="card"><h4>Boundaries shown on screen</h4><ul>
-            <li>&ldquo;Simulated model response &mdash; not a validated causal treatment effect.&rdquo;</li>
-            <li>Meal inputs outside the network&rsquo;s training range are flagged by the service.</li>
-            <li>Medication changes are refused (<code>SCENARIO_UNSUPPORTED</code>).</li>
-          </ul></div>
+    <div class="content-area">
+      <div class="split-layout">
+        <div class="shot-frame">
+          <img src="screens/slide9-scenario-projections.png" alt="Hypothetical scenario projection comparison">
+        </div>
+        <div class="bullet-column">
+          <div class="bullet-item"><strong>Meal and activity projections exist in source</strong></div>
+          <div class="bullet-item">Medication is not modelled</div>
+          <div class="bullet-item">Effect size is not clinically validated</div>
+          <div class="bullet-item">Recorded 60 g example; not treatment advice</div>
         </div>
       </div>
-      <p class="shot-caption">P0017, 08:00 UTC, a further 60 g meal in 30 min: the physiology twin alone adds up to +47.8 mg/dL; the network&rsquo;s highest median moves from 222.5 to 228.5 mg/dL. In 19.8% of sampled forecasts the learned adjustment adds an isolated 5-min step, which the chart flags (<code>docs/evidence/model_audit</code>). Values: <code>docs/evidence/whatif_probe_P0017.json</code>.</p>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 9</span>
-      <span class="badge badge-limit">Boundary Disclosures</span>
+    <div class="slide-footer">
+      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">09</span>
     </div>
   </div>
 
-  <!-- Slide 10: Scientific Evidence Ledger -->
-  <div class="slide" style="padding: 16mm 28mm 14mm 28mm;">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">The Scientific Evidence Ledger</h2>
-        <p class="slide-subtitle">Separating Verified Implementation, Historical Metrics, and Unexecuted Work</p>
-      </div>
-      <span class="slide-num">10 / 12</span>
+  <!-- Slide 10: When the answer is unavailable (Split with Screenshot) -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">14:30–16:00 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">When the answer is unavailable</h2>
     </div>
-    <div class="content">
-      <div style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px;">
-        <div class="card" style="padding: 10px 14px;">
-          <h4>Tier 2: Matched Validation Benchmarks</h4>
-          <p style="color:#d97706; font-weight:700; font-size: 9pt; margin-bottom: 4px;">44 PATIENTS (54,281 ELIGIBLE ANCHORS / 53,849–53,920 EVALUABLE)</p>
-          <ul style="font-size: 9pt; line-height: 1.35;">
-            <li><strong>Matched RMSE (mg/dL · 95% Patient-Cluster CI, B=10,000 draws):</strong>
-              <ul style="margin-top: 2px;">
-                <li><strong>30m:</strong> PR-TFT <strong>12.36</strong> [11.89–12.84] vs. UKF 15.24 [14.30–16.16] vs. Persist 21.64 [20.44–22.79]<br>&Delta; -9.28 vs Persist [-10.05, -8.43], -2.88 vs Twin [-3.37, -2.38]; Rel Red 42.87% / 18.90% (10k draws &lt; 0)</li>
-                <li><strong>60m:</strong> PR-TFT <strong>19.53</strong> [18.56–20.48] vs. UKF 23.23 [21.76–24.64] vs. Persist 36.05 [33.85–38.13]<br>&Delta; -16.53 vs Persist [-17.77, -15.17], -3.71 vs Twin [-4.27, -3.15]; Rel Red 45.84% / 15.96% (10k draws &lt; 0)</li>
-                <li><strong>120m:</strong> PR-TFT <strong>25.03</strong> [23.67–26.27] vs. UKF 28.64 [26.67–30.51] vs. Persist 48.36 [45.06–51.46]<br>&Delta; -23.33 vs Persist [-25.31, -21.23], -3.61 vs Twin [-4.44, -2.81]; Rel Red 48.24% / 12.61% (10k draws &lt; 0)</li>
-              </ul>
-            </li>
-            <li style="margin-top: 3px;"><strong>Patient Wins (Exact 95% Binomial CI):</strong> 44/44 (100% [92.0–100%]) at 30m &amp; 60m; 120m: 44/44 (100%) vs Persist, 41/44 (93.2% [81.3–98.6%]) vs Twin. <em>Cohort-limited Bernoulli assumption.</em></li>
-            <li style="margin-top: 3px;"><strong>Subgroup Robustness (RMSE60):</strong> Healthy 19.31 (n=15, 18.5k elig / 18.4k eval), Prediabetes 19.87 (n=19, 23.5k elig / 23.3k eval), Type 2 19.18 (n=10, 12.3k elig / 12.2k eval).</li>
-            <li style="margin-top: 3px;"><strong>Resubstitution Diagnostics:</strong> 80% conformal coverage 80.00% (width 37.3 mg/dL); Brier score 0.0703 (raw 0.1650 on 47.6k at-risk anchors). Evaluated on val split; not clinical operating recommendations.</li>
-            <li style="margin-top: 3px;"><em>Boundary:</em> Validation cohort used in model selection; reflects simulated development validation, not human generalization.</li>
-          </ul>
+    <div class="content-area">
+      <div class="split-layout">
+        <div class="shot-frame">
+          <img src="screens/slide10-answer-unavailable.png" alt="Fallback and disconnected state handling">
         </div>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="card" style="padding: 10px 14px;">
-            <h4>Tier 1: Verified Implementation</h4>
-            <p style="color:#16a34a; font-weight:700; font-size: 9pt;">CONFIRMED BY CODE & TESTS</p>
-            <ul style="font-size: 9.5pt; line-height: 1.4;">
-              <li>Observable-input contract enforcement.</li>
-              <li>PR-TFT + UKF S3 model architecture.</li>
-              <li>Chunk-invariant SSE proxy & recovery hook.</li>
-              <li>48 Jest suites (450 tests) and 162 backend tests (with RUN_DIR set) pass on the release branch.</li>
-            </ul>
-          </div>
-          <div class="card" style="padding: 10px 14px;">
-            <h4>Tier 3: Unexecuted Work</h4>
-            <p style="color:#dc2626; font-weight:700; font-size: 9pt;">EXCLUDED FROM CLAIMS</p>
-            <ul style="font-size: 9.5pt; line-height: 1.4;">
-              <li>EW-01 scientific evaluation harness remains unexecuted.</li>
-              <li>Demo baseline references missing checkpoint; metrics excluded.</li>
-              <li>Zero prospective clinical outcome claims.</li>
-            </ul>
-          </div>
+        <div class="bullet-column">
+          <div class="bullet-item"><strong>Insufficient history can mean no forecast</strong></div>
+          <div class="bullet-item">Stale, disconnected and invalid are distinct states</div>
+          <div class="bullet-item">Reconnect and fallback need further verification</div>
         </div>
       </div>
-      <div class="alert-box" style="padding: 6px 12px; margin-top: -4px;">
-        <strong>Evidence Integrity:</strong> We do not manufacture benchmark bars or promote historical training-set validation metrics as prospective generalization proof.
-      </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 10</span>
-      <span class="badge badge-verified">Evidence Hierarchy</span>
+    <div class="slide-footer">
+      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">10</span>
     </div>
   </div>
 
-  <!-- Slide 11: Technical Limitations & Gate 3 Reality -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Reproducibility &amp; Scientific Limitations</h2>
-        <p class="slide-subtitle">Synthetic Data Realism Gate 3 and Governance Status</p>
-      </div>
-      <span class="slide-num">11 / 12</span>
+  <!-- Slide 11: What the recorded metrics say -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">16:00–17:30 &nbsp;·&nbsp; Nikhil</span>
+      <h2 class="slide-title">What the recorded metrics say</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Synthetic Data Realism Audit (Gate 3)</h4>
-          <div class="danger-box" style="margin-bottom: 8px;">
-            <strong>Gate 3 Result: FAILED</strong><br>
-            Discriminator AUROC: <strong>0.9320</strong> (historical, 90% CI: 0.928–0.936) / <strong>0.9290</strong> (duration-corrected, 90% CI: 0.925–0.933) vs. Target: <strong>&le; 0.65</strong>.
-          </div>
-          <ul>
-            <li>A gradient-boosted discriminator reliably distinguishes synthetic ODE trajectories from mock-real generator records (top tell: <code>jerk_sd</code>, SHAP 0.8878; <code>roc_max_fall</code>).</li>
-            <li>Factorial experiments reported in the validation report (scripts not in this repository) indicate AR(1) drift (SD 8–16 mg/dL) accounts for partial curvature divergence, but multivariate ODE dynamics remain distinguishable. Null control: AUROC 0.507.</li>
-            <li><strong>Hazard Calibration (Resubstitution Diagnostic):</strong> Empirical resubstitution diagnostics on 47,629 at-risk anchors show 14.2% anchor alert rate (sensitivity 63.0%, precision 58.7%) at threshold 0.35, and 5.3% anchor alert rate (sensitivity 29.9%, precision 74.5%) at threshold 0.60. Evaluated thresholds are empirical diagnostics on the validation set, not approved clinical operating points; anchor alert fractions do not represent event-level alerts per day.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h4>Governance & Environmental Constraints</h4>
-          <ul>
-            <li><strong>EW-01 Evaluation Unexecuted:</strong> Protocol amendments remain pending co-author sign-offs; no experimental outcomes are reported.</li>
-            <li><strong>Missing Baseline Checkpoint:</strong> <code>pr_tft_demo</code> references an absent checkpoint; its baseline numbers are strictly excluded.</li>
-            <li><strong>Clean Environment Verified:</strong> Node 22, Webpack dev server, Python 3.12 venv, and isolated Git worktree verified.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="alert-box">
-        <strong>Honest Science:</strong> Full scientific transparency requires reporting negative validation gates rather than concealing simulation limitations.
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">Recorded synthetic validation, not reproduced here</div>
+        <div class="text-card"><strong>30 / 60 / 120 min RMSE:</strong> &nbsp;<span class="metric-pill">12.36</span> / <span class="metric-pill">19.53</span> / <span class="metric-pill">25.03</span> mg/dL</div>
+        <div class="text-card"><strong>80% interval coverage:</strong> &nbsp;<span class="metric-pill">80.00%</span></div>
+        <div class="text-card"><strong>Interval width:</strong> &nbsp;<span class="metric-pill">37.30 mg/dL</span></div>
+        <div class="text-card"><strong>Hazard AUROC:</strong> &nbsp;<span class="metric-pill">0.923</span> &nbsp;|&nbsp; <strong>Brier:</strong> &nbsp;<span class="metric-pill">0.0703</span></div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 11</span>
-      <span class="badge badge-limit">Limitation Disclosures</span>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">11</span>
     </div>
   </div>
 
-  <!-- Slide 12: Demonstrated Scope & Roadmap -->
-  <div class="slide">
-    <div class="header">
-      <div>
-        <h2 class="slide-title">Demonstrated Scope & Research Roadmap</h2>
-        <p class="slide-subtitle">What is Complete, What is Frozen, and What Lies Ahead</p>
-      </div>
-      <span class="slide-num">12 / 12</span>
+  <!-- Slide 12: The realism check failed -->
+  <div class="slide dark">
+    <div class="slide-header">
+      <span class="presenter-cue">17:30–19:00 &nbsp;·&nbsp; Akshaya</span>
+      <h2 class="slide-title">The realism check failed</h2>
     </div>
-    <div class="content">
-      <div class="grid-2">
-        <div class="card">
-          <h4>Demonstrated & Frozen in this Release</h4>
-          <ul>
-            <li><strong>Release branch:</strong> <code>release/candidate-clean</code>; 48 Jest suites (450 tests) and 162 backend tests (with RUN_DIR set) pass.</li>
-            <li><strong>End-to-End Pipeline:</strong> Live synthetic backend &rarr; Next.js SSE proxy &rarr; browser patient dashboard verified.</li>
-            <li><strong>Framing Resilience:</strong> Chunk-invariant earliest-delimiter parser verified across all split boundaries.</li>
-            <li><strong>Strict Validation:</strong> Comprehensive fail-closed error handling and contract enforcement.</li>
-          </ul>
+    <div class="content-area">
+      <div class="fail-grid">
+        <div class="fail-left">
+          <div class="fail-banner">FAIL</div>
+          <h3>Gate 3 synthetic realism</h3>
+          <p>Mock-real comparator<br>AUROC <strong>0.932</strong> (acceptance target &le; 0.65)</p>
         </div>
-        <div class="card">
-          <h4>Future Clinical Research Horizons</h4>
-          <ul>
-            <li><strong>Real Sensor Ingestion:</strong> Hardware connectivity with Dexcom, Abbott FreeStyle Libre, and wearable APIs.</li>
-            <li><strong>Prospective Clinical Trials:</strong> Multi-center observational studies evaluating actual glycemic variability and HbA1c impact.</li>
-            <li><strong>Causal Counterfactuals:</strong> Clinically validated pharmacodynamic and lifestyle intervention models.</li>
-            <li><strong>Medication What-Ifs:</strong> Meal and activity What-Ifs ship now as simulated model responses; medication changes stay refused until the twin has validated drug terms.</li>
-          </ul>
+        <div class="fail-right">
+          <h4>External EW-01 remains unexecuted</h4>
+          <p>Clinical efficacy is unestablished. Protocol amendments remain pending co-author sign-offs; no human efficacy or cross-center transfer is claimed.</p>
         </div>
       </div>
-      <div class="success-box">
-        <strong>Release Status:</strong> Code, documents and demo script are reconciled on <code>release/candidate-clean</code>. The demonstration video is pending recording.
+    </div>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">12</span>
+    </div>
+  </div>
+
+  <!-- Slide 13: What a reviewer can inspect (Split with Screenshot) -->
+  <div class="slide light">
+    <div class="slide-header">
+      <span class="presenter-cue">19:00–20:30 &nbsp;·&nbsp; Nikhil</span>
+      <h2 class="slide-title">What a reviewer can inspect</h2>
+    </div>
+    <div class="content-area">
+      <div class="split-layout">
+        <div class="shot-frame">
+          <img src="screens/slide13-reviewer-inspection.png" alt="Evidence page inspection and provenance">
+        </div>
+        <div class="bullet-column">
+          <div class="bullet-item"><strong>Source, contracts and manifest are inspectable</strong></div>
+          <div class="bullet-item">Validation metrics and held-out evaluation differ</div>
+          <div class="bullet-item">Provenance supports review, not clinical efficacy</div>
+        </div>
       </div>
     </div>
-    <div class="footer">
-      <span>T2D Digital Twin | Slide 12</span>
-      <span class="badge badge-research">Summary & Roadmap</span>
+    <div class="slide-footer">
+      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">13</span>
+    </div>
+  </div>
+
+  <!-- Slide 14: The next two hours, with evidence -->
+  <div class="slide dark">
+    <div class="slide-header">
+      <span class="presenter-cue">20:30–21:30 &nbsp;·&nbsp; Akshaya + Nikhil</span>
+      <h2 class="slide-title">The next two hours, with evidence</h2>
+    </div>
+    <div class="content-area">
+      <div class="text-stack">
+        <div class="text-card lead">An inspectable synthetic forecasting workflow</div>
+        <div class="text-card">Next: engineering verification and external validation</div>
+        <div class="text-card" style="margin-top: 18px; color: #ABD4CA;">Akshaya R and Nikhil VS</div>
+        <div class="text-card" style="font-size: 34px; font-weight: 700;">Thank you</div>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span class="slide-num">14</span>
     </div>
   </div>
 
