@@ -2,6 +2,13 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+venv/
+ENV/
+
+# OS metadata
+.DS_Store
+Thumbs.db
 
 # Backend run outputs are not committed; each run carries its own provenance
 # (see backend/runs/README.md).
@@ -16,6 +23,7 @@ node_modules
 
 # Environment config
 .env*
+!.env.example
 
 # Licensed real participant records, split assignments and derived individual artifacts.
 data/real/

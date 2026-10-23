@@ -49,7 +49,7 @@
 | Demo video | Pending: link to be added by the team |
 | Open-source licence | [Apache-2.0](#license) |
 | Architecture diagram | [Architecture](#architecture) · [`architecture.pdf`](docs/architecture/architecture.pdf) |
-| Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) |
+| Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) · [`presentation.pptx`](docs/presentation/presentation.pptx) |
 | Public access | This public repository. No public deployment is linked, because none has been verified. Run locally with [Quick start](#quick-start) |
 | Ethics, privacy and security | [Ethics, privacy and security](#ethics-privacy-and-security) |
 
@@ -342,7 +342,7 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | Team | **T2D Digital Twin Team**: Akshaya R (BGS College of Engineering and Technology) · Nikhil VS (East West Institute of Technology) |
 | Repository | [github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) |
 | Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
-| Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (submission snapshot) |
+| Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (submission snapshot) · [`docs/presentation/presentation.pptx`](docs/presentation/presentation.pptx) (editable presentation deck) |
 | Demo script | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) |
 | Demonstration video | Pending: link to be added by the team |
 | Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
