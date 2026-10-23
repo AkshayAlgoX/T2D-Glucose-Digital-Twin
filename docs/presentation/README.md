@@ -19,11 +19,11 @@ The slides carry presenter names only, not per-slide times. The published record
 |---|---|---|
 | **01** | Nikhil | **The next two hours** (Project title, team affiliation, research scope) |
 | **02** | Akshaya | **A reading needs context** (Clinical monitoring problem and hypothesis) |
-| **03** | Akshaya | **Our subject is synthetic** (293 active synthetic subjects: 205 train / 44 val / 44 test; training-split subjects only in the demonstration) |
+| **03** | Akshaya | **Our subject is synthetic** (293 active synthetic subjects: 205 train / 44 val / 44 test; deck screenshots use training-split subjects; the published video's subject is not independently verified) |
 | **04** | Nikhil | **The forecasting path** (EHR/CGM inputs → UKF prior → PR-TFT → FastAPI → Next.js) |
 | **05** | Akshaya | **A prior and a learned correction** (UKF physiological twin prior + learned PR-TFT correction) |
 | **06** | Nikhil | **Reading a forecast** (120-min horizon, 5-min steps, median and uncertainty intervals) |
-| **07** | Nikhil + Akshaya | **One subject, successive updates** (connected application; training-split subjects only) |
+| **07** | Nikhil + Akshaya | **One subject, successive updates** (connected replay application; the API never serves sealed test-split subjects) |
 | **08** | Akshaya | **Holding a moment in time** (Pinned anchor inspection and time-travel navigation) |
 | **09** | Nikhil | **Scenario projections** (Hypothetical meal & activity what-if; medication unsupported) |
 | **10** | Akshaya | **When the answer is unavailable** (Insufficient data quality, stale, disconnected states) |
