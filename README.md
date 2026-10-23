@@ -4,12 +4,15 @@
 
 ### A physiology-informed digital twin that forecasts type 2 diabetes glucose spikes,<br>and states exactly what its evidence does and does not prove.
 
+**[Live Workstation Demo: t2d-glucose-digital-twin.akshay.blitz.cloud](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)**
+
+[![Live Demo](https://img.shields.io/badge/live%20demo-online-0f6e74)](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)
 [![Frontend tests](https://img.shields.io/badge/frontend%20tests-48%20suites%20%7C%20450%20passed-0f6e74)](#tests-and-verification)
 [![Backend tests](https://img.shields.io/badge/backend%20tests-162%20passed-0f6e74)](#tests-and-verification)
 [![License](https://img.shields.io/badge/license-Apache--2.0-1f3a5f)](LICENSE)
 [![Intended use](https://img.shields.io/badge/intended%20use-research%20only-8f5e0b)](#limitations-and-intended-use)
 
-[Submission checklist](#submission-checklist) · [What it does](#what-it-does) · [Architecture](#architecture) · [Evidence](#evidence) · [Quick start](#quick-start) · [Datasets](#datasets-and-licences) · [Limitations](#limitations-and-intended-use)
+[Live demo](https://t2d-glucose-digital-twin.akshay.blitz.cloud/) · [Submission checklist](#submission-checklist) · [What it does](#what-it-does) · [Architecture](#architecture) · [Evidence](#evidence) · [Quick start](#quick-start) · [Datasets](#datasets-and-licences) · [Limitations](#limitations-and-intended-use)
 
 <img src="docs/assets/readme/screens/patient-forecast.png" alt="Patient workspace: observed CGM, the physiology twin, the learned adjustment and the 2-hour forecast with bands and spike-onset risk" width="100%">
 
@@ -50,7 +53,7 @@
 | Open-source licence | [Apache-2.0](#license) |
 | Architecture diagram | [Architecture](#architecture) · [`architecture.pdf`](docs/architecture/architecture.pdf) |
 | Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) · [`presentation.pptx`](docs/presentation/presentation.pptx) |
-| Public access | This public repository. No public deployment is linked, because none has been verified. Run locally with [Quick start](#quick-start) |
+| Public access | Live demo: [`t2d-glucose-digital-twin.akshay.blitz.cloud`](https://t2d-glucose-digital-twin.akshay.blitz.cloud/) · Public repository. Run locally with [Quick start](#quick-start) |
 | Ethics, privacy and security | [Ethics, privacy and security](#ethics-privacy-and-security) |
 
 ## Problem and healthcare use case
