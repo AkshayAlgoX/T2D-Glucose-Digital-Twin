@@ -247,7 +247,7 @@ export const ForecastRequestSchema = z.object({
   scenarios: z.array(z.object({
     scenario_id: z.string().regex(/^[a-z0-9_-]{1,32}$/),
     label: z.string().max(60).optional(),
-    inputs: z.array(z.unknown()).min(1).max(6) // ScenarioInput is complex, any for now
+    inputs: z.array(ScenarioInputSchema).min(1).max(6)
   })).max(4).optional(),
   alert_policy_version: z.string().optional()
 }).strict();

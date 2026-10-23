@@ -2,12 +2,17 @@ import pytest
 import numpy as np
 import json
 from pathlib import Path
-import backend.train_pr_tft as T
-import backend.serve_pr_tft as S
+try:
+    import train_pr_tft as T
+    import serve_pr_tft as S
+    import provenance as prov
+except ModuleNotFoundError:
+    import backend.train_pr_tft as T
+    import backend.serve_pr_tft as S
+    import backend.provenance as prov
 import uuid
 import sys
 import hashlib
-import backend.provenance as prov
 
 def test_canonical_artifact_loads_successfully(tmp_path):
     run_dir = Path("runs/pr_tft_ablation_arm_d")

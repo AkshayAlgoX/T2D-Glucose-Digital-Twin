@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-1f3a5f)](LICENSE)
 [![Intended use](https://img.shields.io/badge/intended%20use-research%20only-8f5e0b)](#limitations-and-intended-use)
 
-[What it does](#what-it-does) · [Architecture](#architecture) · [Evidence](#evidence) · [Quick start](#quick-start) · [Datasets](#datasets-and-licences) · [Limitations](#limitations-and-intended-use)
+[Submission checklist](#submission-checklist) · [What it does](#what-it-does) · [Architecture](#architecture) · [Evidence](#evidence) · [Quick start](#quick-start) · [Datasets](#datasets-and-licences) · [Limitations](#limitations-and-intended-use)
 
 <img src="docs/assets/readme/screens/patient-forecast.png" alt="Patient workspace: observed CGM, the physiology twin, the learned adjustment and the 2-hour forecast with bands and spike-onset risk" width="100%">
 
@@ -33,6 +33,40 @@
 | External check 2: AZT1D + Broll | ❌ not met | [`docs/evidence/external_v2/RESULTS.md`](docs/evidence/external_v2/RESULTS.md) |
 | Candidate C2 (risk-gated trend) | 🧪 exploratory, CI includes 0 | [`docs/evidence/fa_controller/README.md`](docs/evidence/fa_controller/README.md) |
 | AI-READI confirmation | ⏳ protocol frozen, awaiting data access | [`docs/evidence/aireadi_confirmation/PREREGISTRATION.md`](docs/evidence/aireadi_confirmation/PREREGISTRATION.md) |
+
+## Submission checklist
+
+| Challenge item | Where |
+|---|---|
+| Team details | [Submission](#submission): Akshaya R · Nikhil VS |
+| College / institution | [Submission](#submission): BGS College of Engineering and Technology · East West Institute of Technology |
+| Project title | Glucose Twin (repository: T2D Glucose Digital Twin) |
+| Problem statement and healthcare use case | [Problem and healthcare use case](#problem-and-healthcare-use-case) |
+| What makes it a digital twin | [What makes it a digital twin](#what-makes-it-a-digital-twin) |
+| Technical stack | [Technical stack](#technical-stack) |
+| AI/ML model and framework details | [Model details](#model-details) |
+| Results and evidence | [Evidence](#evidence) · [claim–evidence ledger](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
+| Demo video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
+| Open-source licence | [Apache-2.0](#license) |
+| Architecture diagram | [Architecture](#architecture) · [`architecture.pdf`](docs/architecture/architecture.pdf) |
+| Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) · [`presentation.pptx`](docs/presentation/presentation.pptx) |
+| Public access | This public repository. No public deployment is linked, because none has been verified. Run locally with [Quick start](#quick-start) |
+| Ethics, privacy and security | [Ethics, privacy and security](#ethics-privacy-and-security) |
+
+## Problem and healthcare use case
+
+- **Condition:** type 2 diabetes and prediabetes.
+- **Adverse event:** a new glucose spike above 180 mg/dL within the next 2 hours, predicted while glucose is still in range.
+- **Why it matters:** repeated after-meal spikes are linked to long-term complications. A CGM shows where glucose *is*; a clinician needs to know where it is *going*, early enough to act.
+- **Use case:** a care team remotely monitoring patients who wear a CGM. They open the ward view, see who needs attention in the next two hours and why, and test a change (a meal, a walk) on the patient's twin before advising. They then hand over a one-page summary or a FHIR record.
+
+## What makes it a digital twin
+
+- **A physiological state, kept in step with the patient.** An unscented Kalman filter (UKF) updates a glucose–insulin–gut model with every CGM reading. The forecast starts from that state, not from a statistical pattern alone.
+- **Personalised from the record.** EHR context (age, BMI, HbA1c, diabetes duration, medication classes) sets the twin's priors. The calibrated twin parameters feed the network as static context.
+- **It can be asked "what if".** Scenario inputs (a meal, activity, a skipped usual meal) are run through the same twin and network from the same moment. The interface shows the twin's own response separately from the learned adjustment.
+- **It says when it does not know.** Quantile bands, out-of-training-range warnings, data-quality states and refusals (for example medication changes) are part of every output.
+- **Limit, stated plainly:** online per-patient parameter refitting was tested and did not beat a LightGBM baseline ([report §5](docs/evidence/operating_point/README.md)), so the twin's parameters are not refitted online.
 
 ## What it does
 
@@ -71,6 +105,31 @@ flowchart LR
     Models --> Locked["Locked test run<br/>RESULTS.md"]
   end
 ```
+
+### Model details
+
+<details>
+<summary><b>PR-TFT hybrid (served) and the real-patient research models</b></summary>
+
+**Served model: PR-TFT, physiology-residual temporal fusion transformer** (`backend/train_pr_tft.py`, run `runs/pr_tft_ablation_arm_d`)
+
+| Component | Implementation |
+|---|---|
+| Physiology prior | UKF-tracked glucose–insulin model with a two-compartment gut ("S3" mode, basal from the first CGM reading), rolled out 120 min under "no new meal" and "habitual meal" |
+| Static encoder | Variable selection over EHR context plus calibrated twin parameters, giving the TFT context vectors |
+| Past encoder | Variable selection over 144 past steps (12 h), then a 2-layer LSTM |
+| Future decoder | Variable selection over 24 known-future steps (time, habit prior, twin scenarios), then an LSTM |
+| Temporal fusion | Static enrichment, causal interpretable multi-head attention (4 heads, d_model 96), gated residual networks |
+| Heads | Residual quantiles at 5/10/25/50/75/90/95% (monotone by construction), per-bin spike hazard, peak-glucose quantiles |
+| Loss | Risk-weighted pinball + focal hazard (γ 2.0, α 0.75) + median-residual and hazard-consistency terms + peak pinball |
+| Training | Seed 20260930, AdamW lr 1e-3, batch 256, up to 30 epochs with early stopping (patience 4), PyTorch Lightning |
+| Calibration | Saved conformal interval adjustment (80% level) and isotonic hazard calibration |
+
+**Real-patient research models** (`docs/evidence/real_data/develop.py`)
+- Locked evaluation: reduced UKF twin prior plus a LightGBM / neural residual ensemble, with isotonic hazard calibration.
+- Exploratory work: LightGBM hazard models with daily-routine features, calibrated on patient-grouped OOF predictions.
+- No meal inputs are used (masked to zero).
+</details>
 
 <details>
 <summary><b>Prediction and early-warning pipeline</b></summary>
@@ -174,6 +233,16 @@ All of these use training and validation patients only. None touches the locked 
 
 Every claim, with its artifact and promotion rule, is in the [claim–evidence ledger](docs/submission/CLAIM_EVIDENCE_LEDGER.md).
 
+## Technical stack
+
+| Layer | Tools |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, D3 scales, lucide icons |
+| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic v2, server-sent events |
+| Modelling | PyTorch + Lightning (PR-TFT), NumPy/JAX UKF twin, LightGBM, scikit-learn (isotonic calibration) |
+| Contracts and interoperability | JSON Schema contracts compiled to TypeScript, Zod validation, Ajv (FHIR R4 schema tests), HL7 FHIR R4 |
+| Quality | Jest + Testing Library + jest-axe, pytest, Playwright browser checks |
+
 ## Quick start
 
 **Requirements:** Node.js ≥ 20.9, Python 3.12, Git LFS (model weights and twin state).
@@ -228,7 +297,7 @@ Seeds are fixed at `20260930`. External-check inputs are verified by the sha256 
 
 ```bash
 npm test -- --runInBand --silent                     # 48 suites, 450 tests
-RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -q   # 162 passed (134 collected without RUN_DIR)
+RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -q   # 162 passed (without RUN_DIR: 134 passed, 2 skipped)
 npx tsc --noEmit && npm run build                     # types, contract-drift check, production build
 ```
 
@@ -249,6 +318,14 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | USDA FoodData Central FNDDS 2021–2023 | Meal catalogue | Public domain (CC0) |
 | HL7 FHIR R4 JSON schema | Test fixture | HL7 FHIR licence (CC0) |
 
+## Ethics, privacy and security
+
+- **No patient data are served.** The application replays a synthetic cohort. FHIR exports carry the HL7 `HTEST` (test data) security label.
+- **Licensed real data stay local.** CGMacros, BIG IDEAs, ShanghaiT2DM and the external cohorts are used under their licences and never committed (see [Datasets](#datasets-and-licences)).
+- **The sealed test split cannot leak through the API.** Its subjects are never listed, and every request for them returns the same `404` as an unknown id (`backend/tests/test_sealed_split_access.py`).
+- **No secrets are tracked.** A repository scan found no credentials. Backend data endpoints accept an optional `Authorization` header token, and the browser reaches them only through the contract-validating Next.js server layer.
+- **Honest outputs.** Missing readings are never shown as zero. Scenario results are labelled as model responses. Unvalidated translations are marked as such.
+
 ## Limitations and intended use
 
 - **Research only.** Not a medical device. Not for diagnosis, dosing or treatment decisions.
@@ -265,11 +342,10 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | Team | **T2D Digital Twin Team**: Akshaya R (BGS College of Engineering and Technology) · Nikhil VS (East West Institute of Technology) |
 | Repository | [github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) |
 | Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
-| Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (submission snapshot) |
-| Demo script | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) |
-| Demonstration video | Pending: link to be added by the team |
+| Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (14-page submission snapshot) · [`docs/presentation/presentation.pptx`](docs/presentation/presentation.pptx) (14-slide editable presentation deck) |
+| Demo reproduction guide | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) (planning and reproduction guide; not a transcript of the recorded video) |
+| Demonstration video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
 | Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
-<!-- TODO(owner): replace "Pending: link to be added by the team" in the Demonstration video row with the recorded video URL. No public deployment is linked because none has been verified. -->
 
 ## License
 
