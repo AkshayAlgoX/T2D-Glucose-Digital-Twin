@@ -1,0 +1,33 @@
+# Version control and editor
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Node / Next.js caches
+node_modules
+.next
+*.tsbuildinfo
+*.log
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Environment files and credentials
+.env*
+*.pem
+*.key
+*.token
+
+# Licensed real participant records and splits
+data/real/
+runs/real_masked_*/
+
+# Local research scratch directories
+research-lab/
+scratch/
+experiments/early_warning_ew01/runs/
