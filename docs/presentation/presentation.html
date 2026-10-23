@@ -224,6 +224,45 @@
       line-height: 1.5;
     }
 
+    /* Slide 11: compact metric rows and the in-sample caveat */
+    .text-stack.metrics { gap: 14px; }
+    .text-stack.metrics .text-card { font-size: 23px; }
+    .text-stack.metrics .text-card.lead { font-size: 24px; }
+    .caveat-box {
+      margin-top: 6px;
+      background: #F3E3C8;
+      border-left: 6px solid #B5701E;
+      border-radius: 6px;
+      padding: 14px 22px;
+      color: #183C42;
+    }
+    .caveat-box .caveat-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .caveat-box .caveat-body {
+      font-size: 21px;
+      line-height: 1.4;
+    }
+
+    /* Slide 14: evidence limits panel */
+    .evidence-panel {
+      background: rgba(0,0,0,0.2);
+      border-left: 4px solid #FFD0A8;
+      border-radius: 6px;
+      padding: 16px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .evidence-panel .ev-row {
+      font-size: 21px;
+      line-height: 1.35;
+      color: #F5F3EC;
+    }
+    .evidence-panel .ev-row strong { color: #FFD0A8; }
+
     /* Metric highlight pill */
     .metric-pill {
       display: inline-block;
@@ -240,7 +279,7 @@
   <!-- Slide 01: Title -->
   <div class="slide dark">
     <div class="slide-header">
-      <span class="presenter-cue">00:00–01:30 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h1 class="slide-title">The next two hours</h1>
     </div>
     <div class="content-area">
@@ -267,7 +306,7 @@
   <!-- Slide 02: A reading needs context -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">01:30–03:00 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">A reading needs context</h2>
     </div>
     <div class="content-area">
@@ -286,14 +325,14 @@
   <!-- Slide 03: Our subject is synthetic -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">03:00–04:30 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">Our subject is synthetic</h2>
     </div>
     <div class="content-area">
       <div class="text-stack">
         <div class="text-card lead">293 active synthetic subjects</div>
         <div class="text-card">205 training / 44 validation / 44 test</div>
-        <div class="text-card">Demonstration: training subject only</div>
+        <div class="text-card">Demonstration: training-split subjects only</div>
         <div class="text-card">Replay is not a live wearable feed</div>
       </div>
     </div>
@@ -306,7 +345,7 @@
   <!-- Slide 04: The forecasting path -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">04:30–06:00 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h2 class="slide-title">The forecasting path</h2>
     </div>
     <div class="content-area">
@@ -327,7 +366,7 @@
   <!-- Slide 05: A prior and a learned correction -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">06:00–07:30 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">A prior and a learned correction</h2>
     </div>
     <div class="content-area">
@@ -347,7 +386,7 @@
   <!-- Slide 06: Reading a forecast (Split with Screenshot) -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">07:30–09:00 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h2 class="slide-title">Reading a forecast</h2>
     </div>
     <div class="content-area">
@@ -363,7 +402,7 @@
       </div>
     </div>
     <div class="slide-footer">
-      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span>Recorded screenshot: synthetic subject P0001 (training split); provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
       <span class="slide-num">06</span>
     </div>
   </div>
@@ -371,7 +410,7 @@
   <!-- Slide 07: One subject, successive updates -->
   <div class="slide dark">
     <div class="slide-header">
-      <span class="presenter-cue">09:00–11:30 &nbsp;·&nbsp; Nikhil + Akshaya</span>
+      <span class="presenter-cue">Nikhil + Akshaya</span>
       <h2 class="slide-title">One subject, successive updates</h2>
     </div>
     <div class="content-area">
@@ -379,7 +418,7 @@
         <div class="text-card lead">Connected synthetic application</div>
         <div class="text-card">Identity &nbsp;/&nbsp; timestamp &nbsp;/&nbsp; quality &nbsp;/&nbsp; forecast</div>
         <div class="text-card">Forecast updates at recorded timestamps</div>
-        <div class="text-card">Synthetic training subject P0003</div>
+        <div class="text-card">Training-split subjects only; never the sealed test split</div>
       </div>
     </div>
     <div class="slide-footer">
@@ -391,7 +430,7 @@
   <!-- Slide 08: Holding a moment in time (Split with Screenshot) -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">11:30–13:00 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">Holding a moment in time</h2>
     </div>
     <div class="content-area">
@@ -407,7 +446,7 @@
       </div>
     </div>
     <div class="slide-footer">
-      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span>Recorded screenshot: synthetic subject P0001 (training split); provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
       <span class="slide-num">08</span>
     </div>
   </div>
@@ -415,7 +454,7 @@
   <!-- Slide 09: Scenario projections (Split with Screenshot) -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">13:00–14:30 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h2 class="slide-title">Scenario projections</h2>
     </div>
     <div class="content-area">
@@ -432,7 +471,7 @@
       </div>
     </div>
     <div class="slide-footer">
-      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span>Recorded screenshot: synthetic subject P0001 (training split); provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
       <span class="slide-num">09</span>
     </div>
   </div>
@@ -440,7 +479,7 @@
   <!-- Slide 10: When the answer is unavailable (Split with Screenshot) -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">14:30–16:00 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">When the answer is unavailable</h2>
     </div>
     <div class="content-area">
@@ -456,7 +495,7 @@
       </div>
     </div>
     <div class="slide-footer">
-      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span>Recorded screenshot: synthetic subject P0095 (training split); provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
       <span class="slide-num">10</span>
     </div>
   </div>
@@ -464,16 +503,19 @@
   <!-- Slide 11: What the recorded metrics say -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">16:00–17:30 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h2 class="slide-title">What the recorded metrics say</h2>
     </div>
     <div class="content-area">
-      <div class="text-stack">
-        <div class="text-card lead">Recorded synthetic validation, not reproduced here</div>
-        <div class="text-card"><strong>30 / 60 / 120 min RMSE:</strong> &nbsp;<span class="metric-pill">12.36</span> / <span class="metric-pill">19.53</span> / <span class="metric-pill">25.03</span> mg/dL</div>
-        <div class="text-card"><strong>80% interval coverage:</strong> &nbsp;<span class="metric-pill">80.00%</span></div>
-        <div class="text-card"><strong>Interval width:</strong> &nbsp;<span class="metric-pill">37.30 mg/dL</span></div>
-        <div class="text-card"><strong>Hazard AUROC:</strong> &nbsp;<span class="metric-pill">0.923</span> &nbsp;|&nbsp; <strong>Brier:</strong> &nbsp;<span class="metric-pill">0.0703</span></div>
+      <div class="text-stack metrics">
+        <div class="text-card lead">Synthetic validation split (44 patients), also used for checkpoint selection and calibration: development evidence, not a held-out test</div>
+        <div class="text-card"><strong>60-min RMSE:</strong> &nbsp;hybrid <span class="metric-pill">19.53</span> &nbsp;·&nbsp; twin only <span class="metric-pill">23.23</span> &nbsp;·&nbsp; persistence <span class="metric-pill">36.05</span> mg/dL</div>
+        <div class="text-card"><strong>Hybrid RMSE at 30 / 60 / 120 min:</strong> &nbsp;12.36 / 19.53 / 25.03 mg/dL</div>
+        <div class="text-card"><strong>Spike-risk AUROC (raw model output):</strong> &nbsp;0.922</div>
+        <div class="caveat-box">
+          <div class="caveat-title">In-sample diagnostics: fitted and scored on these same validation patients</div>
+          <div class="caveat-body">80% interval coverage 80.00% (expected by construction) · width 37.30 mg/dL · calibrated Brier 0.0703. Not independent performance evidence.</div>
+        </div>
       </div>
     </div>
     <div class="slide-footer">
@@ -485,7 +527,7 @@
   <!-- Slide 12: The realism check failed -->
   <div class="slide dark">
     <div class="slide-header">
-      <span class="presenter-cue">17:30–19:00 &nbsp;·&nbsp; Akshaya</span>
+      <span class="presenter-cue">Akshaya</span>
       <h2 class="slide-title">The realism check failed</h2>
     </div>
     <div class="content-area">
@@ -496,7 +538,7 @@
           <p>Mock-real comparator<br>AUROC <strong>0.932</strong> (acceptance target &le; 0.65)</p>
         </div>
         <div class="fail-right">
-          <h4>External EW-01 remains unexecuted</h4>
+          <h4>EW-01 study protocol remains unexecuted</h4>
           <p>Clinical efficacy is unestablished. Protocol amendments remain pending co-author sign-offs; no human efficacy or cross-center transfer is claimed.</p>
         </div>
       </div>
@@ -510,7 +552,7 @@
   <!-- Slide 13: What a reviewer can inspect (Split with Screenshot) -->
   <div class="slide light">
     <div class="slide-header">
-      <span class="presenter-cue">19:00–20:30 &nbsp;·&nbsp; Nikhil</span>
+      <span class="presenter-cue">Nikhil</span>
       <h2 class="slide-title">What a reviewer can inspect</h2>
     </div>
     <div class="content-area">
@@ -526,7 +568,7 @@
       </div>
     </div>
     <div class="slide-footer">
-      <span>Repository-recorded screenshot; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
+      <span>Recorded Evidence-page screenshot from an earlier build; provenance in notes. &nbsp;Synthetic research only. No clinical validation claimed.</span>
       <span class="slide-num">13</span>
     </div>
   </div>
@@ -534,19 +576,23 @@
   <!-- Slide 14: The next two hours, with evidence -->
   <div class="slide dark">
     <div class="slide-header">
-      <span class="presenter-cue">20:30–21:30 &nbsp;·&nbsp; Akshaya + Nikhil</span>
+      <span class="presenter-cue">Akshaya + Nikhil</span>
       <h2 class="slide-title">The next two hours, with evidence</h2>
     </div>
     <div class="content-area">
-      <div class="text-stack">
-        <div class="text-card lead">An inspectable synthetic forecasting workflow</div>
-        <div class="text-card">Next: engineering verification and external validation</div>
-        <div class="text-card" style="margin-top: 18px; color: #ABD4CA;">Akshaya R and Nikhil VS</div>
-        <div class="text-card" style="font-size: 34px; font-weight: 700;">Thank you</div>
+      <div class="text-stack" style="gap: 16px;">
+        <div class="text-card lead">An inspectable forecasting workflow, with its evidence limits stated</div>
+        <div class="evidence-panel">
+          <div class="ev-row"><strong>Locked real-patient test (11 patients):</strong> only 6.9% of spikes warned ≥30 min ahead (95% CI 0.0–13.9; full-test point estimate, bootstrap mean 6.0%)</div>
+          <div class="ev-row"><strong>Two preregistered external checks</strong> (Hall 2018; AZT1D): prespecified early-warning improvement not confirmed</div>
+          <div class="ev-row"><strong>Candidate C2:</strong> exploratory, not established (+4.5 points, 95% CI −2.5 to +12.8)</div>
+          <div class="ev-row"><strong>Next:</strong> AI-READI confirmation. Protocol frozen; not yet run, data access pending</div>
+        </div>
+        <div class="text-card" style="margin-top: 4px; color: #ABD4CA;">Akshaya R and Nikhil VS &nbsp;·&nbsp; <span style="font-weight: 700; color: #F5F3EC;">Thank you</span></div>
       </div>
     </div>
     <div class="slide-footer">
-      <span>Synthetic research only. No clinical validation claimed.</span>
+      <span>Research prototype, not a medical device. No clinical validation claimed.</span>
       <span class="slide-num">14</span>
     </div>
   </div>

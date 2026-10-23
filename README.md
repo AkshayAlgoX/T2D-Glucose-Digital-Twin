@@ -297,7 +297,7 @@ Seeds are fixed at `20260930`. External-check inputs are verified by the sha256 
 
 ```bash
 npm test -- --runInBand --silent                     # 48 suites, 450 tests
-RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -q   # 162 passed (134 collected without RUN_DIR)
+RUN_DIR=runs/pr_tft_ablation_arm_d pytest backend/tests/ -q   # 162 passed (without RUN_DIR: 134 passed, 2 skipped)
 npx tsc --noEmit && npm run build                     # types, contract-drift check, production build
 ```
 
@@ -343,7 +343,7 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | Repository | [github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin](https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin) |
 | Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
 | Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (14-page submission snapshot) · [`docs/presentation/presentation.pptx`](docs/presentation/presentation.pptx) (14-slide editable presentation deck) |
-| Demo script | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) |
+| Demo reproduction guide | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) (planning and reproduction guide; not a transcript of the recorded video) |
 | Demonstration video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
 | Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
 
