@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>T2D Glucose Digital Twin — Jury Preparation Guide</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 18mm 16mm 18mm 16mm;
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font-size: 9pt;
+      color: #64748b;
+      font-family: system-ui, sans-serif;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.55;
+    color: #1e293b;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+  .page-break { page-break-before: always; break-before: page; }
+  .no-break { page-break-inside: avoid; break-inside: avoid; }
+
+  /* Cover Header */
+  .cover {
+    background: #0f2c31;
+    color: #f8fafc;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    page-break-after: avoid;
+  }
+  .cover-badge {
+    display: inline-block;
+    background: #0f766e;
+    color: #ccfbf1;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .cover h1 {
+    font-size: 24pt;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 10px 0;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+  }
+  .cover-sub {
+    font-size: 11.5pt;
+    color: #cbd5e1;
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+  }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    font-size: 9pt;
+    border-top: 1px solid #1e4a52;
+    padding-top: 14px;
+    color: #94a3b8;
+  }
+  .cover-meta strong { color: #f1f5f9; }
+
+  /* Headings */
+  h2 {
+    font-size: 15pt;
+    font-weight: 700;
+    color: #0f2c31;
+    border-bottom: 2px solid #0f766e;
+    padding-bottom: 5px;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #1e3a40;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+  p { margin: 0 0 10px 0; }
+  ul, ol { margin: 0 0 12px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 18px 0;
+    font-size: 8.5pt;
+    line-height: 1.4;
+    page-break-inside: avoid;
+  }
+  th, td {
+    padding: 6px 10px;
+    text-align: left;
+    border: 1px solid #cbd5e1;
+  }
+  th {
+    background: #0f2c31;
+    color: #ffffff;
+    font-weight: 600;
+    border-color: #0f2c31;
+  }
+  tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+  td strong { color: #0f2c31; }
+
+  /* Callout Boxes */
+  .callout {
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin: 12px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+    border-left: 4px solid;
+  }
+  .callout-info {
+    background: #f0fdfa;
+    border-color: #0f766e;
+    color: #134e4a;
+  }
+  .callout-warning {
+    background: #fffbeb;
+    border-color: #d97706;
+    color: #78350f;
+  }
+  .callout-danger {
+    background: #fff1f2;
+    border-color: #e11d48;
+    color: #881337;
+  }
+  .callout-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Code blocks & pre */
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 8pt;
+    line-height: 1.4;
+    overflow-x: hidden;
+    margin: 10px 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    page-break-inside: avoid;
+  }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #0f766e;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+
+  /* Figures and Images */
+  .figure-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px;
+    margin: 14px 0;
+    background: #f8fafc;
+    page-break-inside: avoid;
+    text-align: center;
+  }
+  .figure-card img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+  }
+  .figure-caption {
+    font-size: 8pt;
+    color: #475569;
+    margin-top: 6px;
+    text-align: left;
+    font-style: italic;
+  }
+
+  /* Two-column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  .col-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .col-card h4 {
+    margin-top: 0;
+    margin-bottom: 6px;
+    color: #0f2c31;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 4px;
+  }
+
+  /* Footer */
+  .footer-bar {
+    border-top: 1px solid #cbd5e1;
+    padding-top: 8px;
+    margin-top: 24px;
+    font-size: 8pt;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<!-- Cover Page / Header -->
+<div class="cover">
+  <div class="cover-badge">Happiest Health Digital Twin Challenge · Expert Jury Preparation</div>
+  <h1>T2D Glucose Digital Twin</h1>
+  <div class="cover-sub">
+    A comprehensive, evidence-first technical explainer, scientific integrity review, and jury defense manual for Akshaya R and Nikhil VS.
+  </div>
+  <div class="cover-meta">
+    <div>
+      <strong>Presenters:</strong> Akshaya R &amp; Nikhil VS<br>
+      <strong>Institutions:</strong> BGSIT &amp; EWIT, Bangalore<br>
+      <strong>Default Branch:</strong> <code>release/candidate-clean</code><br>
+      <strong>Verified Base SHA:</strong> <code>1c6e51b462f609fbe6d021f7017cd55cbb6e1f63</code>
+    </div>
+    <div>
+      <strong>Live Workstation:</strong> <code>t2d-glucose-digital-twin.akshay.blitz.cloud</code><br>
+      <strong>Submission Video:</strong> <code>youtu.be/arTnv1yWy1E</code> (19:41)<br>
+      <strong>Scope:</strong> Research Prototype Only — No Clinical Claims<br>
+      <strong>Date:</strong> October 2026
+    </div>
+  </div>
+</div>
+
+<div class="callout callout-warning">
+  <div class="callout-title">⚠️ Mandatory Scientific Integrity Rule for Presentation</div>
+  All data presented during the jury defense must clearly distinguish between <strong>synthetic development/validation findings</strong> and <strong>retrospective real-patient research</strong>. Never claim clinical efficacy, diagnostic clearance, or superiority over simpler baselines where the evidence did not confirm it. If asked about an unmeasured metric or unexecuted study, say: <em>"We have not established that yet; our current evidence shows [verified result], and our next step would be [specific experiment]."</em>
+</div>
+
+<!-- Section 1 -->
+<h2>1. The Project in 60 Seconds</h2>
+<p><strong>What it is:</strong> A physiology-informed digital twin software workstation that forecasts continuous glucose monitor (CGM) readings two hours ahead and provides advance early warnings before postprandial glucose spikes (&gt;180 mg/dL) occur in adults with type 2 diabetes and prediabetes.</p>
+
+<p><strong>Whose problem it is intended to address:</strong> Millions of patients and clinicians managing type 2 diabetes. Commercial CGMs only alert <em>after</em> glucose crosses 180 mg/dL (reactive alarms), when it is too late to prevent the excursion. Our system predicts the impending rise 30–60 minutes in advance, giving patients an actionable window for light activity (e.g. a 15-minute walk) or meal moderation.</p>
+
+<p><strong>What we built:</strong></p>
+<ol>
+  <li><strong>Physiological Residual Engine:</strong> Couples a mechanistic modified Bergman Minimal Model (solved via an Unscented Kalman Filter) with a deep Temporal Fusion Transformer (PR-TFT) that learns only the residual errors the physics cannot capture.</li>
+  <li><strong>Uncertainty &amp; Spike Hazard:</strong> Outputs 24 discrete 5-minute predictions (120-minute horizon) across 7 quantiles (P05 to P95) with conformal coverage adjustment, plus an isotonic-calibrated discrete spike-onset hazard.</li>
+  <li><strong>Interactive Clinical Workstation:</strong> A Next.js web application featuring cohort triage, real-time telemetry replay, timeline anchor pinning, "What-If" meal/activity simulation, bilingual patient notes (English/Hindi), and official HL7 FHIR R4 JSON bundle export.</li>
+  <li><strong>Public Evidence &amp; Governance Ledger:</strong> Embedded into the live product, disclosing all development metrics, locked real-patient test results, external validation checks, failed gates, and known artefacts without concealment.</li>
+</ol>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>What the Prototype Demonstrates</h4>
+    <ul>
+      <li>Connected streaming replay of 249 served synthetic subjects.</li>
+      <li>Live additive breakdown: Twin + Adjustment = Forecast.</li>
+      <li>Real-time What-If scenario re-simulation (carbs &amp; exercise).</li>
+      <li>Automatic fallback to physics-only rollout if ML fails.</li>
+      <li>Strict refusal of unmodelled medication interventions.</li>
+    </ul>
+  </div>
+  <div class="col-card">
+    <h4>What it Does NOT Prove</h4>
+    <ul>
+      <li>No clinical trials or proven HbA1c reductions.</li>
+      <li>Not an automated medical device; cannot prescribe drugs.</li>
+      <li>What-If is a simulated response, not a causal clinical effect.</li>
+      <li>Real-patient early warning sensitivity is modest (6.9%).</li>
+      <li>Synthetic data realism gate failed (AUROC 0.932).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 2 -->
+<h2>2. The Healthcare Problem</h2>
+
+<h3>Continuous Glucose Monitoring (CGM)</h3>
+<p>Continuous glucose monitors use a miniature subcutaneous enzymatic sensor to sample interstitial glucose every 5 minutes (288 readings/day). Interstitial fluid glucose lags blood glucose by 5 to 15 minutes due to physiological diffusion time between vascular capillaries and the interstitial matrix.</p>
+
+<h3>What an "Adverse Spike" Means</h3>
+<p>Under international clinical consensus, postprandial glucose should remain &lt;180 mg/dL (10.0 mmol/L). In our preregistered evaluation protocol, an adverse spike is strictly defined as:</p>
+<ul>
+  <li>Crossing from below 180 mg/dL to <strong>&ge;180 mg/dL</strong>.</li>
+  <li>Preceded by a <strong>rise of at least 50 mg/dL</strong> within the prior 60 minutes.</li>
+  <li>Persisting for <strong>at least 3 consecutive 5-minute readings</strong> (15 minutes), filtering out single-sample sensor noise and compression artefacts.</li>
+</ul>
+
+<h3>Why Advance Prediction is Valuable in Type 2 Diabetes</h3>
+<p>Unlike type 1 diabetes—where insulin boluses dominate glycemic control—type 2 diabetes management relies heavily on meal composition and muscle glucose uptake. Light physical exercise (e.g., a 20-minute post-meal walk) stimulates non-insulin-dependent GLUT4 transporter translocation, clearing glucose from plasma. However, this is effective primarily <em>before</em> or <em>during</em> the early postprandial rise. A 30- to 60-minute advance warning provides a practical, non-pharmacological intervention window.</p>
+
+<div class="callout callout-danger">
+  <div class="callout-title">⚠️ Clinical Distinction: Prediction &ne; Prescription</div>
+  A statistical forecast is a conditional probability distribution: $P(G_{t+h} \mid 	ext{history})$. Even when calibrated, it does not guarantee how a patient's metabolism will respond to an unmeasured behavioral change. In diabetes, unverified clinical recommendations carry severe risks of triggering acute hypoglycaemia (&lt;70 mg/dL). Hence, our system strictly separates <strong>forecasting</strong> from <strong>medical advice</strong>.
+</div>
+
+<!-- Section 3 -->
+<h2>3. What a Digital Twin Means in This Project</h2>
+<p>In this project, a "digital twin" is not a marketing buzzword. It is a mathematically defined computational state model that synchronizes static clinical priors with dynamic wearable observations:</p>
+
+<ul>
+  <li><strong>Static EHR Context:</strong> Age, sex, BMI, baseline HbA1c, eGFR, diabetes diagnosis duration, and prescribed medication classes.</li>
+  <li><strong>Streaming Dynamic Inputs:</strong> 5-minute CGM readings, heart rate, HRV (RMSSD), pedometer steps, sleep stages, and logged meal carbohydrates.</li>
+  <li><strong>Hidden Physiological State Vector:</strong> Solved recursively via an Unscented Kalman Filter tracking plasma glucose $G(t)$, remote insulin action $X(t)$, plasma insulin proxy $I(t)$, and gut glucose absorption compartments $Q_1(t)$ and $Q_2(t)$.</li>
+</ul>
+
+<div class="callout callout-info">
+  <div class="callout-title">ℹ️ Cohort Distinction: Synthetic vs. Real Research</div>
+  The live application workspace runs on a <strong>synthetic cohort</strong> of 249 served subjects (205 train, 44 validation) generated by an ODE simulator (`generate_health_data_v2`). The 44 synthetic test subjects are quarantined behind a server firewall. Retrospective research evaluations were executed separately offline on 161 real patients across open clinical datasets.
+</div>
+
+<div class="figure-card">
+  <img src="screens/landing-hero.png" alt="Live Workstation Landing Hero View">
+  <div class="figure-caption">Figure 1: Current live application landing page showing patient P0017 (validation split, Type 2 diabetes) replayed from the running FastAPI backend at 08:00 UTC. Note the additive decomposition strip, wearable input timeline, and explicit model disagreement disclosure.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 4 -->
+<h2>4. Exactly How Our System Works</h2>
+
+<p>The processing pipeline follows a causal 6-stage architecture where each stage has a clearly defined responsibility and fallback:</p>
+
+<pre>
+[1. Patient Inputs]      Static EHR (Age, BMI, HbA1c, eGFR) + Wearables (CGM, HR, Steps, Sleep, Meals)
+         │
+         ▼
+[2. Data Quality Gate]   Check 5-min cadence, missingness (&lt;30% gap), sensor range (40–400 mg/dL)
+         │
+         ▼
+[3. UKF Physiology Twin] Nonlinear state estimation: updates glucose, insulin action, gut compartments
+         │               Outputs: Mechanistic rollout baseline over 24 steps (120 minutes)
+         │
+         ├───────────────────────────────┐
+         ▼                               ▼
+[4. PR-TFT Neural Network]      [Residual Combination]
+   Learns residual correction:     Final Median = Twin Baseline + Learned Residual
+   ΔG at 7 quantiles (P05–P95)     Bands = Conformal interval adjustments
+   Discrete-time hazard head       Hazard = Isotonic probability calibration
+         │                               │
+         └───────────────────────────────┘
+                         │
+                         ▼
+[5. Alert Policy &amp; Safety]      Triggers at risk &ge; 0.35 with 120-min cooldown
+                         │      Fallback: If neural network fails, serve twin-only rollout
+                         ▼
+[6. Workstation UI &amp; FHIR]      Next.js charts, What-If simulation, FHIR R4 JSON bundle export
+</pre>
+
+<h3>1. UKF Physiology Twin (Modified Bergman Minimal Model)</h3>
+<p>Pure deep learning models are prone to hallucinating physiologically impossible trajectories during sensor dropouts. To guarantee stability, our system anchors every forecast on a biophysical prior:</p>
+<ul>
+  <li><strong>Bergman Minimal ODEs:</strong> Model insulin action accelerating glucose disposal and gut compartments absorbing meal carbohydrates into blood.</li>
+  <li><strong>Unscented Kalman Filter:</strong> Uses deterministic sigma points to propagate mean and covariance through nonlinear differential equations without linearisation instability. As each 5-minute CGM reading arrives, it updates the patient's current insulin sensitivity and gut state.</li>
+  <li><strong>Twin Rollout:</strong> Projects forward 120 minutes assuming no unannounced future food intake, producing a smooth, biologically plausible trajectory.</li>
+</ul>
+
+<h3>2. PR-TFT Neural Network (Residual Learning)</h3>
+<p>The Minimal Model cannot capture dawn phenomenon, circadian cortisol variation, physical exercise recovery, or stress. The Physiological-Residual Temporal Fusion Transformer (PR-TFT) learns strictly the <strong>residual error</strong> ($\Delta G = G_{	ext{actual}} - G_{	ext{twin}}$):</p>
+<ul>
+  <li>Trained on static EHR features, 24-hour historical wearable series, and time-of-day clock features.</li>
+  <li>Outputs 7 quantiles ($P_{05}, P_{10}, P_{25}, P_{50}, P_{75}, P_{90}, P_{95}$) simultaneously across 24 steps.</li>
+  <li><strong>Additive Combination:</strong> $	ext{Final Median Forecast} = 	ext{Twin Median} + 	ext{Learned Residual Median}$. On-screen, this is visible as an explicit strip in mg/dL.</li>
+</ul>
+
+<h3>3. Conformal Coverage &amp; Isotonic Calibration</h3>
+<ul>
+  <li><strong>Conformal Intervals:</strong> Raw quantile widths are adjusted using empirical non-conformity scores calculated on validation data to achieve valid 80% empirical coverage.</li>
+  <li><strong>Isotonic Hazard Calibration:</strong> The discrete hazard output is mapped through non-parametric isotonic regression to ensure that an estimated 40% risk corresponds to a true 40% event rate.</li>
+</ul>
+
+<h3>4. Safety Fallback</h3>
+<p>If the neural network crashes, runs out of memory, or fails input validation, the backend automatically serves the UKF physiological rollout alone. The API sets <code>model.fallback_used = true</code>, and the workstation notifies the clinician.</p>
+
+<div class="page-break"></div>
+
+<!-- Section 5 -->
+<h2>5. What Judges See in the Product</h2>
+
+<div class="figure-card">
+  <img src="screens/landing-pipeline.png" alt="Architecture Schematic and Evidence at a Glance">
+  <div class="figure-caption">Figure 2: Pipeline architecture schematic and validation evidence at a glance on the live site, including the prominent disclosure that the Gate 3 synthetic realism audit failed (AUROC 0.932).</div>
+</div>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>1. Patient Cohort Directory (<code>/cohort</code>)</h4>
+    <p>Displays all <strong>249 served synthetic subjects</strong> (88 Healthy, 107 Prediabetes, 54 Type 2; 205 train, 44 val). Includes a <strong>Ward Triage View</strong> ranking patients at 08:00 UTC by their 2-hour spike risk (e.g. P0100 at 75%, P0283 at 61%, P0036 at 60%, P0017 at 53%). The 44 sealed test subjects are blocked.</p>
+  </div>
+  <div class="col-card">
+    <h4>2. Patient Workspace (<code>/patients/[id]</code>)</h4>
+    <p>Observed CGM dots, forecast median, 50/80/90% uncertainty ribbons, physiological twin (dashed line), and learned adjustment (hatched teal wedge). Allows time-scrubbing and anchor pinning to evaluate historical points without future leakage.</p>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>3. What-If Scenario Exploration</h4>
+    <p>Simulates adding a 60g carb meal in 30 minutes, 30 minutes of moderate activity, or skipping usual meals. Medication changes immediately return <code>SCENARIO_UNSUPPORTED</code>. Includes an authentic Indian Dish Selector (29 USDA FNDDS dishes).</p>
+  </div>
+  <div class="col-card">
+    <h4>4. Clinician Summary &amp; FHIR Export</h4>
+    <p>Generates an A4/Letter print export, a bilingual patient note (English/Hindi with disclaimer), and an official HL7 FHIR R4 JSON Bundle (LOINC 99504-3, UCUM mg/dL) validated against the official schema.</p>
+  </div>
+</div>
+
+<div class="figure-card">
+  <img src="screens/whatif-meal-result.png" alt="What-if Simulation Result">
+  <div class="figure-caption">Figure 3: What-If simulation result for patient P0001 (60g carbohydrate meal in 30 minutes). Note Figure 2 (glucose under each plan) and Figure 3 (what the change does). The circled 5-minute blip in the learned adjustment is a known neural network artefact that is visibly flagged rather than hidden.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 6 -->
+<h2>6. Model and Technical Architecture</h2>
+
+<div class="figure-card">
+  <img src="screens/cohort-ward.png" alt="Cohort Ward Triage View">
+  <div class="figure-caption">Figure 4: The Cohort Ward Triage view ranking served synthetic validation patients by calibrated 2-hour spike-onset risk at 08:00 UTC.</div>
+</div>
+
+<h3>Production Software Stack</h3>
+<ul>
+  <li><strong>Frontend:</strong> Next.js 15 (React 19, TypeScript, Tailwind CSS, Lucide icons), running as a standalone Node.js server.</li>
+  <li><strong>Backend:</strong> FastAPI (Python 3.12, PyTorch 2.x Lightning, NumPy, SciPy, Pydantic v2).</li>
+  <li><strong>Physiological Module:</strong> Modified Bergman ODE simulator + Unscented Kalman Filter (<code>backend/ukf_twin.py</code>).</li>
+  <li><strong>Forecasting Module:</strong> Physiological Residual Temporal Fusion Transformer (<code>backend/train_pr_tft.py</code>).</li>
+  <li><strong>Deployment Infrastructure:</strong> Single container running both services via <code>deploy/entrypoint.sh</code> on port 7860 under non-root <code>appuser</code> (UID 10001). Internal communication uses <code>http://127.0.0.1:8001</code>.</li>
+</ul>
+
+<h3>API Contract Specifications (contracts/v1/)</h3>
+<ul>
+  <li><code>POST /v1/forecasts</code>: Accepts historical CGM, wearable streams, and optional scenario modifications. Returns 24 5-minute trajectory quantiles, conformal bounds, and calibrated spike hazard.</li>
+  <li><code>GET /v1/subjects/{id}/stream</code>: Server-Sent Events (SSE) streaming real-time CGM readings as if arriving live.</li>
+  <li><code>GET /v1/subjects/{id}/twin</code>: TwinCard reporting patient EHR priors and estimated physiological parameters.</li>
+  <li><code>GET /v1/subjects</code>: Enumerates served subject UUIDs and patient IDs (filters out sealed test partition).</li>
+  <li><code>GET /v1/health</code>: Service liveness, model version (<code>0.1.0</code>), simulator version, and active served subject count (<code>249</code>).</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- Section 7 -->
+<h2>7. Dataset and Partition Story</h2>
+
+<p>A rigorous audit requires exact accountability for all cohorts, partitions, and denominators:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Cohort Phase</th>
+      <th>Dataset &amp; Source</th>
+      <th>Total Size</th>
+      <th>Train / Val / Test Split</th>
+      <th>Status &amp; Verification</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Phase A: Synthetic</strong></td>
+      <td><code>generate_health_data_v2</code> (ODE simulator)</td>
+      <td>293 subjects</td>
+      <td>205 train / 44 val / 44 test</td>
+      <td><strong>Served in App: 249</strong> (205 train + 44 val). 44 test subjects strictly sealed.</td>
+    </tr>
+    <tr>
+      <td><strong>Phase B: Real Locked</strong></td>
+      <td>CGMacros (PhysioNet 1.0.0, 5-min CGM)</td>
+      <td>45 patients</td>
+      <td>27 train / 9 val / 9 test</td>
+      <td><strong>Evaluated in Locked Test:</strong> 9 test patients.</td>
+    </tr>
+    <tr>
+      <td><strong>Phase B: Real Locked</strong></td>
+      <td>BIG IDEAs (PhysioNet 1.1.3, 5-min CGM)</td>
+      <td>16 patients</td>
+      <td>9 train / 3 val / 4 test</td>
+      <td><strong>Evaluated in Locked Test:</strong> 2 evaluable test patients (2 excluded for coverage).</td>
+    </tr>
+    <tr>
+      <td><strong>Phase B: Real Locked</strong></td>
+      <td>ShanghaiT2DM (Figshare v5, 15-min CGM)</td>
+      <td>100 patients</td>
+      <td>60 train / 20 val / 20 test</td>
+      <td><strong>Declared NOT ESTIMABLE:</strong> 15-min cadence fails &ge;70% 5-min coverage rule.</td>
+    </tr>
+    <tr>
+      <td><strong>Phase C: External Check 1</strong></td>
+      <td>Hall et al. 2018 (mostly normoglycaemic)</td>
+      <td>57 participants</td>
+      <td>Unused external</td>
+      <td>64 spike onsets across 1,104 patient-days. <strong>Result: NOT CONFIRMED.</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Phase C: External Check 2</strong></td>
+      <td>AZT1D (Type 1 diabetes on AID)</td>
+      <td>24 adults</td>
+      <td>Unused external</td>
+      <td>2,814 spike onsets across 988.6 patient-days. <strong>Result: NOT MET.</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Phase C: External Check 2</strong></td>
+      <td>Broll et al. (Type 2 diabetes)</td>
+      <td>5 patients</td>
+      <td>Unused external</td>
+      <td>104 spike onsets across 51.2 patient-days (descriptive only).</td>
+    </tr>
+    <tr>
+      <td><strong>Phase D: Future Prereg.</strong></td>
+      <td>AI-READI (FAIRhub, Dexcom G6)</td>
+      <td>~944 T2D patients</td>
+      <td>Test partition only</td>
+      <td><strong>FROZEN, UNEXECUTED:</strong> Awaiting institutional data access sign-off.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-info">
+  <div class="callout-title">📌 Denominator Transparency</div>
+  The headline real-patient test evaluation denominator is <strong>11 held-out test patients</strong> with native 5-minute CGM (9 from CGMacros, 2 from BIG IDEAs), drawn from a nominal pool of 161 participants. The 20 Shanghai test participants were honestly reported as <em>Not Estimable</em> because their 15-minute readings could not evaluate the 5-minute spike persistence rule without fabricated interpolation.
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 8 -->
+<h2>8. Results: What We Know</h2>
+
+<h3>Synthetic Development Validation (44 Patients)</h3>
+<p><em>Source: <code>runs/pr_tft_ablation_arm_d/run_manifest.json</code> &amp; <code>docs/evidence/validation_ceiling_results.json</code></em></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Forecast Horizon</th>
+      <th>PR-TFT Hybrid RMSE [95% CI]</th>
+      <th>Physics Twin Alone</th>
+      <th>Persistence Baseline</th>
+      <th>Relative Error Reduction vs. Physics</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>+30 min</strong></td>
+      <td><strong>12.36 mg/dL</strong> [11.89–12.84]</td>
+      <td>15.24 mg/dL</td>
+      <td>21.64 mg/dL</td>
+      <td>−18.9%</td>
+    </tr>
+    <tr>
+      <td><strong>+60 min</strong></td>
+      <td><strong>19.53 mg/dL</strong> [18.56–20.48]</td>
+      <td>23.23 mg/dL</td>
+      <td>36.05 mg/dL</td>
+      <td><strong>−16.0%</strong> (−45.8% vs. persistence)</td>
+    </tr>
+    <tr>
+      <td><strong>+120 min</strong></td>
+      <td><strong>25.03 mg/dL</strong> [23.67–26.27]</td>
+      <td>28.64 mg/dL</td>
+      <td>48.36 mg/dL</td>
+      <td>−12.6%</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="figure-card">
+  <img src="screens/evidence-intervals-alarms.png" alt="Evidence Intervals and Alarm Table">
+  <div class="figure-caption">Figure 5: Forecast error by horizon with patient-clustered 95% confidence intervals, and alarm-scored early warning performance on synthetic validation data.</div>
+</div>
+
+<h3>Locked Real-Patient Evaluation (11 Held-Out Test Patients)</h3>
+<p><em>Source: <code>docs/evidence/real_data/results.json</code> (Point Estimates) and <code>RESULTS.md</code> (Bootstrap Means)</em></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>60-min RMSE (mg/dL) [95% CI]</th>
+      <th>Sensitivity &ge;30m [95% CI]</th>
+      <th>Alert Precision</th>
+      <th>False Alerts / Day [95% CI]</th>
+      <th>Median Lead Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Persistence Baseline</strong></td>
+      <td>26.27 [20.85–32.22]</td>
+      <td>0.0% [—]</td>
+      <td>—</td>
+      <td>0.00 [—]</td>
+      <td>0.0 min</td>
+    </tr>
+    <tr>
+      <td><strong>Linear Trend (30 min)</strong></td>
+      <td>49.06 [42.10–57.40]</td>
+      <td>44.4% [36.8–56.1]</td>
+      <td>16.4%</td>
+      <td><strong>3.84</strong> [3.16–4.40] (Over budget)</td>
+      <td>25.0 min</td>
+    </tr>
+    <tr>
+      <td><strong>Reduced Twin (UKF)</strong></td>
+      <td>24.73 [20.43–29.68]</td>
+      <td>0.0% [0.0–0.0]</td>
+      <td>30.8%</td>
+      <td>0.10 [0.00–0.31]</td>
+      <td>5.0 min</td>
+    </tr>
+    <tr>
+      <td><strong>Masked Hybrid (Point Est.)</strong></td>
+      <td><strong>23.11</strong> [18.75–28.12]</td>
+      <td><strong>6.9%</strong> [0.0–13.9]</td>
+      <td><strong>65.5%</strong></td>
+      <td><strong>0.11</strong> [0.02–0.23]</td>
+      <td><strong>10.0 min</strong> [5.0–15.0]*</td>
+    </tr>
+    <tr>
+      <td><em>Masked Hybrid (Bootstrap Mean)</em></td>
+      <td><em>23.04 [18.7–28.1]</em></td>
+      <td><em>6.0% [0.0–13.9]</em></td>
+      <td><em>65.5%</em></td>
+      <td><em>0.11 [0.02–0.23]</em></td>
+      <td><em>10.0 min [5.0–15.0]*</em></td>
+    </tr>
+  </tbody>
+</table>
+<p><small><em>*The median lead-time interval [5.0–15.0] is a fixed reporting band (&plusmn;5 min), not a bootstrap confidence interval.</em></small></p>
+
+<div class="callout callout-warning">
+  <div class="callout-title">🔍 Point Estimates vs. Bootstrap Means Reconciliation</div>
+  As established in <code>docs/submission/LOCKED_RESULTS_RECONCILIATION.md</code>, <code>results.json</code> reports the exact <strong>point estimate</strong> on the full test set (RMSE 23.11 mg/dL, sensitivity 6.9%), while the narrative table in <code>RESULTS.md</code> prints the <strong>mean of 2,000 bootstrap resamples</strong> (RMSE 23.04 mg/dL, sensitivity 6.0%). Both originate from the exact same execution run. We quote point estimates as our headline standard.
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 9 -->
+<h2>9. Negative Results, Failed Gates, and Known Artefacts</h2>
+
+<p>We present our negative results with absolute transparency. This is our greatest scientific strength:</p>
+
+<div class="figure-card">
+  <img src="screens/evidence-governance-register.png" alt="Validation Status and Governance Register">
+  <div class="figure-caption">Figure 6: The live validation status and provenance register from the /evidence page, publicly showing Gate 3 FAILED, Sealed test split NOT RUN, Shanghai diagnostic NO-GO, and EW-01 UNEXECUTED.</div>
+</div>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>1. Gate 3 Realism Audit: FAILED</h4>
+    <p>A 40-feature random forest discriminator attempted to distinguish our synthetic CGM data from an independent mock-real generator. Target was AUROC &le; 0.65. The classifier scored <strong>AUROC = 0.932</strong> (FAILED). Distinguishing feature: <code>jerk_sd</code> (synthetic ODEs were too smooth compared to real sensors). Disclosed on landing page and evidence page.</p>
+  </div>
+  <div class="col-card">
+    <h4>2. Low Real Early-Warning Sensitivity</h4>
+    <p>On held-out real patients, the hybrid model caught only <strong>6.9%</strong> of spikes &ge;30 minutes in advance. Because retrospective meal logs lacked verified timestamps, meal inputs were masked to zero; the conservative probability threshold (0.35) stayed silent until the rise had already begun to avoid false alarms.</p>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>3. External Checks: NOT CONFIRMED / NOT MET</h4>
+    <p>On Hall et al. (57 participants), the routine model improved early warning (+7.8%), but the 95% CI was [0.0, +13.2], missing the pre-registered requirement of lower bound &gt; 0. On AZT1D (24 T1D adults), the learned baseline (−2.5%) lost to a simple linear trend. Fixed probability thresholds fail to transfer across populations without local recalibration.</p>
+  </div>
+  <div class="col-card">
+    <h4>4. Single-Step 20 mg/dL Median Jumps</h4>
+    <p>In ~19.8% of synthetic validation forecasts, the neural network median jumps &gt;20 mg/dL in a single 5-minute step (an unphysical ML artefact). A pre-registered 3-point median filter cuts this to 2.3%. However, we refused to silently patch the weights; instead, the live UI flags these jumps with a circled warning indicator.</p>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 10 -->
+<h2>10. Privacy, Partition Protection, and Safety Governance</h2>
+
+<h3>Data Partition Firewall</h3>
+<ul>
+  <li><strong>Served Cohort:</strong> Strictly restricted to the 205 training and 44 validation synthetic subjects.</li>
+  <li><strong>Sealed Test Cohort:</strong> The 44 synthetic test subjects are quarantined behind <code>SEALED_SPLITS = frozenset({"test"})</code> in <code>backend/serve_pr_tft.py</code>. Querying any test subject returns HTTP 404.</li>
+  <li><strong>Zero Real Patient Data Served:</strong> Real patient records from PhysioNet and Figshare remain exclusively in offline research directories and are never bundled into Docker or exposed publicly.</li>
+</ul>
+
+<h3>Clinical Safety Safeguards</h3>
+<ul>
+  <li><strong>Research Disclaimer:</strong> Prominently displayed across all application views and API metadata: <code>"research_only_not_for_clinical_decisions"</code>.</li>
+  <li><strong>Medication Refusal:</strong> Scenario requests attempting to adjust insulin or medications are rejected with <code>422 Unprocessable Entity</code> (<code>SCENARIO_UNSUPPORTED</code>) because the twin lacks validated pharmacokinetic drug terms.</li>
+  <li><strong>FHIR R4 HTEST Tagging:</strong> Exported JSON bundles carry the official <code>HTEST</code> (Healthcare Test Data) security tag to prevent accidental ingestion into production hospital EHR systems.</li>
+</ul>
+
+<div class="figure-card">
+  <img src="screens/clinician-summary-modal.png" alt="Clinician Summary Modal">
+  <div class="figure-caption">Figure 7: The Clinician Summary modal offering A4/Letter PDF export, FHIR R4 JSON Bundle export, data quality tracking, and a bilingual patient note (English/Hindi).</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Section 11 -->
+<h2>11. What We Would Do Next (Research Roadmap)</h2>
+
+<p>Our future research roadmap is grounded directly in the verified limitations identified during evaluation:</p>
+
+<ol>
+  <li><strong>Execute AI-READI Confirmation:</strong> Once data access on FAIRhub is formally approved, execute the frozen, unedited <code>aireadi_evaluate.py</code> harness against ~944 type 2 diabetes participants wearing Dexcom G6 CGMs to test the C2 risk-gated trend policy on a massive, untouched real cohort.</li>
+  <li><strong>Dynamic Patient-Specific Operating Point:</strong> Implement adaptive thresholding where alert thresholds dynamically scale with an individual's historical spike rate, resolving cross-population calibration drift.</li>
+  <li><strong>Unannounced Meal Deconvolution:</strong> Build an analytical deconvolution estimator to infer carbohydrate influx directly from early CGM inflections, eliminating reliance on retrospective manual meal logs.</li>
+  <li><strong>Physiological Smoothness Regularization:</strong> Retrain PR-TFT with a second-derivative curvature penalty ($\mathcal{L}_{	ext{smooth}} = \|
+abla^2 \Delta G\|^2$) to permanently prevent single-step 20 mg/dL jumps without post-hoc filtering.</li>
+  <li><strong>Prospective Clinical Usability Pilot:</strong> Collaborate with an endocrinology clinic to observe how clinicians interact with forward-looking trajectory bands and bilingual summaries during routine outpatient reviews.</li>
+</ol>
+
+<!-- Section 12 -->
+<h2>12. Glossary of Key Terms</h2>
+
+<ul>
+  <li><strong>CGM (Continuous Glucose Monitor):</strong> Wearable subcutaneous biosensor sampling interstitial fluid glucose every 5 minutes.</li>
+  <li><strong>Interstitial Lag:</strong> 5–15 minute physiological delay between blood glucose and interstitial sensor readings.</li>
+  <li><strong>Adverse Spike:</strong> A rise of &ge;50 mg/dL within 60 minutes crossing 180 mg/dL and persisting for &ge;15 minutes.</li>
+  <li><strong>Bergman Minimal Model:</strong> Classic physiological two-compartment ODE system describing insulin-dependent glucose clearance.</li>
+  <li><strong>Unscented Kalman Filter (UKF):</strong> Recursive nonlinear state estimator that tracks internal metabolic states from noisy sensor inputs.</li>
+  <li><strong>PR-TFT:</strong> Physiological-Residual Temporal Fusion Transformer; deep attention model trained strictly to predict residual error over the physics twin.</li>
+  <li><strong>Conformal Prediction:</strong> Distribution-free calibration technique guaranteeing empirical coverage bounds (e.g. 80%).</li>
+  <li><strong>1-to-1 Alert Matching:</strong> Evaluation standard where one advance alert can credit at most one subsequent spike, preventing multi-event overcounting.</li>
+  <li><strong>Refractory Cooldown:</strong> Mandatory 120-minute alert suppression period following a trigger to eliminate alert fatigue.</li>
+  <li><strong>Lead Time:</strong> Minutes elapsed between an advance alert and the glucose trajectory crossing 180 mg/dL.</li>
+  <li><strong>HL7 FHIR R4:</strong> Fast Healthcare Interoperability Resources v4; standard JSON schema for healthcare data exchange.</li>
+</ul>
+
+<!-- Section 13 -->
+<h2>13. One-Page Quick Reference Summary</h2>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>Core Statistics to Quote</h4>
+    <ul>
+      <li><strong>Synthetic Val 60m RMSE:</strong> 19.53 mg/dL (−16.0% vs twin alone 23.23; −45.8% vs persistence 36.05).</li>
+      <li><strong>Real Held-Out Test 60m RMSE:</strong> 23.11 mg/dL [18.75–28.12] (11 held-out test patients).</li>
+      <li><strong>Real Early Sensitivity (&ge;30m):</strong> 6.9% point est. / 6.0% bootstrap mean [0.0–13.9%].</li>
+      <li><strong>Real False Alerts:</strong> 0.11 / patient-day [0.02–0.23] (&le;1.0 budget).</li>
+      <li><strong>Real Precision:</strong> 65.5% (vs linear trend 16.4%).</li>
+      <li><strong>Real Median Lead Time:</strong> 10.0 min [5–15 min reporting band].</li>
+      <li><strong>Gate 3 Realism Audit:</strong> FAILED (AUROC 0.932 vs &le;0.65).</li>
+      <li><strong>Served Deployed Cohort:</strong> 249 subjects (44 test sealed).</li>
+    </ul>
+  </div>
+  <div class="col-card">
+    <h4>Key Repository Locations</h4>
+    <ul>
+      <li><code>backend/serve_pr_tft.py</code>: FastAPI server &amp; sealed partition firewall.</li>
+      <li><code>backend/ukf_twin.py</code>: Bergman ODEs &amp; UKF filter.</li>
+      <li><code>backend/train_pr_tft.py</code>: PR-TFT neural network.</li>
+      <li><code>docs/evidence/real_data/</code>: Preregistration, results.json &amp; RESULTS.md.</li>
+      <li><code>docs/submission/LOCKED_RESULTS_RECONCILIATION.md</code>: Metric reconciliation.</li>
+      <li><code>src/app/evidence/page.tsx</code>: Embedded evidence UI.</li>
+      <li><code>src/lib/fhir.ts</code>: Official HL7 FHIR R4 bundle builder.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <span>T2D Glucose Digital Twin — Internal Jury Preparation Guide</span>
+  <span>Presenters: Akshaya R &amp; Nikhil VS · BGSIT / EWIT</span>
+  <span>October 2026</span>
+</div>
+
+</body>
+</html>

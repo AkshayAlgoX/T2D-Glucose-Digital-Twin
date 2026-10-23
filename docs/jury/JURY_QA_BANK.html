@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>T2D Glucose Digital Twin — Jury Question & Answer Bank</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 18mm 16mm 18mm 16mm;
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font-size: 8.5pt;
+      color: #64748b;
+      font-family: system-ui, sans-serif;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: #1e293b;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+  .page-break { page-break-before: always; break-before: page; }
+  .no-break { page-break-inside: avoid; break-inside: avoid; }
+
+  .header-banner {
+    background: #0f2c31;
+    color: #ffffff;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    page-break-after: avoid;
+  }
+  .badge {
+    display: inline-block;
+    background: #0f766e;
+    color: #ccfbf1;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 22pt;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+  }
+  .sub {
+    font-size: 11pt;
+    color: #cbd5e1;
+    margin: 0 0 14px 0;
+  }
+  .meta {
+    font-size: 8.5pt;
+    color: #94a3b8;
+    border-top: 1px solid #1e4a52;
+    padding-top: 10px;
+  }
+  .meta strong { color: #f1f5f9; }
+
+  h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #0f2c31;
+    background: #e6fffa;
+    border-left: 4px solid #0f766e;
+    padding: 6px 12px;
+    margin-top: 22px;
+    margin-bottom: 12px;
+    page-break-after: avoid;
+  }
+
+  .qa-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    page-break-inside: avoid;
+  }
+  .q-title {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #0f2c31;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 6px;
+  }
+  .q-num {
+    background: #0f766e;
+    color: #ffffff;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    height: fit-content;
+  }
+  .spoken-ans {
+    margin-bottom: 6px;
+    font-size: 9.5pt;
+  }
+  .spoken-ans strong { color: #0f2c31; }
+  .one-line {
+    background: #ffffff;
+    border-left: 3px solid #0f766e;
+    padding: 4px 8px;
+    margin: 6px 0;
+    font-size: 8.5pt;
+    color: #334155;
+    font-style: italic;
+  }
+  .followup-box {
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 8.5pt;
+  }
+  .followup-q {
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 3px;
+  }
+  .not-claim {
+    background: #fff1f2;
+    border-left: 3px solid #e11d48;
+    color: #881337;
+    padding: 4px 8px;
+    margin-top: 6px;
+    font-size: 8.5pt;
+    font-weight: 500;
+  }
+  .source-chip {
+    display: inline-block;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 7.5pt;
+    font-family: ui-monospace, monospace;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+  <div class="badge">Master Preparation Resource · 52 Audited Questions</div>
+  <h1>T2D Glucose Digital Twin — Jury Q&amp;A Bank</h1>
+  <div class="sub">Comprehensive spoken answers, one-sentence summaries, exact source artifacts, follow-up defenses, and negative result disclosures for Akshaya R and Nikhil VS.</div>
+  <div class="meta">
+    <strong>Presenters:</strong> Akshaya R (BGSIT) &amp; Nikhil VS (EWIT) · <strong>Live Site:</strong> <code>t2d-glucose-digital-twin.akshay.blitz.cloud</code> · <strong>Default Branch:</strong> <code>release/candidate-clean</code> (SHA <code>1c6e51b4</code>)
+  </div>
+</div>
+
+<!-- Category 1 -->
+<h2>Category 1: Problem and Healthcare Need</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q01</span> What exact clinical problem does this project solve?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> Commercial continuous glucose monitors only sound alarms <em>after</em> blood glucose has already crossed 180 mg/dL, which is too late to prevent the excursion. Our system predicts the impending rise 30 to 60 minutes in advance, giving patients an actionable window for light activity—such as a 15-minute walk—or meal moderation before the spike peaks.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> We replace reactive post-spike CGM alarms with a 30- to 60-minute forward forecast to enable non-pharmacological behavioral interventions in type 2 diabetes.</div>
+  <div class="source-chip">Source: Root README.md &amp; docs/jury/JURY_PREPARATION_GUIDE.md §2</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why is a 30-minute warning useful in type 2 diabetes when patients don't take fast-acting insulin?</div>
+    <div>In type 2 diabetes, light exercise stimulates GLUT4 glucose transporter translocation directly into skeletal muscle independent of insulin, but this clearance mechanism is most effective before or during the initial glucose upslope, not after severe hyperglycemia has set in.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim the system currently improves HbA1c, prevents hospitalizations, or has undergone clinical trials.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q02</span> What is a continuous glucose monitor (CGM), and what does it measure?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> A continuous glucose monitor is a wearable sensor that measures glucose in the interstitial fluid between subcutaneous cells every 5 minutes. It does not measure blood directly; interstitial glucose lags capillary blood glucose by 5 to 15 minutes due to physiological diffusion time.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> It is a wearable subcutaneous sensor measuring interstitial fluid glucose every 5 minutes, which has a 5- to 15-minute physiological lag behind capillary blood.</div>
+  <div class="source-chip">Source: backend/input_contract.py &amp; docs/evidence/real_data/PREREGISTRATION.md §2</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: How does your model account for this 5- to 15-minute interstitial lag?</div>
+    <div>The Unscented Kalman Filter tracks glucose clearance kinetics explicitly, while the PR-TFT network observes 24 hours of historical readings, allowing it to learn the temporal rate of change.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim interstitial readings are instantaneous or identical to venous blood glucose.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q03</span> What exactly is an "adverse glucose spike" in your system?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> In our preregistered protocol, an adverse spike is defined as interstitial glucose crossing from below 180 mg/dL to 180 mg/dL or higher, preceded by a rise of at least 50 mg/dL in the prior 60 minutes, and persisting above 180 mg/dL for at least 15 minutes (3 consecutive readings).</div>
+  <div class="one-line"><strong>One-Sentence:</strong> A glucose rise crossing 180 mg/dL with a 50 mg/dL jump in the preceding hour that persists for at least 15 minutes.</div>
+  <div class="source-chip">Source: docs/evidence/real_data/PREREGISTRATION.md §3 &amp; backend/train_pr_tft.py</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why require a 15-minute persistence rule?</div>
+    <div>Sensor noise or temporary physical compression on the wearable can produce transient single-sample spikes; requiring 3 consecutive 5-minute readings ensures we only evaluate genuine metabolic excursions.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim that 180 mg/dL is an absolute diagnostic threshold for every individual; it is the standard international Time-in-Range ceiling.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q04</span> Why can't a patient just use the standard high-glucose alarm on their existing CGM?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> Standard CGM alarms are purely reactive; they trigger only after the threshold is breached. Furthermore, if you set the alarm threshold lower—say at 150 mg/dL—to catch spikes early, you get overwhelming false alarms during normal postprandial fluctuations. Our model evaluates rate of change, history, and physiological state to predict whether a crossing will occur.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> Standard alarms trigger after the threshold is crossed, and lowering their threshold creates intolerable false alarms during normal digestion.</div>
+  <div class="source-chip">Source: docs/demo/JURY_BRIEF.md §5 &amp; docs/presentation/presentation.html Slide 2</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Did your system actually beat the CGM's built-in trend arrows?</div>
+    <div>In our locked real-patient test, a simple 30-minute linear trend caught 44.4% of spikes but fired 3.84 false alarms per day—nearly 4 false alarms daily. Our hybrid model controlled false alerts to 0.11 per day with 65.5% precision, eliminating alert fatigue.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim that our model caught more spikes than the linear trend on real patients; it caught fewer (6.9%), but with far higher precision and acceptable false-alarm burden.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 2 -->
+<h2>Category 2: What Makes It a Digital Twin</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q05</span> Everyone claims to build a "digital twin." What makes yours a digital twin rather than just a machine learning model?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> A pure machine learning model takes inputs and outputs numbers from a black box. Our system maintains an explicit computational state representation of the individual patient: their static EHR priors and a recursive Unscented Kalman Filter tracking biophysical states—glucose, remote insulin action, and gut carbohydrate absorption compartments. The neural network only predicts the residual correction over this biophysical twin.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> It maintains an internal, continuously synchronized biophysical state model (Bergman ODEs via UKF) that produces a mechanistic baseline, which the neural network refines rather than replaces.</div>
+  <div class="source-chip">Source: backend/ukf_twin.py &amp; docs/jury/JURY_PREPARATION_GUIDE.md §3</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Does your digital twin adapt its physiological parameters to each patient over time?</div>
+    <div>Currently, the UKF adapts dynamic states like insulin action and active gut carbs continuously with each 5-minute reading, while static parameters use EHR-derived priors. Full nightly Maximum A Posteriori (MAP) parameter fitting is documented in our blueprint as future work.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim that the model has performed nightly MAP fitting on individual patients in the deployed prototype; the TwinCard explicitly marks interval calibration as prior-based.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q06</span> What data does the digital twin actually synchronize with?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> It synchronizes static EHR context—age, sex, BMI, baseline HbA1c, eGFR, diabetes duration, and medication classes—with streaming wearable telemetry: 5-minute CGM readings, heart rate, heart rate variability (RMSSD), steps, sleep stage, and logged carbohydrate intake.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> Static EHR clinical context combined with 5-minute streaming CGM, heart rate, HRV, steps, sleep, and meal logs.</div>
+  <div class="source-chip">Source: backend/input_contract.py::REALISTIC_EHR_COLUMNS &amp; backend/train_pr_tft.py</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: What happens if a wearable doesn't provide heart rate or HRV?</div>
+    <div>In our reduced-input real-patient evaluation, missing wearable channels were masked out, and the model relied strictly on CGM, age, BMI, and HbA1c without inventing synthetic sensor values.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim that commercial consumer smartwatches reliably stream all these channels into hospital EHRs today.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q07</span> Is the live prototype running on real patient streams or synthetic data?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> The live deployed prototype runs on a synthetic cohort of 249 served subjects. We strictly partitioned the cohort into 205 training subjects, 44 validation subjects, and 44 sealed test subjects that are never served. Our real-patient research was conducted separately in offline, locked evaluations on 161 clinical patients.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> The live workstation serves 249 synthetic subjects; real-patient evaluation was conducted offline under strict research protocols.</div>
+  <div class="source-chip">Source: backend/serve_pr_tft.py line 79 (SEALED_SPLITS) &amp; docs/submission/CLAIM_EVIDENCE_LEDGER.md C06</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why did you deploy synthetic subjects instead of real patient data?</div>
+    <div>Ethical privacy constraints and licensing agreements for clinical datasets (such as PhysioNet and Figshare) prohibit republishing identifiable or raw human physiological streams on a public cloud server.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Never claim the live web app is connected to live patients in a clinic.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 3 -->
+<h2>Category 3: Model and Architecture</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q08</span> Explain the mathematical relationship between the physiological model and the neural network.</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> The relationship is strictly additive: Final Forecast Median equals Twin Rollout Median plus Learned Residual Median. The biophysical model—a modified Bergman Minimal Model solved via UKF—projects a 2-hour trajectory assuming no unannounced meals. The Temporal Fusion Transformer observes 24 hours of history and predicts the residual delta ($\Delta G$) across 7 quantiles.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> Final Forecast = UKF Biophysical Rollout + PR-TFT Learned Residual.</div>
+  <div class="source-chip">Source: backend/train_pr_tft.py::PRTFT.forward &amp; docs/presentation/presentation.html Slide 5</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why predict residuals instead of training the transformer directly on glucose?</div>
+    <div>Predicting residuals guarantees that when sensor data are noisy or during dropouts, the model is anchored by biophysical bounds rather than oscillating into unphysical negative glucose or exponential spikes.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim the learned residual has been individually validated as a specific biological mechanism; it is an empirical statistical adjustment.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q09</span> What is the Unscented Kalman Filter (UKF), and why did you choose it over an Extended Kalman Filter (EKF)?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> The UKF is a recursive nonlinear state estimator. It uses deterministic sigma points to propagate mean and covariance through nonlinear differential equations without computing Jacobian matrices. We chose it over the EKF because insulin-glucose kinetics involve sharp nonlinearities (like gut saturation) where first-order Taylor approximations in the EKF often diverge.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> A nonlinear recursive filter that uses sigma points rather than Taylor series Jacobians, providing stable state tracking across nonlinear insulin-glucose dynamics.</div>
+  <div class="source-chip">Source: backend/ukf_twin.py &amp; docs/jury/JURY_PREPARATION_GUIDE.md §4</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: What states does the UKF track?</div>
+    <div>Plasma glucose $G$, remote insulin action $X$, plasma insulin proxy $I$, two gut glucose absorption compartments $Q_1$ and $Q_2$, insulin sensitivity $S_I$, and endogenous glucose production $EGP$.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim the UKF directly measures plasma insulin; it tracks a latent insulin action proxy driven by observed glucose dynamics and meal logs.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q10</span> What is the PR-TFT architecture?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> PR-TFT stands for Physiological-Residual Temporal Fusion Transformer. It is an attention-based deep neural network featuring Variable Selection Networks to weight input relevance, Gated Residual Networks to skip unused features, and multi-head self-attention to capture long-range temporal dependencies across 24 hours of history.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> An attention-based architecture designed for multi-horizon time-series forecasting that outputs multi-quantile residual predictions over the biophysical twin.</div>
+  <div class="source-chip">Source: backend/train_pr_tft.py::PRTFT &amp; runs/pr_tft_ablation_arm_d/config.json</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: What are its key hyperparameters?</div>
+    <div>Hidden dimension of 96, 4 attention heads, 2 transformer layers, dropout of 0.1, trained with pinball quantile loss and binary cross-entropy hazard loss.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim to have invented the Temporal Fusion Transformer from scratch; we adapted Lim et al.'s TFT architecture to predict physiological residuals over a UKF prior.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 4 -->
+<h2>Category 4: Data, Cohort, and Splits</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q14</span> How many total subjects were used in developing the synthetic model?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> The synthetic cohort contains exactly 293 subjects. These were split deterministically into 205 training subjects, 44 validation subjects, and 44 sealed test subjects. The live application serves 249 of these subjects (the training and validation sets).</div>
+  <div class="one-line"><strong>One-Sentence:</strong> 293 total synthetic subjects: 205 train, 44 validation, and 44 sealed test subjects.</div>
+  <div class="source-chip">Source: runs/pr_tft_ablation_arm_d/split.json &amp; docs/submission/CLAIM_EVIDENCE_LEDGER.md C12</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why are only 249 subjects served if there are 293 total?</div>
+    <div>Because the 44 test subjects are quarantined to prevent any leakage or accidental demonstration of test outcomes; querying them returns HTTP 404.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim the 249 served subjects are all type 2 diabetes patients; the cohort includes 88 healthy, 107 prediabetic, and 54 type 2 individuals.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q15</span> How many real patients were used in the locked evaluation?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> Our nominal real-patient pool comprised 161 patients across CGMacros, BIG IDEAs, and ShanghaiT2DM. However, ShanghaiT2DM continuous glucose data was sampled at native 15-minute intervals, which violates our preregistered 5-minute coverage rule, so its test partition was honestly declared Not Estimable. The final evaluated test set consists of exactly 11 held-out test patients with native 5-minute CGM.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> 11 held-out real test patients with 5-minute CGM, drawn from a nominal pool of 161 participants across three open clinical repositories.</div>
+  <div class="source-chip">Source: docs/evidence/real_data/results.json &amp; docs/submission/LOCKED_RESULTS_RECONCILIATION.md</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Isn't 11 patients a very small test cohort?</div>
+    <div>Yes, it is a key limitation. Open-access continuous glucose datasets with native 5-minute sampling in type 2 diabetes are scarce. This is why we preregistered a future confirmation protocol on the 944-patient AI-READI cohort.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Never claim to have evaluated hundreds of real patients on the held-out test set. Always cite the exact denominator: 11 patients.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 5 -->
+<h2>Category 5: Results and Baselines</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q17</span> What are your headline accuracy results on synthetic data?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> On our 44 synthetic validation patients, the PR-TFT hybrid model achieved a 60-minute RMSE of 19.53 mg/dL. This represents a 16.0% error reduction compared to the biophysical twin alone (23.23 mg/dL) and a 45.8% reduction compared to persistence (36.05 mg/dL).</div>
+  <div class="one-line"><strong>One-Sentence:</strong> 60-minute RMSE of 19.53 mg/dL, beating the physics twin by 16.0% and persistence by 45.8%.</div>
+  <div class="source-chip">Source: runs/pr_tft_ablation_arm_d/run_manifest.json &amp; docs/evidence/validation_ceiling_results.json</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: How did it perform on the type 2 diabetes subgroup specifically?</div>
+    <div>On the 10 type 2 diabetes validation patients, the 60-minute RMSE was 19.18 mg/dL, an improvement of 4.49 mg/dL over the physics twin (23.67 mg/dL).</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not present synthetic validation numbers as proof of real-world human accuracy.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q18</span> What are your headline accuracy results on real patients?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> In our locked real-patient test on 11 held-out patients, our hybrid model achieved a 60-minute RMSE point estimate of 23.11 mg/dL (95% CI 18.75 to 28.12). This outperformed the persistence baseline at 26.27 mg/dL and the reduced twin prior at 24.73 mg/dL.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> 60-minute RMSE of 23.11 mg/dL on held-out real test patients, beating persistence (26.27) and physics alone (24.73).</div>
+  <div class="source-chip">Source: docs/evidence/real_data/results.json &amp; docs/submission/LOCKED_RESULTS_RECONCILIATION.md</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why does RESULTS.md say 23.04 mg/dL while results.json says 23.11 mg/dL?</div>
+    <div>As documented in our reconciliation ledger, 23.11 is the exact point estimate on the test set, while 23.04 is the mean of 2,000 bootstrap resamples from the exact same run. Both come from the same execution.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim to beat competitors with self-reported 20.1 mg/dL RMSE, because their evaluation did not enforce strict 1-to-1 alert matching.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 6 -->
+<h2>Category 6: Negative Findings and Scientific Integrity</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q21</span> What is Gate 3, and why did it fail?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> Gate 3 was a preregistered synthetic realism audit. We trained a 40-feature random forest discriminator to see if it could tell our synthetic CGM traces apart from an independent literature-standard mock-real generator. The acceptance threshold was AUROC &le; 0.65. The classifier scored AUROC 0.932, so Gate 3 failed. The top distinguishing feature was trajectory smoothness; our ODEs were smoother than real sensor data.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> A synthetic realism classifier easily distinguished our synthetic data from mock-real data (AUROC 0.932 vs &le;0.65), primarily because our ODE curves were too smooth.</div>
+  <div class="source-chip">Source: backend/synthetic_v2/validation/validation_report.json check G3.1 &amp; docs/presentation/presentation.html Slide 12</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Does this mean your model was trained on fake, useless data?</div>
+    <div>No; it proves our synthetic simulator captures broad metabolic kinetics but lacks micro-level sensor noise and erratic behavioral fluctuations. That is precisely why we subsequently validated the model on real clinical datasets.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Never claim that Gate 3 passed or was an unimportant check.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q24</span> What is the single-step jump artefact, and how do you handle it?</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> In approximately 19.8% of sampled synthetic validation forecasts, the PR-TFT median trajectory jumped by more than 20 mg/dL in a single 5-minute step. This is an unphysical machine learning artefact. We developed a 3-point median filter that reduces jumps to 2.3%, but rather than silently altering our model weights post-hoc, our live UI flags these jumps with a visible circled indicator.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> In ~20% of forecasts, the neural network exhibits an unphysical &gt;20 mg/dL 5-minute jump; we openly flag these blips on the chart rather than hiding them.</div>
+  <div class="source-chip">Source: docs/evidence/jump_experiment/RESULTS.md &amp; docs/demo/JURY_BRIEF.md §5</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Why didn't you just retrain the model with a smoothness penalty?</div>
+    <div>Retraining would have violated our locked evaluation protocol. In science, you report the performance of the model you actually evaluated rather than silently swapping checkpoints. Smoothness regularization is slated for our next retraining cycle.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not claim the single-step jump is a real physiological phenomenon; it is an unphysical model artefact.</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Category 12 -->
+<h2>Category 12: Difficult and Adversarial Questions</h2>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q35</span> "Your 30-minute sensitivity on real patients is only 6.9%. Isn't a model that misses 93% of spikes practically useless?"</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> On that specific locked real-patient evaluation, 6.9% is indeed modest, and we report it honestly. However, context is vital: to avoid data snooping, meal logs were masked to zero because retrospective logs lacked timing verification. Furthermore, our model kept false alerts down to 0.11 per day with 65.5% precision. The linear trend baseline caught 44% of spikes, but spammed patients with nearly 4 false alarms every day. Catching fewer spikes with high precision is clinically preferable to alert fatigue that causes patients to abandon the monitor.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> 6.9% reflects conservative operation with masked meal logs, prioritizing zero alert fatigue (0.11 false alarms/day) over noisy alarms.</div>
+  <div class="source-chip">Source: docs/evidence/real_data/results.json &amp; docs/jury/JURY_PREPARATION_GUIDE.md §8</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: How do you plan to raise that sensitivity to a clinically acceptable level?</div>
+    <div>In our exploratory C2 candidate, combining a risk-gated trend policy with worst-fold threshold selection increased sensitivity to 27.3% while holding false alerts to 0.87 per day. We have preregistered this policy for formal confirmation on the AI-READI cohort.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Do not argue that 6.9% sensitivity is already sufficient for clinical adoption.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q38</span> "Why didn't you evaluate your model on AI-READI before submitting?"</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> AI-READI CGM data resides on the FAIRhub repository under controlled access. Gaining access requires institutional CILogon authentication, verified research ethics certification, and formal data use agreements. We have written, committed, and frozen the evaluation harness (<code>aireadi_evaluate.py</code>), but in accordance with ethics laws, we cannot execute it until formal data access is granted.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> AI-READI requires institutional ethics and data-access approval; our protocol is frozen in Git awaiting access authorization.</div>
+  <div class="source-chip">Source: docs/evidence/aireadi_confirmation/PREREGISTRATION.md</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: What if AI-READI data disproves your candidate policy?</div>
+    <div>Then we will publish that negative result with the exact same transparency that we published our Gate 3, Hall, and AZT1D results.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Never claim that AI-READI evaluation is already underway or partially completed.</div>
+</div>
+
+<div class="qa-card">
+  <div class="q-title"><span class="q-num">Q39</span> "What would you do if a judge asks for a metric or clinical subgroup that you haven't measured?"</div>
+  <div class="spoken-ans"><strong>Direct Spoken Answer:</strong> We will say: <em>"We have not established that yet. Our current evidence demonstrates [mention closest verified metric], but to answer your question properly, our next step would be [specific defensible experiment]."</em> We will never invent numbers on the spot.</div>
+  <div class="one-line"><strong>One-Sentence:</strong> State plainly that it has not been measured yet, cite the verified evidence, and outline the exact experiment needed.</div>
+  <div class="source-chip">Source: Master instructions &amp; docs/jury/JURY_PREPARATION_GUIDE.md §1</div>
+  <div class="followup-box">
+    <div class="followup-q">Likely Follow-Up: Can you estimate what the number would probably be?</div>
+    <div>In clinical research, guessing unmeasured metrics can lead to false safety assumptions. We prefer to state our known evidence bounds and test the metric empirically.</div>
+  </div>
+  <div class="not-claim">⚠️ What NOT to Claim: Never guess or bluff a number.</div>
+</div>
+
+</body>
+</html>
