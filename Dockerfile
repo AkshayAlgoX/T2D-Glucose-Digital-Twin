@@ -6,7 +6,9 @@
 FROM python:3.12-slim-bookworm AS runner
 
 # Install Node.js 22 LTS, curl, ca-certificates, and build tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && ([ ! -f /etc/apt/sources.list ] || sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list) \
+    && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \

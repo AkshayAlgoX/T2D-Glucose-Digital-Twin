@@ -9,7 +9,9 @@ ARG REPO=https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git
 ARG REF=deploy/hf-space
 
 # Install Node.js 22 LTS, git, git-lfs, and system utilities
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && ([ ! -f /etc/apt/sources.list ] || sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list) \
+    && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \
