@@ -46,7 +46,7 @@
 | Technical stack | [Technical stack](#technical-stack) |
 | AI/ML model and framework details | [Model details](#model-details) |
 | Results and evidence | [Evidence](#evidence) · [claim–evidence ledger](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
-| Demo video | [YouTube: youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) |
+| Demo video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
 | Open-source licence | [Apache-2.0](#license) |
 | Architecture diagram | [Architecture](#architecture) · [`architecture.pdf`](docs/architecture/architecture.pdf) |
 | Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) · [`presentation.pptx`](docs/presentation/presentation.pptx) |
@@ -344,7 +344,7 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
 | Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (14-page submission snapshot) · [`docs/presentation/presentation.pptx`](docs/presentation/presentation.pptx) (14-slide editable presentation deck) |
 | Demo script | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) |
-| Demonstration video | [YouTube: youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) |
+| Demonstration video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
 | Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
 
 ## License

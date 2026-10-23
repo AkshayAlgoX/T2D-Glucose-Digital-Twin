@@ -1,6 +1,6 @@
 # Demonstration script (round-4 UI, 15–20 minute submission target)
 
-> **Submission requirement:** the challenge requires a demonstration video targeting **15–20 minutes**, published as an accessible public or unlisted link. Recorded video: [https://youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) (actual recorded delivery: 23:29). Planned timeline below totals 20:00.
+> **Submission requirement:** the challenge requires a demonstration video targeting **15–20 minutes**, published as an accessible public or unlisted link. Recorded video: [https://youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) (actual recorded delivery: 19:41). Planned timeline below totals 20:00.
 
 Every number below is what the running prototype shows for the validation-split demonstration subject **P0017** at the 08:00 UTC replay hold (synthetic data). If a number on screen differs, read the screen, not this script.
 
@@ -36,4 +36,4 @@ Every number below is what the running prototype shows for the validation-split 
 ## After recording
 - Submission target: 15–20 minutes. Audio clear; text legible at 1080p.
 - Upload as public or unlisted; confirm playback logged-out in a private browser.
-- Recorded link: [https://youtu.be/OtlZgqP82T0](https://youtu.be/OtlZgqP82T0) (23:29 recorded duration linked in `README.md`).
+- Recorded link: [https://youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) (19:41 recorded duration linked in `README.md`).
