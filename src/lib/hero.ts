@@ -79,11 +79,10 @@ export function heroFromForecasts(forecasts: Array<Record<string, any>>, asOf = 
 }
 
 let cache: { at: number; value: HeroForecast } | null = null;
+let inFlight: Promise<HeroForecast | null> | null = null;
 const CACHE_MS = 10 * 60 * 1000;
 
-/** Replays the demonstration subject's last two hours up to HERO_AS_OF from the running backend. */
-export async function readHeroForecast(): Promise<HeroForecast | null> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache.value;
+async function fetchHeroForecast(): Promise<HeroForecast | null> {
   const backendUrl = process.env.BACKEND_URL;
   if (!backendUrl) return null;
   const start = new Date(Date.parse(HERO_AS_OF) - HISTORY_MIN * 60000).toISOString().replace('.000Z', 'Z');
@@ -91,7 +90,7 @@ export async function readHeroForecast(): Promise<HeroForecast | null> {
   const headers: Record<string, string> = { Accept: 'text/event-stream' };
   if (process.env.PR_TFT_SERVICE_TOKEN) headers.Authorization = `Bearer ${process.env.PR_TFT_SERVICE_TOKEN}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+  const timer = setTimeout(() => controller.abort(), 20000);
   try {
     const res = await fetch(url, { headers, signal: controller.signal, cache: 'no-store' });
     if (!res.ok) return null;
@@ -115,4 +114,14 @@ export async function readHeroForecast(): Promise<HeroForecast | null> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Replays the demonstration subject's last two hours up to HERO_AS_OF from the running backend. */
+export async function readHeroForecast(): Promise<HeroForecast | null> {
+  if (cache && Date.now() - cache.at < CACHE_MS) return cache.value;
+  if (inFlight) return inFlight;
+  inFlight = fetchHeroForecast().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
 }

@@ -66,7 +66,7 @@ export async function readWard(backendUrl: string, token?: string, fetchImpl: ty
   const res = await fetchImpl(`${backendUrl}/v1/subjects`, { headers, cache: 'no-store' });
   if (!res.ok) throw new Error(`subjects ${res.status}`);
   const subjects = (await res.json() as Array<Record<string, any>>).filter(s => s?.split === 'val' && typeof s.subject_id === 'string');
-  const forecasts = await pool(subjects, 6, async s => {
+  const forecasts = await pool(subjects, 4, async s => {
     try {
       const r = await fetchImpl(`${backendUrl}/v1/forecasts`, {
         method: 'POST', headers, cache: 'no-store',

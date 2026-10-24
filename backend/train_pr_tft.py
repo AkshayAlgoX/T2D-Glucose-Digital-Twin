@@ -74,14 +74,134 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import lightning.pytorch as pl
+# Defer lightning import so inference and serving don't incur ~138 MB RSS overhead.
+_pl = None
+EarlyStopping = None
+LearningRateMonitor = None
+ModelCheckpoint = None
+CSVLogger = None
+_CGMDataModule_cls = None
+_PRTFTModule_cls = None
+
+def _ensure_lightning():
+    global _pl, EarlyStopping, LearningRateMonitor, ModelCheckpoint, CSVLogger
+    global _CGMDataModule_cls, _PRTFTModule_cls
+    if _pl is None:
+        import lightning.pytorch as pl_mod
+        from lightning.pytorch.callbacks import EarlyStopping as ES, LearningRateMonitor as LRM, ModelCheckpoint as MC
+        from lightning.pytorch.loggers import CSVLogger as CSVL
+        _pl = pl_mod
+        EarlyStopping = ES
+        LearningRateMonitor = LRM
+        ModelCheckpoint = MC
+        CSVLogger = CSVL
+        globals()["pl"] = _pl
+        globals()["EarlyStopping"] = EarlyStopping
+        globals()["LearningRateMonitor"] = LearningRateMonitor
+        globals()["ModelCheckpoint"] = ModelCheckpoint
+        globals()["CSVLogger"] = CSVLogger
+
+        class CGMDataModule(pl_mod.LightningDataModule):
+            def __init__(self, splits: dict[str, SplitTensors], cfg: TrainConfig):
+                super().__init__()
+                self.splits, self.cfg = splits, cfg
+
+            def _loader(self, name: str, shuffle: bool) -> DataLoader:
+                return DataLoader(AnchorDataset(self.splits[name]), batch_size=self.cfg.batch_size,
+                                  shuffle=shuffle, num_workers=self.cfg.num_workers,
+                                  persistent_workers=self.cfg.num_workers > 0, drop_last=False)
+
+            def train_dataloader(self) -> DataLoader:
+                return self._loader("train", True)
+
+            def val_dataloader(self) -> DataLoader:
+                return self._loader("val", False)
+
+            def test_dataloader(self) -> DataLoader:
+                return self._loader("test", False)
+
+        class PRTFTModule(pl_mod.LightningModule):
+            def __init__(self, cfg_dict: dict[str, Any], n_static: int, n_past: int, n_future: int, glu_std: float):
+                super().__init__()
+                self.save_hyperparameters()
+                self.cfg = TrainConfig(**cfg_dict)
+                self.model = PRTFT(n_static, n_past, n_future, self.cfg, glu_std)
+                self.criterion = PRTFTLoss(self.cfg, glu_std)
+                self._val: list[dict[str, torch.Tensor]] = []
+
+            def forward(self, batch):
+                return self.model(batch)
+
+            def _step(self, batch, stage: str):
+                out = self.model(batch)
+                losses = self.criterion(out, batch)
+                bs = batch["y"].size(0)
+                for k, v in losses.items():
+                    self.log(f"{stage}_{k}", v, prog_bar=(k == "loss"), batch_size=bs, on_epoch=True,
+                             on_step=(stage == "train" and k == "loss"))
+                return out, losses
+
+            def training_step(self, batch, _):
+                return self._step(batch, "train")[1]["loss"]
+
+            def validation_step(self, batch, _):
+                out, _ = self._step(batch, "val")
+                self._val.append(collect(out, batch))
+
+            def on_validation_epoch_end(self):
+                if not self._val:
+                    return
+                agg = {k: torch.cat([v[k] for v in self._val]).numpy() for k in self._val[0]}
+                self._val.clear()
+                m = trajectory_metrics(agg)
+                for name in ("rmse_30", "rmse_60", "rmse_120", "coverage_80"):
+                    self.log(f"val_{name}", m[name])
+                auc = hazard_auroc(agg)
+                if auc is not None:
+                    self.log("val_hazard_auroc", auc)
+
+            def predict_step(self, batch, _):
+                return collect(self.model(batch), batch)
+
+            def configure_optimizers(self):
+                opt = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
+                sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(self.trainer.max_epochs, 1))
+                return {"optimizer": opt, "lr_scheduler": sched}
+
+        _CGMDataModule_cls = CGMDataModule
+        _PRTFTModule_cls = PRTFTModule
+        globals()["CGMDataModule"] = CGMDataModule
+        globals()["PRTFTModule"] = PRTFTModule
+
+
+class CGMDataModule:
+    def __new__(cls, *args, **kwargs):
+        _ensure_lightning()
+        return _CGMDataModule_cls(*args, **kwargs)
+
+
+class PRTFTModule:
+    def __new__(cls, *args, **kwargs):
+        _ensure_lightning()
+        return _PRTFTModule_cls(*args, **kwargs)
+
+    @classmethod
+    def load_from_checkpoint(cls, *args, **kwargs):
+        _ensure_lightning()
+        return _PRTFTModule_cls.load_from_checkpoint(*args, **kwargs)
+
+
+def __getattr__(name: str):
+    if name in ("pl", "PRTFTModule", "CGMDataModule", "EarlyStopping", "LearningRateMonitor", "ModelCheckpoint", "CSVLogger"):
+        _ensure_lightning()
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
-from lightning.pytorch.loggers import CSVLogger
 from scipy import signal
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -837,26 +957,6 @@ class AnchorDataset(Dataset):
         }
 
 
-class CGMDataModule(pl.LightningDataModule):
-    def __init__(self, splits: dict[str, SplitTensors], cfg: TrainConfig):
-        super().__init__()
-        self.splits, self.cfg = splits, cfg
-
-    def _loader(self, name: str, shuffle: bool) -> DataLoader:
-        return DataLoader(AnchorDataset(self.splits[name]), batch_size=self.cfg.batch_size,
-                          shuffle=shuffle, num_workers=self.cfg.num_workers,
-                          persistent_workers=self.cfg.num_workers > 0, drop_last=False)
-
-    def train_dataloader(self) -> DataLoader:
-        return self._loader("train", True)
-
-    def val_dataloader(self) -> DataLoader:
-        return self._loader("val", False)
-
-    def test_dataloader(self) -> DataLoader:
-        return self._loader("test", False)
-
-
 # --------------------------------------------------------------------------- #
 # TFT building blocks (Lim et al., 2021)
 # --------------------------------------------------------------------------- #
@@ -1061,57 +1161,54 @@ class PRTFTLoss(nn.Module):
 
 
 # --------------------------------------------------------------------------- #
-# Lightning module
+# Inference model loader & module wrapper (avoids Lightning memory overhead)
 # --------------------------------------------------------------------------- #
 
 
-class PRTFTModule(pl.LightningModule):
-    def __init__(self, cfg_dict: dict[str, Any], n_static: int, n_past: int, n_future: int, glu_std: float):
+class _ModuleWrapper(nn.Module):
+    """Lightweight wrapper for PRTFT matching PRTFTModule attribute layout."""
+    def __init__(self, model: PRTFT, n_static: int):
         super().__init__()
-        self.save_hyperparameters()
-        self.cfg = TrainConfig(**cfg_dict)
-        self.model = PRTFT(n_static, n_past, n_future, self.cfg, glu_std)
-        self.criterion = PRTFTLoss(self.cfg, glu_std)
-        self._val: list[dict[str, torch.Tensor]] = []
+        self.model = model
+        self.hparams = type("HParams", (), {"n_static": n_static})()
 
-    def forward(self, batch):
-        return self.model(batch)
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
 
-    def _step(self, batch, stage: str):
-        out = self.model(batch)
-        losses = self.criterion(out, batch)
-        bs = batch["y"].size(0)
-        for k, v in losses.items():
-            self.log(f"{stage}_{k}", v, prog_bar=(k == "loss"), batch_size=bs, on_epoch=True,
-                     on_step=(stage == "train" and k == "loss"))
-        return out, losses
 
-    def training_step(self, batch, _):
-        return self._step(batch, "train")[1]["loss"]
+def load_inference_model(
+    ckpt_path: Path | str,
+    cfg: TrainConfig | None = None,
+    n_static: int | None = None,
+    n_past: int | None = None,
+    n_future: int | None = None,
+    glu_std: float | None = None,
+) -> nn.Module:
+    """Load PRTFT model directly with pure PyTorch, bypassing Lightning memory overhead."""
+    checkpoint = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
+    hp = checkpoint.get("hyper_parameters", {})
+    if cfg is None and "cfg_dict" in hp:
+        cfg = TrainConfig(**hp["cfg_dict"])
+    if n_static is None:
+        n_static = hp.get("n_static", 18)
+    if n_past is None:
+        n_past = hp.get("n_past", 20)
+    if n_future is None:
+        n_future = hp.get("n_future", 8)
+    if glu_std is None:
+        glu_std = hp.get("glu_std", 39.8)
 
-    def validation_step(self, batch, _):
-        out, _ = self._step(batch, "val")
-        self._val.append(collect(out, batch))
-
-    def on_validation_epoch_end(self):
-        if not self._val:
-            return
-        agg = {k: torch.cat([v[k] for v in self._val]).numpy() for k in self._val[0]}
-        self._val.clear()
-        m = trajectory_metrics(agg)
-        for name in ("rmse_30", "rmse_60", "rmse_120", "coverage_80"):
-            self.log(f"val_{name}", m[name])
-        auc = hazard_auroc(agg)
-        if auc is not None:
-            self.log("val_hazard_auroc", auc)
-
-    def predict_step(self, batch, _):
-        return collect(self.model(batch), batch)
-
-    def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
-        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(self.trainer.max_epochs, 1))
-        return {"optimizer": opt, "lr_scheduler": sched}
+    model = PRTFT(n_static, n_past, n_future, cfg, glu_std)
+    state_dict = checkpoint.get("state_dict", checkpoint)
+    model_state = {}
+    for k, v in state_dict.items():
+        if k.startswith("model."):
+            model_state[k[len("model."):]] = v
+        else:
+            model_state[k] = v
+    model.load_state_dict(model_state)
+    model.eval()
+    return _ModuleWrapper(model, n_static=n_static)
 
 
 def collect(out: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
