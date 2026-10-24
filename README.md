@@ -27,7 +27,7 @@
 
 - **The problem.** After-meal glucose spikes above 180 mg/dL drive long-term harm in type 2 diabetes, and CGM alarms usually fire only once the spike has started.
 - **What we built.** A clinical workstation around a hybrid twin. A physiological model (UKF-tracked) gives the baseline; a learned residual and a calibrated hazard head give a 2-hour forecast and a spike-onset risk. Around it: ward triage, What-if meal and activity scenarios, a printable clinician summary and a FHIR R4 export.
-- **What we proved, and what we did not.** On a locked, preregistered real-patient evaluation, the hybrid forecasts better than persistence at 60 minutes. It warns of only **6.9% of spikes ≥30 min ahead**. Two later preregistered checks on unused cohorts did **not** confirm an early-warning improvement over simple trend rules. A new candidate policy is exploratory, and its confirmation protocol is frozen but not yet run.
+- **What we proved, and what we did not.** On a locked, preregistered real-patient evaluation, the hybrid forecasts better than persistence at 60 minutes. It warns of only **6.0% of spikes ≥30 min ahead** (95% CI 0.0–13.9%; full-test point estimate 6.9%). Two later preregistered checks on unused cohorts did **not** confirm an early-warning improvement over simple trend rules. A new candidate policy is exploratory, and its confirmation protocol is frozen but not yet run.
 
 | Evidence tier | Status | Where |
 |---|---|---|
@@ -49,7 +49,7 @@
 | Technical stack | [Technical stack](#technical-stack) |
 | AI/ML model and framework details | [Model details](#model-details) |
 | Results and evidence | [Evidence](#evidence) · [claim–evidence ledger](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
-| Demo video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
+| Demo video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) (19:41; see [disclosure](#video-demonstration-and-superseded-figure-disclosure) on spoken 6.9% point estimate vs locked 6.0% bootstrap mean) |
 | Open-source licence | [Apache-2.0](#license) |
 | Architecture diagram | [Architecture](#architecture) · [`architecture.pdf`](docs/architecture/architecture.pdf) |
 | Presentation | [`presentation.pdf`](docs/presentation/presentation.pdf) · [`presentation.pptx`](docs/presentation/presentation.pptx) |
@@ -182,23 +182,24 @@ Preregistered ([`PREREGISTRATION.md`](docs/evidence/real_data/PREREGISTRATION.md
 
 <img src="docs/assets/readme/charts/locked_rmse60.svg" alt="Locked evaluation 60-minute RMSE: hybrid 23.11 mg/dL with 95% CI 18.75 to 28.12, reduced twin 24.73, persistence 26.27, linear trend 49.06" width="100%">
 
-| Metric (held-out test, point estimate) | Value | 95% CI (patient bootstrap) |
-|---|---|---|
-| RMSE at 30 / 60 / 120 min | 16.77 / **23.11** / 26.44 mg/dL | 60 min: 18.75–28.12 |
-| Spike onsets warned ≥30 min ahead | **6.9%** | 0.0–13.9 |
-| Alert precision | 65.5% | — |
-| False alerts per patient-day | 0.11 | 0.02–0.23 |
-| Median warning lead time | 10 min | none (the code reports a fixed ±5 min band, not a CI) |
-| Leave-one-dataset-out RMSE at 60 min | CGMacros 23.97 · BIG IDEAs 22.14 mg/dL | — |
+| Metric (held-out test partition) | Primary locked headline (bootstrap mean) | Full-test point estimate | 95% CI (patient bootstrap) |
+|---|---|---|---|
+| 60-min RMSE | **23.04 mg/dL** | 23.11 mg/dL (MAE: 15.98) | 18.7–28.1 mg/dL (18.75–28.12) |
+| RMSE at 30 / 120 min | — | 16.77 / 26.44 mg/dL | — |
+| Spike onsets warned ≥30 min ahead | **6.0%** | 6.9% | 0.0–13.9% |
+| Alert precision | **65.5%** | 65.5% | — |
+| False alerts per patient-day | **0.11** | 0.11 | 0.02–0.23 |
+| Median warning lead time | **10.0 min** | 10.0 min | none (the code reports a fixed ±5 min band, not a CI) |
+| Leave-one-dataset-out RMSE at 60 min | — | CGMacros 23.97 · BIG IDEAs 22.14 mg/dL | — |
 
 <details>
-<summary>Why <code>RESULTS.md</code> shows 23.04 and 6.0%</summary>
+<summary>Why <code>RESULTS.md</code> shows both 23.04 / 6.0% and 23.11 / 6.9%</summary>
 
-Both locked files come from one run, but they print different statistics:
-- `results.json` and the `RESULTS.md` horizon list give **point estimates** on the full test set, used here: 23.11 mg/dL and 6.9%.
-- The `RESULTS.md` headline table gives the **mean of 2,000 patient-bootstrap resamples**: 23.04 and 6.0%.
+Both locked files (`RESULTS.md` and `results.json`) come from one single execution (`finalize.py`), but they report different statistics:
+- The **`RESULTS.md` primary headline table** prints the **mean of 2,000 paired patient-bootstrap resamples** (`develop.py` `ci()` element `[0]`): **23.04 mg/dL** 60-min RMSE and **6.0%** ≥30-min sensitivity.
+- **`results.json`** and the **`RESULTS.md` horizon breakdown** print **point estimates** on the full held-out test partition (`develop.py` `compute_metrics`): **23.11 mg/dL** (MAE 15.98 mg/dL) and **6.9%**.
 
-The 95% intervals are identical in both. The code traces are in [`LOCKED_RESULTS_RECONCILIATION.md`](docs/submission/LOCKED_RESULTS_RECONCILIATION.md). Both locked files are unchanged, and the chart above is generated from `results.json`.
+The 95% percentile confidence intervals are identical across both (RMSE₆₀ 18.7–28.1 / 18.75–28.12 mg/dL; sensitivity 0.0–13.9%). The complete forensic code trace is documented in [`LOCKED_RESULTS_RECONCILIATION.md`](docs/submission/LOCKED_RESULTS_RECONCILIATION.md). Both locked files remain strictly unaltered.
 </details>
 
 ### External checks (preregistered, on cohorts unused in development)
@@ -333,7 +334,7 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 
 - **Research only.** Not a medical device. Not for diagnosis, dosing or treatment decisions.
 - **The served application replays a synthetic cohort.** Its realism check (Gate 3) failed. Real-patient results come from the separate research pipeline.
-- **Early warning is the weak point.** It was 6.9% at ≥30 min in the locked evaluation, and no improvement over simple trend rules has been shown on unused data.
+- **Early warning is the weak point.** It achieved only 6.0% sensitivity at ≥30 min in the locked evaluation headline table (95% CI 0.0–13.9%; full-test point estimate 6.9%), and no improvement over simple trend rules has been shown on unused data.
 - **What-if results are model responses, not validated causal effects.** Meal inputs are outside the network's training range, and only carbohydrate grams are modelled.
 - **Hindi text is unreviewed** by a native-speaking clinician.
 - **FHIR checks are partial.** Invariants, profiles and terminology bindings are not checked.
@@ -347,8 +348,12 @@ npx tsc --noEmit && npm run build                     # types, contract-drift ch
 | Architecture document | [`docs/architecture/architecture.pdf`](docs/architecture/architecture.pdf) (submission snapshot; the diagrams above reflect this branch) |
 | Presentation | [`docs/presentation/presentation.pdf`](docs/presentation/presentation.pdf) (14-page submission snapshot) · [`docs/presentation/presentation.pptx`](docs/presentation/presentation.pptx) (14-slide editable presentation deck) |
 | Demo reproduction guide | [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md) (planning and reproduction guide; not a transcript of the recorded video) |
-| Demonstration video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) |
+| Demonstration video | [YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E) (19:41; see disclosure below) |
 | Claim–evidence ledger | [`docs/submission/CLAIM_EVIDENCE_LEDGER.md`](docs/submission/CLAIM_EVIDENCE_LEDGER.md) |
+
+### Video demonstration and superseded figure disclosure
+
+The recorded demonstration video ([YouTube: youtu.be/arTnv1yWy1E](https://youtu.be/arTnv1yWy1E), 19:41 runtime) follows the reproduction script in [`docs/demo/DEMO_SCRIPT_20MIN.md`](docs/demo/DEMO_SCRIPT_20MIN.md). In the verbal delivery at 19:15 and slide 14, the presenter cites the **6.9%** point-estimate sensitivity figure from `results.json`. The primary headline table in the locked evaluation report [`docs/evidence/real_data/RESULTS.md`](docs/evidence/real_data/RESULTS.md) lists the bootstrap mean of **6.0%** (95% CI 0.0–13.9%). Both figures originate from the identical locked test run (bootstrap mean 6.0% vs full-test point estimate 6.9%), as reconciled in [`docs/submission/LOCKED_RESULTS_RECONCILIATION.md`](docs/submission/LOCKED_RESULTS_RECONCILIATION.md). The original recording is preserved without editing.
 
 ## License
 
