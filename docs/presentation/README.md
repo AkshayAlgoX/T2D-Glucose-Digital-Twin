@@ -30,7 +30,7 @@ The slides carry presenter names only, not per-slide times. The published record
 | **11** | Nikhil | **What the recorded metrics say** (synthetic validation split, development evidence: 60-min RMSE hybrid 19.53 / twin 23.23 / persistence 36.05 mg/dL; raw spike-risk AUROC 0.922; coverage 80.00% and Brier 0.0703 labelled as in-sample diagnostics) |
 | **12** | Akshaya | **The realism check failed** (**FAIL**: Gate 3 mock-real AUROC 0.932 against ≤ 0.65; EW-01 unexecuted) |
 | **13** | Nikhil | **What a reviewer can inspect** (Source code, schemas, run manifest, provenance) |
-| **14** | Akshaya + Nikhil | **The next two hours, with evidence** (locked real-patient test 6.9% warned ≥30 min ahead; external checks not confirmed; C2 exploratory; AI-READI confirmation pending data access) |
+| **14** | Akshaya + Nikhil | **The next two hours, with evidence** (locked real-patient test 6.0% warned ≥30 min ahead, 95% CI 0.0–13.9; bootstrap mean in RESULTS.md; full-test point estimate 6.9%; external checks not confirmed; C2 exploratory; AI-READI confirmation pending data access) |
 
 ## Screenshot provenance
 

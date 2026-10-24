@@ -16,7 +16,10 @@ The locked evaluation wrote two files in one run (`docs/evidence/real_data/final
 - Precision (65.5%) and median lead time (10 min) are point estimates in both files.
 - **The median lead-time interval is not a bootstrap CI.** `bootstrap_patient_metrics` returns it as the point estimate ± 5 min (`develop.py`, the `median_lead_time_min` entry). "10 [5–15] min" is therefore a fixed band, not a confidence interval.
 
-## Convention used everywhere outside the locked files
-- **Headline values are point estimates:** RMSE₆₀ 23.11 mg/dL [18.75–28.12], sensitivity ≥30 min 6.9% [0.0–13.9], false alerts 0.11/day [0.02–0.23], precision 65.5%, median lead 10 min (no CI).
-- Bootstrap means are quoted only when named as such.
-- The headline denominator is 11 held-out test patients with 5-min CGM, out of 161 nominal participants across three datasets.
+## Convention used across the public submission
+- **Authoritative headline sensitivity:** **6.0%** [95% CI 0.0–13.9%], representing the primary headline table figure in `docs/evidence/real_data/RESULTS.md` (mean of 2,000 paired patient-bootstrap resamples). The unbootstrapped point estimate from `results.json` is **6.9%** [95% CI 0.0–13.9%]. Both figures originate from the identical locked execution.
+- **Headline 60-minute RMSE:** **23.04 mg/dL** [95% CI 18.7–28.1 mg/dL] (bootstrap mean from `RESULTS.md` Table 1) and **23.11 mg/dL** (MAE 15.98 mg/dL, 95% CI 18.75–28.12 mg/dL; unbootstrapped point estimate from `RESULTS.md` horizon subsection and `results.json`).
+- **False alerts:** 0.11 false alerts per patient-day [95% CI 0.02–0.23].
+- **Alert precision:** 65.5%.
+- **Median warning lead time:** 10.0 min (point estimate; the reported 5.0–15.0 min band is a fixed ±5 min window, not a confidence interval).
+- **Headline denominator:** 11 held-out test patients with 5-min CGM, out of 161 nominal participants across three datasets (the 20 ShanghaiT2DM test patients were not estimable at 15-min cadence).

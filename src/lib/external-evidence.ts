@@ -89,7 +89,7 @@ export const CLAIM_TIERS = {
   proven: [
     'Ward → patient → forecast → What-if → clinician summary → evidence workflow, verified in a production browser on desktop and mobile',
     'FHIR R4 export validated in tests against the official HL7 R4 JSON schema, plus semantic checks',
-    'Preregistered real-patient evaluation on 161 patients, single locked run (results as reported, including 6.9% early warning)',
+    'Preregistered real-patient evaluation on 161 patients, single locked run (results as reported, including 6.0% early-warning headline [point estimate 6.9%])',
     'Two preregistered external checks on unused cohorts, run once each and published whatever the outcome',
   ],
   exploratory: [
