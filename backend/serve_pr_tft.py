@@ -43,6 +43,15 @@ Run
 
 from __future__ import annotations
 
+import os
+# Bound resource consumption for 1GB Blitz container
+os.environ["JAX_PLATFORMS"] = "cpu"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import argparse
 import asyncio
 import dataclasses
@@ -51,7 +60,6 @@ import hashlib
 import json
 import logging
 import math
-import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -60,6 +68,17 @@ from typing import Annotated, Any, Literal, Optional, Union
 
 import numpy as np
 import torch
+torch.set_num_threads(1)
+
+try:
+    import ctypes
+    _libc = ctypes.CDLL("libc.so.6")
+    def _malloc_trim():
+        _libc.malloc_trim(0)
+except Exception:
+    def _malloc_trim():
+        pass
+
 from fastapi import Depends, FastAPI, Header, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -422,17 +441,71 @@ def utc(ts) -> dt.datetime:
     return ts.to_pydatetime().replace(tzinfo=dt.timezone.utc)
 
 
-@dataclasses.dataclass
 class PatientCache:
-    ps: T.PatientSeries
-    subject_id: uuid.UUID
-    past: np.ndarray  # (n, P) normalised past features
-    cob: np.ndarray  # carbs on board, g
-    meal_effect: np.ndarray  # twin meal effect, mg/dL
-    static: np.ndarray  # (S,) normalised
-    ukf_mean: np.ndarray | None = None
-    fit_quality: dict[str, Any] | None = None
-    carbs_logged: np.ndarray | None = None  # per-step logged carbs, as the network sees them
+    """Per-subject cached data with on-demand lazy property evaluation."""
+    def __init__(
+        self,
+        ps: T.PatientSeries,
+        subject_id: uuid.UUID,
+        past: np.ndarray | None = None,
+        cob: np.ndarray | None = None,
+        meal_effect: np.ndarray | None = None,
+        static: np.ndarray | None = None,
+        ukf_mean: np.ndarray | None = None,
+        fit_quality: dict[str, Any] | None = None,
+        carbs_logged: np.ndarray | None = None,
+        _ctx: Any | None = None,
+    ):
+        self.ps = ps
+        self.subject_id = subject_id
+        self._past = past
+        self._cob = cob
+        self._meal_effect = meal_effect
+        self.static = static
+        self._ukf_mean = ukf_mean
+        self.fit_quality = fit_quality
+        self.carbs_logged = carbs_logged
+        self._ctx = _ctx
+
+    @property
+    def past(self) -> np.ndarray:
+        if self._past is None and self._ctx is not None:
+            self._ctx._materialize_patient(self)
+        return self._past
+
+    @past.setter
+    def past(self, val: np.ndarray):
+        self._past = val
+
+    @property
+    def cob(self) -> np.ndarray:
+        if self._cob is None and self._ctx is not None:
+            self._ctx._materialize_patient(self)
+        return self._cob
+
+    @cob.setter
+    def cob(self, val: np.ndarray):
+        self._cob = val
+
+    @property
+    def meal_effect(self) -> np.ndarray:
+        if self._meal_effect is None and self._ctx is not None:
+            self._ctx._materialize_patient(self)
+        return self._meal_effect
+
+    @meal_effect.setter
+    def meal_effect(self, val: np.ndarray):
+        self._meal_effect = val
+
+    @property
+    def ukf_mean(self) -> np.ndarray | None:
+        if self._ukf_mean is None and self._past is None and self._ctx is not None:
+            self._ctx._materialize_patient(self)
+        return self._ukf_mean
+
+    @ukf_mean.setter
+    def ukf_mean(self, val: np.ndarray | None):
+        self._ukf_mean = val
 
 
 class ServiceContext:
@@ -465,8 +538,8 @@ class ServiceContext:
         self.ckpt = run_dir / manifest["checkpoint"]["path"]
         if prov.sha256_file(self.ckpt) != manifest["checkpoint"]["sha256"]:
             raise ValueError(f"{self.ckpt} does not match the checkpoint hash in the run manifest")
-        self.module = T.PRTFTModule.load_from_checkpoint(str(self.ckpt), map_location="cpu").eval()
         self.static_features = T.get_static_features(self.cfg)
+        self.module = T.load_inference_model(self.ckpt, self.cfg)
         if self.module.hparams.n_static != len(self.static_features):
             raise ValueError(f"checkpoint has {self.module.hparams.n_static} static inputs, twin_mode "
                              f"{self.cfg.twin_mode} provides {len(self.static_features)}")
@@ -515,41 +588,71 @@ class ServiceContext:
         self._scenario_range: tuple[float, float] | None = None
         
         ukf_file = run_dir / "canonical_ukf_state.npz"
-        ukf_data = None
+        self._ukf_npz = None
         if ukf_file.exists():
             ukf_prov = json.loads((run_dir / "canonical_ukf_provenance.json").read_text())
-            if ukf_prov["canonical_ukf_state_sha256"] != hashlib.sha256(ukf_file.read_bytes()).hexdigest():
+            h = hashlib.sha256()
+            with open(ukf_file, "rb") as f:
+                while chunk := f.read(65536):
+                    h.update(chunk)
+            if ukf_prov["canonical_ukf_state_sha256"] != h.hexdigest():
                 raise ValueError("Canonical UKF artifact SHA256 mismatch")
-            ukf_data = np.load(ukf_file, allow_pickle=False)
+            self._ukf_npz = np.load(ukf_file, allow_pickle=False)
 
+        self._materialized_sids: list[uuid.UUID] = []
         for pid, ps in series.items():
             sid = uuid.uuid5(SUBJECT_NAMESPACE, pid)
-            ukf_mean = None
-            if ukf_data is not None:
-                effect = ukf_data[f"{pid}_meal_effect"]
-                feats = {
-                    "ukf_insulin_action": ukf_data[f"{pid}_ukf_insulin_action"],
-                    "ukf_plasma_insulin": ukf_data[f"{pid}_ukf_plasma_insulin"],
-                    "ukf_gut_glucose": ukf_data[f"{pid}_ukf_gut_glucose"],
-                    "ukf_sensitivity_boost": ukf_data[f"{pid}_ukf_sensitivity_boost"],
-                    "ukf_theta_si": ukf_data[f"{pid}_ukf_theta_si"],
-                    "ukf_theta_egp": ukf_data[f"{pid}_ukf_theta_egp"],
-                    "ukf_innovation_z": ukf_data[f"{pid}_ukf_innovation_z"],
-                    "ukf_unlogged_carbs": ukf_data[f"{pid}_ukf_unlogged_carbs"],
-                }
-                ukf_mean = ukf_data.get(f"{pid}_ukf_mean")
-            else:
-                effect = self.twin.meal_effect_series(ps)
-                feats = self.twin.state_features(ps)
-                
             static = np.array([(ps.static_raw[c] - self.norm.static_mean[c]) / self.norm.static_std[c]
                                for c in self.static_features], dtype=np.float32)
-            self.patients[sid] = PatientCache(ps, sid, T.past_matrix(ps, self.norm, effect, feats),
-                                              T._carbs_on_board(ps), effect, static, ukf_mean)
+            self.patients[sid] = PatientCache(ps=ps, subject_id=sid, static=static, _ctx=self)
             self.by_pid[pid] = sid
+
         self.ood_ref = float(np.sqrt(np.mean(np.stack([p.static[:len(T.STATIC_CONTINUOUS)] ** 2
                                                         for p in self.patients.values()]))))
+        if "canonical_meals" in locals() and hasattr(canonical_meals, "close"):
+            canonical_meals.close()
+        import gc
+        gc.collect()
+        _malloc_trim()
         LOG.info("loaded %s and %d subjects in %.1f s", self.ckpt.name, len(self.patients), time.perf_counter() - t0)
+
+    def _materialize_patient(self, pc: PatientCache) -> None:
+        """Lazily load UKF states and compute past matrix and COB for this patient."""
+        if pc._past is not None:
+            return
+        pid = pc.ps.pid
+        if self._ukf_npz is not None and f"{pid}_meal_effect" in self._ukf_npz:
+            effect = self._ukf_npz[f"{pid}_meal_effect"]
+            feats = {
+                "ukf_insulin_action": self._ukf_npz[f"{pid}_ukf_insulin_action"],
+                "ukf_plasma_insulin": self._ukf_npz[f"{pid}_ukf_plasma_insulin"],
+                "ukf_gut_glucose": self._ukf_npz[f"{pid}_ukf_gut_glucose"],
+                "ukf_sensitivity_boost": self._ukf_npz[f"{pid}_ukf_sensitivity_boost"],
+                "ukf_theta_si": self._ukf_npz[f"{pid}_ukf_theta_si"],
+                "ukf_theta_egp": self._ukf_npz[f"{pid}_ukf_theta_egp"],
+                "ukf_innovation_z": self._ukf_npz[f"{pid}_ukf_innovation_z"],
+                "ukf_unlogged_carbs": self._ukf_npz[f"{pid}_ukf_unlogged_carbs"],
+            }
+            ukf_mean = self._ukf_npz.get(f"{pid}_ukf_mean")
+        else:
+            effect = self.twin.meal_effect_series(pc.ps)
+            feats = self.twin.state_features(pc.ps)
+            ukf_mean = None
+
+        pc._past = T.past_matrix(pc.ps, self.norm, effect, feats)
+        pc._cob = T._carbs_on_board(pc.ps)
+        pc._meal_effect = effect
+        pc._ukf_mean = ukf_mean
+
+        self._materialized_sids.append(pc.subject_id)
+        if len(self._materialized_sids) > 64:
+            oldest_sid = self._materialized_sids.pop(0)
+            if oldest_sid != pc.subject_id and oldest_sid in self.patients:
+                old_pc = self.patients[oldest_sid]
+                old_pc._past = None
+                old_pc._cob = None
+                old_pc._meal_effect = None
+                old_pc._ukf_mean = None
 
     # ---- lookups ---------------------------------------------------------- #
 

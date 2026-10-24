@@ -14,6 +14,15 @@ export BACKEND_URL="http://${BACKEND_HOST}:${BACKEND_PORT}"
 export PORT
 export HOSTNAME
 
+# Memory and CPU optimizations for 1GB Blitz container
+export JAX_PLATFORMS=cpu
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export MALLOC_ARENA_MAX=2
+
 cleanup() {
   echo "Received shutdown signal. Stopping child services..."
   if [ -n "$FASTAPI_PID" ] && kill -0 "$FASTAPI_PID" 2>/dev/null; then
@@ -63,7 +72,7 @@ if [ "$BACKEND_READY" -ne 1 ]; then
 fi
 
 echo "[3/3] Starting Next.js frontend on ${HOSTNAME}:${PORT}..."
-npx next start -p "${PORT}" -H "${HOSTNAME}" &
+NODE_OPTIONS="--max-old-space-size=128" ./node_modules/.bin/next start -p "${PORT}" -H "${HOSTNAME}" &
 NEXT_PID=$!
 
 echo "=========================================================="
