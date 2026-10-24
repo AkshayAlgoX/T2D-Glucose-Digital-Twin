@@ -54,12 +54,14 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import argparse
 import asyncio
+import collections
 import dataclasses
 import datetime as dt
 import hashlib
 import json
 import logging
 import math
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -442,7 +444,7 @@ def utc(ts) -> dt.datetime:
 
 
 class PatientCache:
-    """Per-subject cached data with on-demand lazy property evaluation."""
+    """Per-subject cached data with on-demand lazy property evaluation and thread-safe LRU."""
     def __init__(
         self,
         ps: T.PatientSeries,
@@ -466,46 +468,63 @@ class PatientCache:
         self.fit_quality = fit_quality
         self.carbs_logged = carbs_logged
         self._ctx = _ctx
+        self._lock = threading.Lock()
+
+    def _ensure_materialized(self) -> None:
+        """Thread-safe on-demand materialization with double-checked locking."""
+        if self._past is not None:
+            if self._ctx is not None:
+                self._ctx._touch_lru(self.subject_id)
+            return
+
+        if self._ctx is not None:
+            with self._lock:
+                if self._past is None:
+                    self._ctx._materialize_patient(self)
+                else:
+                    self._ctx._touch_lru(self.subject_id)
 
     @property
     def past(self) -> np.ndarray:
-        if self._past is None and self._ctx is not None:
-            self._ctx._materialize_patient(self)
+        self._ensure_materialized()
         return self._past
 
     @past.setter
     def past(self, val: np.ndarray):
-        self._past = val
+        with self._lock:
+            self._past = val
+        if self._ctx is not None:
+            self._ctx._touch_lru(self.subject_id)
 
     @property
     def cob(self) -> np.ndarray:
-        if self._cob is None and self._ctx is not None:
-            self._ctx._materialize_patient(self)
+        self._ensure_materialized()
         return self._cob
 
     @cob.setter
     def cob(self, val: np.ndarray):
-        self._cob = val
+        with self._lock:
+            self._cob = val
 
     @property
     def meal_effect(self) -> np.ndarray:
-        if self._meal_effect is None and self._ctx is not None:
-            self._ctx._materialize_patient(self)
+        self._ensure_materialized()
         return self._meal_effect
 
     @meal_effect.setter
     def meal_effect(self, val: np.ndarray):
-        self._meal_effect = val
+        with self._lock:
+            self._meal_effect = val
 
     @property
     def ukf_mean(self) -> np.ndarray | None:
-        if self._ukf_mean is None and self._past is None and self._ctx is not None:
-            self._ctx._materialize_patient(self)
+        self._ensure_materialized()
         return self._ukf_mean
 
     @ukf_mean.setter
     def ukf_mean(self, val: np.ndarray | None):
-        self._ukf_mean = val
+        with self._lock:
+            self._ukf_mean = val
 
 
 class ServiceContext:
@@ -599,7 +618,10 @@ class ServiceContext:
                 raise ValueError("Canonical UKF artifact SHA256 mismatch")
             self._ukf_npz = np.load(ukf_file, allow_pickle=False)
 
-        self._materialized_sids: list[uuid.UUID] = []
+        self.max_materialized_patients = 64
+        self._lru_lock = threading.Lock()
+        self._npz_lock = threading.Lock()
+        self._materialized_lru: collections.OrderedDict[uuid.UUID, None] = collections.OrderedDict()
         for pid, ps in series.items():
             sid = uuid.uuid5(SUBJECT_NAMESPACE, pid)
             static = np.array([(ps.static_raw[c] - self.norm.static_mean[c]) / self.norm.static_std[c]
@@ -616,25 +638,42 @@ class ServiceContext:
         _malloc_trim()
         LOG.info("loaded %s and %d subjects in %.1f s", self.ckpt.name, len(self.patients), time.perf_counter() - t0)
 
+    def _touch_lru(self, sid: uuid.UUID) -> None:
+        """Promote accessed patient to the most-recently-used position in the LRU."""
+        with self._lru_lock:
+            if sid in self._materialized_lru:
+                self._materialized_lru.move_to_end(sid)
+
     def _materialize_patient(self, pc: PatientCache) -> None:
         """Lazily load UKF states and compute past matrix and COB for this patient."""
+        # pc._lock is held by the caller in pc._ensure_materialized()
         if pc._past is not None:
             return
         pid = pc.ps.pid
-        if self._ukf_npz is not None and f"{pid}_meal_effect" in self._ukf_npz:
-            effect = self._ukf_npz[f"{pid}_meal_effect"]
-            feats = {
-                "ukf_insulin_action": self._ukf_npz[f"{pid}_ukf_insulin_action"],
-                "ukf_plasma_insulin": self._ukf_npz[f"{pid}_ukf_plasma_insulin"],
-                "ukf_gut_glucose": self._ukf_npz[f"{pid}_ukf_gut_glucose"],
-                "ukf_sensitivity_boost": self._ukf_npz[f"{pid}_ukf_sensitivity_boost"],
-                "ukf_theta_si": self._ukf_npz[f"{pid}_ukf_theta_si"],
-                "ukf_theta_egp": self._ukf_npz[f"{pid}_ukf_theta_egp"],
-                "ukf_innovation_z": self._ukf_npz[f"{pid}_ukf_innovation_z"],
-                "ukf_unlogged_carbs": self._ukf_npz[f"{pid}_ukf_unlogged_carbs"],
-            }
-            ukf_mean = self._ukf_npz.get(f"{pid}_ukf_mean")
+        if self._ukf_npz is not None:
+            with self._npz_lock:
+                has_pid = f"{pid}_meal_effect" in self._ukf_npz
+                if has_pid:
+                    effect = self._ukf_npz[f"{pid}_meal_effect"]
+                    feats = {
+                        "ukf_insulin_action": self._ukf_npz[f"{pid}_ukf_insulin_action"],
+                        "ukf_plasma_insulin": self._ukf_npz[f"{pid}_ukf_plasma_insulin"],
+                        "ukf_gut_glucose": self._ukf_npz[f"{pid}_ukf_gut_glucose"],
+                        "ukf_sensitivity_boost": self._ukf_npz[f"{pid}_ukf_sensitivity_boost"],
+                        "ukf_theta_si": self._ukf_npz[f"{pid}_ukf_theta_si"],
+                        "ukf_theta_egp": self._ukf_npz[f"{pid}_ukf_theta_egp"],
+                        "ukf_innovation_z": self._ukf_npz[f"{pid}_ukf_innovation_z"],
+                        "ukf_unlogged_carbs": self._ukf_npz[f"{pid}_ukf_unlogged_carbs"],
+                    }
+                    ukf_mean = self._ukf_npz.get(f"{pid}_ukf_mean")
+                else:
+                    effect = None
+                    feats = None
+                    ukf_mean = None
         else:
+            has_pid = False
+
+        if not has_pid:
             effect = self.twin.meal_effect_series(pc.ps)
             feats = self.twin.state_features(pc.ps)
             ukf_mean = None
@@ -644,11 +683,18 @@ class ServiceContext:
         pc._meal_effect = effect
         pc._ukf_mean = ukf_mean
 
-        self._materialized_sids.append(pc.subject_id)
-        if len(self._materialized_sids) > 64:
-            oldest_sid = self._materialized_sids.pop(0)
-            if oldest_sid != pc.subject_id and oldest_sid in self.patients:
-                old_pc = self.patients[oldest_sid]
+        to_evict: list[uuid.UUID] = []
+        with self._lru_lock:
+            self._materialized_lru[pc.subject_id] = None
+            self._materialized_lru.move_to_end(pc.subject_id)
+            while len(self._materialized_lru) > self.max_materialized_patients:
+                evict_sid, _ = self._materialized_lru.popitem(last=False)
+                if evict_sid != pc.subject_id:
+                    to_evict.append(evict_sid)
+
+        for evict_sid in to_evict:
+            if evict_sid in self.patients:
+                old_pc = self.patients[evict_sid]
                 old_pc._past = None
                 old_pc._cob = None
                 old_pc._meal_effect = None
