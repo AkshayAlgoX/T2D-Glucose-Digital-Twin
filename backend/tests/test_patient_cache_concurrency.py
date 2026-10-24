@@ -169,3 +169,90 @@ def test_concurrent_multithreaded_cohort_requests(ctx):
 
     with ctx._lru_lock:
         assert len(ctx._materialized_lru) <= ctx.max_materialized_patients
+
+
+def test_concurrent_reads_during_active_eviction_churn(ctx):
+    """Stress test: concurrent workers read target patient properties while other workers
+    actively access >64 distinct patients, triggering continuous LRU evictions.
+
+    Proves:
+    1. Property getters never return unexpected None.
+    2. Returned arrays are always valid NumPy arrays of expected shapes.
+    3. Numerical results remain 100% stable.
+    4. No exceptions or deadlocks occur under severe eviction pressure.
+    """
+    # Cohort has 44 val + 205 train = 249 served patients
+    all_served_pids = [p for p in ctx.by_pid if ctx.split_of[p] != "test"]
+    assert len(all_served_pids) >= 100
+
+    target_pid = all_served_pids[0]
+    target_sid = ctx.by_pid[target_pid]
+    target_pc = ctx.patient(target_sid)
+
+    # Reference values for target patient
+    ref_past = target_pc.past.copy()
+    ref_cob = target_pc.cob.copy()
+    ref_meal = target_pc.meal_effect.copy()
+
+    # Churn list of >75 distinct patients to force repeated evictions beyond limit (64)
+    churn_sids = [ctx.by_pid[p] for p in all_served_pids[1:85]]
+    assert len(churn_sids) > 64
+
+    stop_event = threading.Event()
+    read_errors = []
+    total_target_reads = 0
+    read_counter_lock = threading.Lock()
+
+    def reader_worker():
+        nonlocal total_target_reads
+        reads = 0
+        while not stop_event.is_set():
+            try:
+                p = target_pc.past
+                c = target_pc.cob
+                m = target_pc.meal_effect
+                u = target_pc.ukf_mean
+
+                if p is None or c is None or m is None:
+                    read_errors.append(f"Unexpected None in reader: past={p is None}, cob={c is None}, meal={m is None}")
+                    break
+                if p.shape != (4032, 20) or c.shape != (4032,) or m.shape != (4032,):
+                    read_errors.append(f"Invalid shape: past={p.shape}, cob={c.shape}, meal={m.shape}")
+                    break
+                if not np.array_equal(p, ref_past) or not np.array_equal(c, ref_cob) or not np.array_equal(m, ref_meal):
+                    read_errors.append("Numerical corruption detected in target patient arrays!")
+                    break
+                reads += 1
+            except Exception as e:
+                read_errors.append(f"Exception in reader_worker: {type(e).__name__}: {e}")
+                break
+        with read_counter_lock:
+            total_target_reads += reads
+
+    def churn_worker(worker_id: int):
+        for sid in churn_sids:
+            if stop_event.is_set():
+                break
+            try:
+                pc = ctx.patient(sid)
+                p = pc.past
+                c = pc.cob
+                if p is None or c is None:
+                    read_errors.append(f"Unexpected None in churn_worker {worker_id} for {sid}")
+                    break
+            except Exception as e:
+                read_errors.append(f"Exception in churn_worker {worker_id}: {type(e).__name__}: {e}")
+                break
+
+    # Spawn 8 reader threads hammering target patient and 8 churn threads hammering >64 distinct patients
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool:
+        reader_futures = [pool.submit(reader_worker) for _ in range(8)]
+        churn_futures = [pool.submit(churn_worker, i) for i in range(8)]
+
+        # Let the churn workers run and trigger repeated evictions
+        concurrent.futures.wait(churn_futures, timeout=15)
+        stop_event.set()
+        concurrent.futures.wait(reader_futures, timeout=5)
+
+    assert not read_errors, f"Errors encountered during eviction churn: {read_errors[:5]}"
+    assert total_target_reads > 100, f"Expected >100 successful reads, got {total_target_reads}"

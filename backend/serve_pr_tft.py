@@ -470,24 +470,22 @@ class PatientCache:
         self._ctx = _ctx
         self._lock = threading.Lock()
 
-    def _ensure_materialized(self) -> None:
-        """Thread-safe on-demand materialization with double-checked locking."""
-        if self._past is not None:
-            if self._ctx is not None:
-                self._ctx._touch_lru(self.subject_id)
-            return
-
-        if self._ctx is not None:
-            with self._lock:
-                if self._past is None:
-                    self._ctx._materialize_patient(self)
-                else:
-                    self._ctx._touch_lru(self.subject_id)
+    def _ensure_materialized_locked(self) -> list[uuid.UUID]:
+        """Must be called while holding self._lock. Returns any subject IDs to evict."""
+        if self._past is None and self._ctx is not None:
+            return self._ctx._materialize_patient(self)
+        return []
 
     @property
     def past(self) -> np.ndarray:
-        self._ensure_materialized()
-        return self._past
+        with self._lock:
+            to_evict = self._ensure_materialized_locked()
+            val = self._past
+        if self._ctx is not None:
+            self._ctx._touch_lru(self.subject_id)
+            if to_evict:
+                self._ctx._evict_patients(to_evict)
+        return val
 
     @past.setter
     def past(self, val: np.ndarray):
@@ -498,8 +496,14 @@ class PatientCache:
 
     @property
     def cob(self) -> np.ndarray:
-        self._ensure_materialized()
-        return self._cob
+        with self._lock:
+            to_evict = self._ensure_materialized_locked()
+            val = self._cob
+        if self._ctx is not None:
+            self._ctx._touch_lru(self.subject_id)
+            if to_evict:
+                self._ctx._evict_patients(to_evict)
+        return val
 
     @cob.setter
     def cob(self, val: np.ndarray):
@@ -508,8 +512,14 @@ class PatientCache:
 
     @property
     def meal_effect(self) -> np.ndarray:
-        self._ensure_materialized()
-        return self._meal_effect
+        with self._lock:
+            to_evict = self._ensure_materialized_locked()
+            val = self._meal_effect
+        if self._ctx is not None:
+            self._ctx._touch_lru(self.subject_id)
+            if to_evict:
+                self._ctx._evict_patients(to_evict)
+        return val
 
     @meal_effect.setter
     def meal_effect(self, val: np.ndarray):
@@ -518,8 +528,14 @@ class PatientCache:
 
     @property
     def ukf_mean(self) -> np.ndarray | None:
-        self._ensure_materialized()
-        return self._ukf_mean
+        with self._lock:
+            to_evict = self._ensure_materialized_locked()
+            val = self._ukf_mean
+        if self._ctx is not None:
+            self._ctx._touch_lru(self.subject_id)
+            if to_evict:
+                self._ctx._evict_patients(to_evict)
+        return val
 
     @ukf_mean.setter
     def ukf_mean(self, val: np.ndarray | None):
@@ -644,11 +660,12 @@ class ServiceContext:
             if sid in self._materialized_lru:
                 self._materialized_lru.move_to_end(sid)
 
-    def _materialize_patient(self, pc: PatientCache) -> None:
-        """Lazily load UKF states and compute past matrix and COB for this patient."""
-        # pc._lock is held by the caller in pc._ensure_materialized()
+    def _materialize_patient(self, pc: PatientCache) -> list[uuid.UUID]:
+        """Lazily load UKF states and compute past matrix and COB for this patient.
+        Called while holding pc._lock. Returns list of victim subject IDs to evict.
+        """
         if pc._past is not None:
-            return
+            return []
         pid = pc.ps.pid
         if self._ukf_npz is not None:
             with self._npz_lock:
@@ -692,13 +709,21 @@ class ServiceContext:
                 if evict_sid != pc.subject_id:
                     to_evict.append(evict_sid)
 
+        return to_evict
+
+    def _evict_patients(self, to_evict: list[uuid.UUID]) -> None:
+        """Evict victim patients under their respective locks without holding caller lock."""
         for evict_sid in to_evict:
             if evict_sid in self.patients:
                 old_pc = self.patients[evict_sid]
-                old_pc._past = None
-                old_pc._cob = None
-                old_pc._meal_effect = None
-                old_pc._ukf_mean = None
+                with old_pc._lock:
+                    with self._lru_lock:
+                        still_evicted = (evict_sid not in self._materialized_lru)
+                    if still_evicted:
+                        old_pc._past = None
+                        old_pc._cob = None
+                        old_pc._meal_effect = None
+                        old_pc._ukf_mean = None
 
     # ---- lookups ---------------------------------------------------------- #
 
