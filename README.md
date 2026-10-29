@@ -4,9 +4,9 @@
 
 ### A physiology-informed digital twin that forecasts type 2 diabetes glucose spikes,<br>and states exactly what its evidence does and does not prove.
 
-**[Live Workstation Demo: t2d-glucose-digital-twin.akshay.blitz.cloud](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)**
+**[Live Workstation Demo: t2d-glucose-digital-twin.akshay.blitz.cloud](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)** (the free host sleeps when idle; opening it in a browser wakes it)
 
-[![Live Demo](https://img.shields.io/badge/live%20demo-online-0f6e74)](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)
+[![Live Demo](https://img.shields.io/badge/live%20demo-may%20need%20waking-0f6e74)](https://t2d-glucose-digital-twin.akshay.blitz.cloud/)
 [![Frontend tests](https://img.shields.io/badge/frontend%20tests-48%20suites%20%7C%20450%20passed-0f6e74)](#tests-and-verification)
 [![Backend tests](https://img.shields.io/badge/backend%20tests-162%20passed-0f6e74)](#tests-and-verification)
 [![License](https://img.shields.io/badge/license-Apache--2.0-1f3a5f)](LICENSE)
@@ -252,8 +252,11 @@ Every claim, with its artifact and promotion rule, is in the [claim–evidence l
 **Requirements:** Node.js ≥ 20.9, Python 3.12, Git LFS (model weights and twin state).
 
 ```bash
+git lfs install            # once per machine; without it `git lfs pull` leaves 133-byte pointer files
 git clone https://github.com/AkshayAlgoX/T2D-Glucose-Digital-Twin.git
 cd T2D-Glucose-Digital-Twin && git lfs pull
+# The checkpoint and twin state must be real files (35 MB and 207 MB), not pointers:
+ls -l runs/pr_tft_ablation_arm_d/checkpoints/ runs/pr_tft_ablation_arm_d/canonical_ukf_state.npz
 
 # Backend: synthetic-cohort inference service
 python3 -m venv .venv && source .venv/bin/activate
